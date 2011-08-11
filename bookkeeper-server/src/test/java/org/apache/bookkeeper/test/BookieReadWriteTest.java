@@ -253,8 +253,7 @@ implements AddCallback, ReadCallback, ReadLastConfirmedCallback {
     @Test
     public void testReadWriteRangeAsyncSingleClient() throws IOException {
         try {
-            // Create a BookKeeper client and a ledger
-            bkc = new BookKeeper("127.0.0.1");
+            // Create a ledger
             lh = bkc.createLedger(digestType, ledgerPassword);
             // bkc.initMessageDigest("SHA1");
             ledgerId = lh.getId();
