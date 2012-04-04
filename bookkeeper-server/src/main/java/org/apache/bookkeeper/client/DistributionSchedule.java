@@ -17,6 +17,7 @@
  */
 package org.apache.bookkeeper.client;
 
+import java.util.List;
 /**
  * This interface determins how entries are distributed among bookies.
  *
@@ -30,21 +31,20 @@ package org.apache.bookkeeper.client;
 interface DistributionSchedule {
 
     /**
-     *
-     * @param entryId
-     * @param replicaIndex
-     * @return index of bookie that should get this replica
+     * return the set of bookie indices to send the message to
      */
-    public int getBookieIndex(long entryId, int replicaIndex);
+    public List<Integer> getWriteSet(long entryId);
+
+    public interface AckSet {
+        public boolean addBookieAndCheck(int bookieIndexHeardFrom);
+        public void removeBookie(int bookie);
+    }
 
     /**
-     *
-     * @param entryId
-     * @param bookieIndex
-     * @return -1 if the given bookie index is not a replica for the given
-     *         entryId
+     * Returns an ackset object, responses should be checked against this
      */
-    public int getReplicaIndex(long entryId, int bookieIndex);
+    public AckSet getAckSet();
+
 
     /**
      * Interface to keep track of which bookies in an ensemble, an action

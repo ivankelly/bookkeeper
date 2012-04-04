@@ -235,8 +235,7 @@ public class LedgerChecker {
                                                   }
                                               });
 
-                for (int i = 0; i < lh.getLedgerMetadata().getQuorumSize(); i++) {
-                    int bi = lh.getDistributionSchedule().getBookieIndex(entryToRead, i);
+                for (int bi : lh.getDistributionSchedule().getWriteSet(entryToRead)) {
                     InetSocketAddress addr = curEnsemble.get(bi);
                     bookieClient.readEntry(addr, lh.getId(),
                                            entryToRead, eecb, null);

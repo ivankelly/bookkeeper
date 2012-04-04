@@ -643,7 +643,7 @@ public class LedgerHandle {
         // entries that have had all their responses come back
         PendingAddOp pendingAddOp;
         while ((pendingAddOp = pendingAddOps.peek()) != null) {
-            if (pendingAddOp.numResponsesPending != 0) {
+            if (!pendingAddOp.completed) {
                 return;
             }
             pendingAddOps.remove();
