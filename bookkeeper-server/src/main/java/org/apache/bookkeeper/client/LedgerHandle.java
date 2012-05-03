@@ -99,7 +99,7 @@ public class LedgerHandle {
         macManager = DigestManager.instantiate(ledgerId, password, digestType);
         this.ledgerKey = MacDigestManager.genDigest("ledger", password);
         distributionSchedule = new RoundRobinDistributionSchedule(
-                metadata.getQuorumSize(), metadata.getEnsembleSize());
+                metadata.getWriteQuorumSize(), metadata.getAckQuorumSize(), metadata.getEnsembleSize());
     }
 
     /**
