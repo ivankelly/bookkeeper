@@ -46,7 +46,8 @@ class LedgerOpenOp implements GenericCallback<LedgerMetadata> {
     LedgerHandle lh;
     final byte[] passwd;
     final DigestType digestType;
-    boolean doRecovery;
+    boolean doRecovery = true;
+    boolean passwordProvided = true;
 
     /**
      * Constructor.
@@ -58,7 +59,7 @@ class LedgerOpenOp implements GenericCallback<LedgerMetadata> {
      * @param cb
      * @param ctx
      */
-    public LedgerOpenOp(BookKeeper bk, long ledgerId, DigestType digestType, byte[] passwd, 
+    public LedgerOpenOp(BookKeeper bk, long ledgerId, DigestType digestType, byte[] passwd,
                         OpenCallback cb, Object ctx) {
         this.bk = bk;
         this.ledgerId = ledgerId;
@@ -66,8 +67,17 @@ class LedgerOpenOp implements GenericCallback<LedgerMetadata> {
         this.cb = cb;
         this.ctx = ctx;
         this.digestType = digestType;
+    }
 
-        this.doRecovery = true;
+    public LedgerOpenOp(BookKeeper bk, long ledgerId, OpenCallback cb, Object ctx) {
+        this.bk = bk;
+        this.ledgerId = ledgerId;
+        this.cb = cb;
+        this.ctx = ctx;
+
+        this.passwd = bk.getConf().getBookieRecoveryPasswd();
+        this.digestType = bk.getConf().getBookieRecoveryDigestType();
+        this.passwordProvided = false;
     }
 
     /**
@@ -97,6 +107,18 @@ class LedgerOpenOp implements GenericCallback<LedgerMetadata> {
             cb.openComplete(rc, null, this.ctx);
             return;
         }
+
+        final byte[] passwd;
+        final DigestType digestType;
+
+        if (!passwordProvided && metadata.hasPassword()) {
+            passwd = metadata.getPassword();
+            digestType = metadata.getDigestType();
+        } else {
+            passwd = this.passwd;
+            digestType = this.digestType;
+        }
+
         // get the ledger metadata back
         try {
             lh = new ReadOnlyLedgerHandle(bk, ledgerId, metadata, digestType, passwd);

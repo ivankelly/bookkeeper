@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.LedgerMetadata;
+import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.meta.ActiveLedgerManager.GarbageCollector;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.slf4j.Logger;
@@ -56,7 +57,8 @@ public class GcLedgersTest extends LedgerManagerTestCase {
     private void createLedgers(int numLedgers, final Set<Long> createdLedgers) {
         final AtomicInteger expected = new AtomicInteger(numLedgers);
         for (int i=0; i<numLedgers; i++) {
-            getLedgerManager().createLedger(new LedgerMetadata(1, 1), new GenericCallback<Long>() {
+            getLedgerManager().createLedger(new LedgerMetadata(1, 1, DigestType.MAC, "".getBytes()),
+                new GenericCallback<Long>() {
                 @Override
                 public void operationComplete(int rc, Long ledgerId) {
                     if (rc == BKException.Code.OK) {

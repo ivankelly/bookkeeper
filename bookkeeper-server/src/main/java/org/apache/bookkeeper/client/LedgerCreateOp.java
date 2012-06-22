@@ -71,7 +71,7 @@ class LedgerCreateOp implements GenericCallback<Long> {
 
     LedgerCreateOp(BookKeeper bk, int ensembleSize, int quorumSize, DigestType digestType, byte[] passwd, CreateCallback cb, Object ctx) {
         this.bk = bk;
-        this.metadata = new LedgerMetadata(ensembleSize, quorumSize);
+        this.metadata = new LedgerMetadata(ensembleSize, quorumSize, digestType, passwd);
         this.digestType = digestType;
         this.passwd = passwd;
         this.cb = cb;

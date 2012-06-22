@@ -759,4 +759,134 @@ public class BookieRecoveryTest extends MultiLedgerManagerMultiDigestTestCase {
             }
         }
     }
+
+    @Test
+    public void recoverWithoutPasswordInConf() throws Exception {
+        byte[] passwdA = "AAAAAA".getBytes();
+        byte[] passwdB = "BBBBBB".getBytes();
+
+        LedgerHandle lh = bkc.createLedger(3, 2, digestType, passwdA);
+        long ledgerId = lh.getId();
+        for (int i = 0; i < 100; i++) {
+            lh.addEntry("foobar".getBytes());
+        }
+        lh.close();
+
+        InetSocketAddress bookieSrc = bs.get(0).getLocalAddress();
+        bs.get(0).shutdown();
+        bs.remove(0);
+        startNewBookie();
+
+        // Check that entries are missing
+        lh = bkc.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, passwdA);
+        assertFalse("Should be entries missing", verifyFullyReplicated(lh, 100));
+        lh.close();
+
+        // Try to recover with bad password in conf
+        ClientConfiguration adminConf = new ClientConfiguration();
+        adminConf.setZkServers(zkUtil.getZooKeeperConnectString());
+        adminConf.setBookieRecoveryDigestType(BookKeeper.DigestType.MAC);
+        adminConf.setBookieRecoveryPasswd(passwdB);
+
+        BookKeeperAdmin bka = new BookKeeperAdmin(adminConf);
+        bka.recoverBookieData(bookieSrc, null);
+        bka.close();
+
+        lh = bkc.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, passwdA);
+        assertTrue("Should be back to fully replication", verifyFullyReplicated(lh, 100));
+        lh.close();
+
+        bookieSrc = bs.get(0).getLocalAddress();
+        bs.get(0).shutdown();
+        bs.remove(0);
+        startNewBookie();
+
+        // Check that entries are missing
+        lh = bkc.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, passwdA);
+        assertFalse("Should be entries missing", verifyFullyReplicated(lh, 100));
+        lh.close();
+
+        // Try to recover with no password in conf
+        adminConf = new ClientConfiguration();
+        adminConf.setZkServers(zkUtil.getZooKeeperConnectString());
+
+        bka = new BookKeeperAdmin(adminConf);
+        bka.recoverBookieData(bookieSrc, null);
+        bka.close();
+
+        lh = bkc.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, passwdA);
+        assertTrue("Should be back to fully replication", verifyFullyReplicated(lh, 100));
+        lh.close();
+    }
+
+    /**
+     * Test that when we try to recover a ledger which doesn't have
+     * the password stored in the configuration, we don't succeed
+     */
+    @Test
+    public void ensurePasswordUsedForOldLedgers() throws Exception {
+        // stop all bookies
+        // and wipe the ledger layout so we can use an old client
+        zkUtil.getZooKeeperClient().delete("/ledgers/LAYOUT", -1);
+
+        byte[] passwdA = "AAAAAA".getBytes();
+        org.apache.bk_v4_1_0.bookkeeper.client.BookKeeper.DigestType digestA
+            = org.apache.bk_v4_1_0.bookkeeper.client.BookKeeper.DigestType.MAC;
+        org.apache.bk_v4_1_0.bookkeeper.client.BookKeeper bkc41
+            = new org.apache.bk_v4_1_0.bookkeeper.client.BookKeeper(zkUtil.getZooKeeperConnectString());
+        restartBookies();
+
+        org.apache.bk_v4_1_0.bookkeeper.client.LedgerHandle lh41
+            = bkc41.createLedger(3, 2, digestA, passwdA);
+        long ledgerId = lh41.getId();
+        for (int i = 0; i < 100; i++) {
+            lh41.addEntry("foobar".getBytes());
+        }
+        lh41.close();
+        bkc41.close();
+
+        // Startup a new bookie server
+        int newBookiePort = startNewBookie();
+        int removeIndex = 0;
+        InetSocketAddress bookieSrc = bs.get(removeIndex).getLocalAddress();
+        bs.get(removeIndex).shutdown();
+        bs.remove(removeIndex);
+
+        // Check that entries are missing
+        LedgerHandle lh = bkc.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, passwdA);
+        assertFalse("Should be entries missing", verifyFullyReplicated(lh, 100));
+        lh.close();
+
+        ClientConfiguration adminConf = new ClientConfiguration();
+        adminConf.setZkServers(zkUtil.getZooKeeperConnectString());
+        adminConf.setBookieRecoveryDigestType(BookKeeper.DigestType.MAC);
+        adminConf.setBookieRecoveryPasswd("BBBBBBBB".getBytes());
+
+        // Try to recover with bad password in conf
+        BookKeeperAdmin bka = new BookKeeperAdmin(adminConf);
+        try {
+            bka.recoverBookieData(bookieSrc, null);
+            fail("Shouldn't be able to recover with password missing");
+        } catch (BKException bke) {
+            // correct behaviour
+        } finally {
+            bka.close();
+        }
+
+        // Check that entries are still missing
+        lh = bkc.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, passwdA);
+        assertFalse("Should be entries missing", verifyFullyReplicated(lh, 100));
+        lh.close();
+
+        adminConf.setBookieRecoveryDigestType(BookKeeper.DigestType.MAC);
+        adminConf.setBookieRecoveryPasswd(passwdA);
+
+        bka = new BookKeeperAdmin(adminConf);
+        bka.recoverBookieData(bookieSrc, null);
+        bka.close();
+
+        lh = bkc.openLedgerNoRecovery(ledgerId, BookKeeper.DigestType.MAC, passwdA);
+        assertTrue("Should have recovered everything", verifyFullyReplicated(lh, 100));
+        lh.close();
+    }
 }
