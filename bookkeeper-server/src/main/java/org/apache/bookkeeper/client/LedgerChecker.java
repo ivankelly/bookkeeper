@@ -19,6 +19,7 @@
  */
 package org.apache.bookkeeper.client;
 
+import java.util.Enumeration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  *Checks the complete ledger and finds the UnderReplicated fragments if any
@@ -111,6 +113,35 @@ public class LedgerChecker {
     }
 
     /**
+     * Callback for checking whether an entry exists or not.
+     * It is used to differentiate the cases where it has been written
+     * but now cannot be read, and where it never has been written.
+     */
+    private static class EntryExistsCallback implements ReadEntryCallback {
+        AtomicBoolean completed = new AtomicBoolean(false);
+        AtomicBoolean entryMayExist = new AtomicBoolean(false);
+        final AtomicInteger numReads;
+        final GenericCallback<Boolean> cb;
+
+        EntryExistsCallback(int numReads,
+                            GenericCallback<Boolean> cb) {
+            this.numReads = new AtomicInteger(numReads);
+            this.cb = cb;
+        }
+
+        public void readEntryComplete(int rc, long ledgerId, long entryId,
+                                      ChannelBuffer buffer, Object ctx) {
+            if (rc != BKException.Code.NoSuchEntryException) {
+                entryMayExist.set(true);
+            }
+
+            if (numReads.decrementAndGet() == 0) {
+                cb.operationComplete(rc, entryMayExist.get());
+            }
+        }
+    }
+
+    /**
      * This will collect all the fragment read call backs and finally it will
      * give call back to above call back API which is waiting for it once it
      * meets the expected call backs from down
@@ -143,9 +174,9 @@ public class LedgerChecker {
      * which are missing.
      */
     public void checkLedger(LedgerHandle lh,
-            GenericCallback<Set<LedgerFragment>> cb) {
+                            final GenericCallback<Set<LedgerFragment>> cb) {
         // build a set of all fragment replicas
-        Set<LedgerFragment> fragments = new HashSet<LedgerFragment>();
+        final Set<LedgerFragment> fragments = new HashSet<LedgerFragment>();
 
         Long curEntryId = null;
         ArrayList<InetSocketAddress> curEnsemble = null;
@@ -162,20 +193,69 @@ public class LedgerChecker {
             curEnsemble = e.getValue();
         }
 
+        /* Checking the last segment of the ledger can be complicated in some cases.
+         * In the case that the ledger is closed, we can just check the fragments of
+         * the segment as normal.
+         * In the case that the ledger is open, but enough entries have been written,
+         * for lastAddConfirmed to be set above the start entry of the segment, we
+         * can also check as normal.
+         * However, if lastAddConfirmed cannot be trusted, such as when it's lower than
+         * the first entry id, or not set at all, we cannot be sure if there has been
+         * data written to the segment. For this reason, we have to send a read request
+         * to the bookies which should have the first entry. If they respond with
+         * NoSuchEntry we can assume it was never written. If they respond with anything
+         * else, we must assume the entry has been written, so we run the check.
+         */
         if (curEntryId != null) {
-            for (int i = 0; i < curEnsemble.size(); i++) {
-                long lastEntry = lh.getLastAddConfirmed();
+            long lastEntry = lh.getLastAddConfirmed();
 
-                // Check for the case that no last confirmed entry has
-                // been set.
-                if (lastEntry == LedgerHandle.INVALID_ENTRY_ID) {
-                    lastEntry = curEntryId;
-                }
-
-                fragments.add(new LedgerFragment(lh.getId(), curEntryId,
-                                      lastEntry, i, curEnsemble,
-                                      lh.getDistributionSchedule()));
+            if (lastEntry < curEntryId) {
+                lastEntry = curEntryId;
             }
+
+            final Set<LedgerFragment> finalSegmentFragments = new HashSet<LedgerFragment>();
+            for (int i = 0; i < curEnsemble.size(); i++) {
+                finalSegmentFragments.add(new LedgerFragment(lh.getId(), curEntryId,
+                                                  lastEntry, i, curEnsemble,
+                                                  lh.getDistributionSchedule()));
+            }
+
+            // Check for the case that no last confirmed entry has
+            // been set.
+            if (curEntryId == lastEntry) {
+                final long entryToRead = curEntryId;
+
+                EntryExistsCallback eecb
+                    = new EntryExistsCallback(lh.getLedgerMetadata().getQuorumSize(),
+                                              new GenericCallback<Boolean>() {
+                                                  public void operationComplete(int rc, Boolean result) {
+                                                      if (result) {
+                                                          fragments.addAll(finalSegmentFragments);
+                                                      }
+                                                      checkFragments(fragments, cb);
+                                                  }
+                                              });
+
+                for (int i = 0; i < lh.getLedgerMetadata().getQuorumSize(); i++) {
+                    int bi = lh.getDistributionSchedule().getBookieIndex(entryToRead, i);
+                    InetSocketAddress addr = curEnsemble.get(bi);
+                    bookieClient.readEntry(addr, lh.getId(),
+                                           entryToRead, eecb, null);
+                }
+                return;
+            } else {
+                fragments.addAll(finalSegmentFragments);
+            }
+        }
+
+        checkFragments(fragments, cb);
+    }
+
+    private void checkFragments(Set<LedgerFragment> fragments,
+                                GenericCallback<Set<LedgerFragment>> cb) {
+        if (fragments.size() == 0) { // no fragments to verify
+            cb.operationComplete(BKException.Code.OK, fragments);
+            return;
         }
 
         // verify all the collected fragment replicas

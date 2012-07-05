@@ -197,7 +197,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
      * corresponding ledger does not exists.
      */
     @Test(timeout = 3000)
-    public void testShouldNotGetAnyFragmentIfNoLedgerPresents()
+    public void testShouldNotGetAnyFragmentIfNoLedgerPresent()
             throws Exception {
 
         LedgerHandle lh = bkc.createLedger(3, 2, BookKeeper.DigestType.CRC32,
@@ -210,6 +210,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
         startNewBookie();
         lh.addEntry(TEST_LEDGER_ENTRY_DATA);
         bkc.deleteLedger(lh.getId());
+
         Set<LedgerFragment> result = getUnderReplicatedFragments(lh);
         assertNotNull("Result shouldn't be null", result);
 
@@ -266,6 +267,25 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
     }
 
     /**
+     * Tests that LedgerChecker should get all fragments if ledger is empty
+     * but all bookies in the ensemble are down.
+     * In this case, there's no way to tell whether data was written or not.
+     * In this case, there'll only be two fragments, as quorum is 2 and we only
+     * suspect that the first entry of the ledger could exist.
+     */
+    @Test(timeout = 3000)
+    public void testShouldGet3FragmentWithEmptyLedgerButBookiesDead() throws Exception {
+        LedgerHandle lh = bkc.createLedger(3, 2, BookKeeper.DigestType.CRC32,
+                TEST_LEDGER_PASSWORD);
+        for (InetSocketAddress b : lh.getLedgerMetadata().getEnsembles().get(0L)) {
+            killBookie(b);
+        }
+        Set<LedgerFragment> result = getUnderReplicatedFragments(lh);
+        assertNotNull("Result shouldn't be null", result);
+        assertEquals("There should be 2 fragments.", 2, result.size());
+    }
+
+    /**
      * Tests that LedgerChecker should one fragment as underReplicated
      * if there is an open ledger with single entry written.
      */
@@ -291,6 +311,46 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
         assertNotNull("Result shouldn't be null", result);
         assertEquals("There should be 1 fragment. But returned fragments are "
                 + result, 1, result.size());
+    }
+
+    /**
+     * Tests that LedgerChecker correctly identifies missing fragments
+     * when a single entry is written after an ensemble change.
+     * This is important, as the last add confirmed may be less than the
+     * first entry id of the final segment.
+     */
+    @Test(timeout = 3000)
+    public void testSingleEntryAfterEnsembleChange() throws Exception {
+        LedgerHandle lh = bkc.createLedger(3, 3, BookKeeper.DigestType.CRC32,
+                TEST_LEDGER_PASSWORD);
+        for (int i = 0; i < 10; i++) {
+            lh.addEntry(TEST_LEDGER_ENTRY_DATA);
+        }
+        ArrayList<InetSocketAddress> firstEnsemble = lh.getLedgerMetadata()
+                .getEnsembles().get(0L);
+        InetSocketAddress lastBookieFromEnsemble = firstEnsemble.get(
+                lh.getDistributionSchedule().getBookieIndex(lh.getLastAddPushed(), 0));
+        LOG.info("Killing " + lastBookieFromEnsemble + " from ensemble="
+                + firstEnsemble);
+        killBookie(lastBookieFromEnsemble);
+        startNewBookie();
+
+        lh.addEntry(TEST_LEDGER_ENTRY_DATA);
+
+        lastBookieFromEnsemble = firstEnsemble.get(
+                lh.getDistributionSchedule().getBookieIndex(lh.getLastAddPushed(), 1));
+        LOG.info("Killing " + lastBookieFromEnsemble + " from ensemble="
+                + firstEnsemble);
+        killBookie(lastBookieFromEnsemble);
+
+        //Open ledger separately for Ledger checker.
+        LedgerHandle lh1 =bkc.openLedgerNoRecovery(lh.getId(), BookKeeper.DigestType.CRC32,
+                TEST_LEDGER_PASSWORD);
+
+        Set<LedgerFragment> result = getUnderReplicatedFragments(lh1);
+        assertNotNull("Result shouldn't be null", result);
+        assertEquals("There should be 3 fragment. But returned fragments are "
+                + result, 3, result.size());
     }
 
     private Set<LedgerFragment> getUnderReplicatedFragments(LedgerHandle lh)
