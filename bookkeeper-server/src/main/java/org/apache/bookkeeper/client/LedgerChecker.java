@@ -164,9 +164,17 @@ public class LedgerChecker {
 
         if (curEntryId != null) {
             for (int i = 0; i < curEnsemble.size(); i++) {
-                fragments.add(new LedgerFragment(lh.getId(), curEntryId, lh
-                        .getLastAddConfirmed(), i, curEnsemble, lh
-                        .getDistributionSchedule()));
+                long lastEntry = lh.getLastAddConfirmed();
+
+                // Check for the case that no last confirmed entry has
+                // been set.
+                if (lastEntry == LedgerHandle.INVALID_ENTRY_ID) {
+                    lastEntry = curEntryId;
+                }
+
+                fragments.add(new LedgerFragment(lh.getId(), curEntryId,
+                                      lastEntry, i, curEnsemble,
+                                      lh.getDistributionSchedule()));
             }
         }
 
@@ -174,6 +182,7 @@ public class LedgerChecker {
         FullLedgerCallback allFragmentsCb = new FullLedgerCallback(fragments
                 .size(), cb);
         for (LedgerFragment r : fragments) {
+            LOG.debug("Checking fragment {}", r);
             try {
                 verifyLedgerFragment(r, allFragmentsCb);
             } catch (InvalidFragmentException ife) {

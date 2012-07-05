@@ -265,6 +265,34 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
                 + result, 0, result.size());
     }
 
+    /**
+     * Tests that LedgerChecker should one fragment as underReplicated
+     * if there is an open ledger with single entry written.
+     */
+    @Test(timeout = 3000)
+    public void testShouldGetOneFragmentWithSingleEntryOpenedLedger() throws Exception {
+        LedgerHandle lh = bkc.createLedger(3, 3, BookKeeper.DigestType.CRC32,
+                TEST_LEDGER_PASSWORD);
+        lh.addEntry(TEST_LEDGER_ENTRY_DATA);
+        ArrayList<InetSocketAddress> firstEnsemble = lh.getLedgerMetadata()
+                .getEnsembles().get(0L);
+        InetSocketAddress lastBookieFromEnsemble = firstEnsemble.get(0);
+        LOG.info("Killing " + lastBookieFromEnsemble + " from ensemble="
+                + firstEnsemble);
+        killBookie(lastBookieFromEnsemble);
+
+        startNewBookie();
+
+        //Open ledger separately for Ledger checker.
+        LedgerHandle lh1 =bkc.openLedgerNoRecovery(lh.getId(), BookKeeper.DigestType.CRC32,
+                TEST_LEDGER_PASSWORD);
+
+        Set<LedgerFragment> result = getUnderReplicatedFragments(lh1);
+        assertNotNull("Result shouldn't be null", result);
+        assertEquals("There should be 1 fragment. But returned fragments are "
+                + result, 1, result.size());
+    }
+
     private Set<LedgerFragment> getUnderReplicatedFragments(LedgerHandle lh)
             throws InterruptedException {
         LedgerChecker checker = new LedgerChecker(bkc);
