@@ -274,7 +274,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
      * suspect that the first entry of the ledger could exist.
      */
     @Test(timeout = 3000)
-    public void testShouldGet3FragmentWithEmptyLedgerButBookiesDead() throws Exception {
+    public void testShouldGet2FragmentsWithEmptyLedgerButBookiesDead() throws Exception {
         LedgerHandle lh = bkc.createLedger(3, 2, BookKeeper.DigestType.CRC32,
                 TEST_LEDGER_PASSWORD);
         for (InetSocketAddress b : lh.getLedgerMetadata().getEnsembles().get(0L)) {
