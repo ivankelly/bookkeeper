@@ -46,6 +46,21 @@ import java.util.regex.Matcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * ZooKeeper implementation of underreplication manager.
+ * This is implemented in a heirarchical fashion, so it'll work with
+ * FlatLedgerManagerFactory and HierarchicalLedgerManagerFactory.
+ *
+ * Layout is:
+ * /root/underreplication/ LAYOUT
+ *                         ledgers/(hierarchicalpath)/urL(ledgerId)
+ *                         locks/(ledgerId)
+ *
+ * The hierarchical path is created by splitting the ledger into 4 2byte
+ * segments which are represented in hexidecimal.
+ * e.g. For ledger id 0xcafebeef0000feed, the path is
+ *  cafe/beef/0000/feed/
+ */
 public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationManager {
     static final Logger LOG = LoggerFactory.getLogger(ZkLedgerUnderreplicationManager.class);
     static final Charset UTF8 = Charset.forName("UTF-8");
@@ -67,7 +82,6 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
     };
     private final Map<Long, Lock> heldLocks = new ConcurrentHashMap<Long, Lock>();
     private final Pattern idExtractionPattern;
-    private final Pattern subdirPattern;
 
     private final String basePath;
     private final String urLedgerPath;
@@ -83,8 +97,7 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
         urLedgerPath = basePath + "/ledgers";
         urLockPath = basePath + "/locks";
 
-        idExtractionPattern = Pattern.compile("\\p{XDigit}{4}/\\p{XDigit}{4}/\\p{XDigit}{4}/\\p{XDigit}{4}/urL(\\d+)$");
-        subdirPattern = Pattern.compile("^\\p{XDigit}{4}$");
+        idExtractionPattern = Pattern.compile("urL(\\d+)$");
         this.zkc = zkc;
 
         checkLayout();
@@ -99,12 +112,11 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
             if (lastSlash <= 0) {
                 throw nne;
             }
-            
             String parent = path.substring(0, lastSlash);
-            createOptimistic(path, new byte[0]);
+            createOptimistic(parent, new byte[0]);
             zkc.create(path, data,
                        Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-        }        
+        }
     }
 
     private void checkLayout()
@@ -175,11 +187,11 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
     }
 
     private String getParentZnodePath(String base, long ledgerId) {
-        String subdir1 = Long.toString(ledgerId >> 48 & 0xffff, 16);
-        String subdir2 = Long.toString(ledgerId >> 32 & 0xffff, 16);
-        String subdir3 = Long.toString(ledgerId >> 16 & 0xffff, 16);
-        String subdir4 = Long.toString(ledgerId & 0xffff, 16);
-        
+        String subdir1 = String.format("%04x", ledgerId >> 48 & 0xffff);
+        String subdir2 = String.format("%04x", ledgerId >> 32 & 0xffff);
+        String subdir3 = String.format("%04x", ledgerId >> 16 & 0xffff);
+        String subdir4 = String.format("%04x", ledgerId & 0xffff);
+
         return String.format("%s/%s/%s/%s/%s",
                              base, subdir1, subdir2, subdir3, subdir4);
     }
@@ -192,6 +204,7 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
     @Override
     public void markLedgerUnderreplicated(long ledgerId, String missingReplica)
             throws ReplicationException.UnavailableException {
+        LOG.debug("markLedgerUnderreplicated {} {}", ledgerId, missingReplica);
         try {
             String znode = getUrLedgerZnode(ledgerId);
             while (true) {
@@ -238,8 +251,8 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
     }
 
     @Override
-    public void markLedgerComplete(long ledgerId) throws ReplicationException.UnavailableException {
-        LOG.debug("markLedgerComplete(ledgerId={})", ledgerId);
+    public void markLedgerReplicated(long ledgerId) throws ReplicationException.UnavailableException {
+        LOG.debug("markLedgerReplicated(ledgerId={})", ledgerId);
         try {
             Lock l = heldLocks.get(ledgerId);
             if (l != null) {
@@ -258,7 +271,7 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
             Thread.currentThread().interrupt();
             throw new ReplicationException.UnavailableException("Interrupted while contacting zookeeper", ie);
         } finally {
-            releaseLedger(ledgerId);
+            releaseUnderreplicatedLedger(ledgerId);
         }
     }
 
@@ -266,15 +279,20 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
             throws KeeperException, InterruptedException {
         if (depth == 4) {
             List<String> children = zkc.getChildren(parent, w);
-            
             Collections.shuffle(children);
 
             while (children.size() > 0) {
                 String tryChild = children.get(0);
                 try {
                     String lockPath = urLockPath + "/" + tryChild;
+                    if (zkc.exists(lockPath, w) != null) {
+                        children.remove(tryChild);
+                        continue;
+                    }
+
                     Stat stat = zkc.exists(parent + "/" + tryChild, false);
                     if (stat == null) {
+                        LOG.debug("{}/{} doesn't exist", parent, tryChild);
                         children.remove(tryChild);
                         continue;
                     }
@@ -297,11 +315,13 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
         Collections.shuffle(children);
 
         while (children.size() > 0) {
-            String tryChild = parent + "/" + children.get(0);
-            long ledger = getLedgerToRereplicateFromHierarchy(tryChild, depth + 1, w);
+            String tryChild = children.get(0);
+            String tryPath = parent + "/" + tryChild;
+            long ledger = getLedgerToRereplicateFromHierarchy(tryPath, depth + 1, w);
             if (ledger != -1) {
                 return ledger;
             }
+            children.remove(tryChild);
         }
         return -1;
     }
@@ -314,7 +334,8 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
                 final CountDownLatch changedLatch = new CountDownLatch(1);
                 Watcher w = new Watcher() {
                         public void process(WatchedEvent e) {
-                            if (e.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+                            if (e.getType() == Watcher.Event.EventType.NodeChildrenChanged
+                                || e.getType() == Watcher.Event.EventType.NodeDeleted) {
                                 changedLatch.countDown();
                             }
                         }
@@ -335,7 +356,7 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
     }
 
     @Override
-    public void releaseLedger(long ledgerId) throws ReplicationException.UnavailableException {
+    public void releaseUnderreplicatedLedger(long ledgerId) throws ReplicationException.UnavailableException {
         LOG.debug("releaseLedger(ledgerId={})", ledgerId);
         try {
             Lock l = heldLocks.remove(ledgerId);

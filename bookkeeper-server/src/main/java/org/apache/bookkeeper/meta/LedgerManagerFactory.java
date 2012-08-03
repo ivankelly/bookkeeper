@@ -83,7 +83,7 @@ public abstract class LedgerManagerFactory {
     public abstract ActiveLedgerManager newActiveLedgerManager();
 
     /**
-     * Return a ledger underreplication manager, which is used to 
+     * Return a ledger underreplication manager, which is used to
      * mark ledgers as unreplicated, and to retrieve a ledger which
      * is underreplicated so that it can be rereplicated.
      *

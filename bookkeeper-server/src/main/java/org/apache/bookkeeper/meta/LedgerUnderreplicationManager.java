@@ -34,7 +34,7 @@ public interface LedgerUnderreplicationManager {
      * Mark a ledger as fully replicated. If the ledger is not
      * already marked as underreplicated, this is a noop.
      */
-    void markLedgerComplete(long ledgerId)
+    void markLedgerReplicated(long ledgerId)
             throws ReplicationException.UnavailableException;
 
     /**
@@ -53,6 +53,6 @@ public interface LedgerUnderreplicationManager {
      * Release a previously acquired ledger. This allows others to acquire
      * the ledger
      */
-    void releaseLedger(long ledgerId)
+    void releaseUnderreplicatedLedger(long ledgerId)
             throws ReplicationException.UnavailableException;
 }
