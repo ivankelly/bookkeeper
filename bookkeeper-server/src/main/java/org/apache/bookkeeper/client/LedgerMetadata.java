@@ -252,8 +252,7 @@ public class LedgerMetadata {
     private byte[] serializeVersion1() {
         StringBuilder s = new StringBuilder();
         s.append(VERSION_KEY).append(tSplitter).append(metadataFormatVersion).append(lSplitter);
-        s.append(writeQuorumSize).append(lSplitter).append(ackQuorumSize).append(lSplitter)
-            .append(ensembleSize).append(lSplitter).append(length);
+        s.append(writeQuorumSize).append(lSplitter).append(ensembleSize).append(lSplitter).append(length);
 
         for (Map.Entry<Long, ArrayList<InetSocketAddress>> entry : ensembles.entrySet()) {
             s.append(lSplitter).append(entry.getKey());
