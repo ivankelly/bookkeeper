@@ -118,7 +118,6 @@ public class LedgerChecker {
      * but now cannot be read, and where it never has been written.
      */
     private static class EntryExistsCallback implements ReadEntryCallback {
-        AtomicBoolean completed = new AtomicBoolean(false);
         AtomicBoolean entryMayExist = new AtomicBoolean(false);
         final AtomicInteger numReads;
         final GenericCallback<Boolean> cb;
