@@ -225,7 +225,7 @@ public class LedgerChecker {
                 final long entryToRead = curEntryId;
 
                 EntryExistsCallback eecb
-                    = new EntryExistsCallback(lh.getLedgerMetadata().getQuorumSize(),
+                    = new EntryExistsCallback(lh.getLedgerMetadata().getWriteQuorumSize(),
                                               new GenericCallback<Boolean>() {
                                                   public void operationComplete(int rc, Boolean result) {
                                                       if (result) {
