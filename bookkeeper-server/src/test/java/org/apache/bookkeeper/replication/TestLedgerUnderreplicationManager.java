@@ -584,6 +584,62 @@ public class TestLedgerUnderreplicationManager {
         }
     }
 
+    /**
+     * Test that the hierarchy gets cleaned up as ledgers
+     * are marked as fully replicated
+     */
+    @Test
+    public void testHierarchyCleanup() throws Exception {
+        final LedgerUnderreplicationManager replicaMgr = lmf1
+            .newLedgerUnderreplicationManager();
+        // 4 ledgers, 2 in the same hierarchy
+        long[] ledgers = { 0xdeadbeef00000001L, 0x0deadbeee00000001L,
+                           0xbeefcafe00000001L, 0xcafed00d00000001L };
+
+        for (long l : ledgers) {
+            replicaMgr.markLedgerUnderreplicated(l, "localhost:3181");
+        }
+        List<String> children = zkc1.getChildren(urLedgerPath, false);
+        assertEquals("Wrong number of hierarchies", 3, children.size());
+        
+        for (int i = 0; i < ledgers.length; i++) {
+            LOG.info("IKDEBUG requesting ledger"); 
+
+            long l = replicaMgr.getLedgerToRereplicate();
+            LOG.info("IKDEBUG goit {}", l); 
+            if (l != ledgers[0]) {
+                replicaMgr.markLedgerReplicated(l);
+            } else {
+                replicaMgr.releaseUnderreplicatedLedger(l);
+            }
+        }
+        children = zkc1.getChildren(urLedgerPath, false);
+        assertEquals("Wrong number of hierarchies", 1, children.size());
+
+        long l = replicaMgr.getLedgerToRereplicate();
+        assertEquals("Got wrong ledger", ledgers[0], l);
+        replicaMgr.markLedgerReplicated(l);
+        children = zkc1.getChildren(urLedgerPath, false);
+        assertEquals("All hierarchies should be cleaned up", 0, children.size());        
+    }
+
+    /**
+     * Test that as the hierarchy gets cleaned up, it doesn't interfere
+     * with the marking of other ledgers as underreplicated
+     */
+    @Test
+    public void testHierarchyCleanupInterference() throws Exception {
+        // final LedgerUnderreplicationManager replicaMgr1 = lmf1
+        //     .newLedgerUnderreplicationManager();
+        // final LedgerUnderreplicationManager replicaMgr2 = lmf2
+        //     .newLedgerUnderreplicationManager();
+
+        // Thread markt = new Thread() {
+        //         public void run() {
+        //         }
+        //     };
+    }
+
     private void verifyMarkLedgerUnderreplicated(Collection<String> missingReplica)
             throws KeeperException, InterruptedException,
             CompatibilityException, UnavailableException {

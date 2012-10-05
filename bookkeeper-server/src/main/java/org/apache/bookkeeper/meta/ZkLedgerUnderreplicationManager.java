@@ -35,6 +35,7 @@ import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.ZooDefs.Ids;
 
 import com.google.protobuf.TextFormat;
+import com.google.common.base.Joiner;
 
 import java.nio.charset.Charset;
 
@@ -43,6 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.Collections;
+import java.util.Arrays;
 
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -190,7 +192,6 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
         return String.format("%s/urL%010d", getParentZnodePath(urLedgerPath, ledgerId), ledgerId);
     }
 
-
     @Override
     public void markLedgerUnderreplicated(long ledgerId, String missingReplica)
             throws ReplicationException.UnavailableException {
@@ -245,8 +246,23 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
         LOG.debug("markLedgerReplicated(ledgerId={})", ledgerId);
         try {
             Lock l = heldLocks.get(ledgerId);
+            LOG.info("IKDEBUG mark + 0");
+
             if (l != null) {
+                LOG.info("IKDEBUG mark + 1");
                 zkc.delete(getUrLedgerZnode(ledgerId), l.getLedgerZNodeVersion());
+                LOG.info("IKDEBUG mark + 2");
+                // clean up the hierarchy
+                String parts[] = getUrLedgerZnode(ledgerId).split("/");
+                for (int i = 1; i <= 4; i++) {
+                    String p[] = Arrays.copyOf(parts, parts.length - i);
+                    String path = Joiner.on("/").join(p);
+                    LOG.info("IKDEBUG cleaing {}", path);
+                    Stat s = zkc.exists(path, null);
+                    if (s != null) {
+                        zkc.delete(path, s.getVersion());
+                    }
+                }
             }
         } catch (KeeperException.NoNodeException nne) {
             // this is ok
@@ -254,6 +270,11 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
             // if this is the case, some has marked the ledger
             // for rereplication again. Leave the underreplicated
             // znode in place, so the ledger is checked.
+        } catch (KeeperException.NotEmptyException nee) {
+            // This can happen when cleaning up the hierarchy.
+            // It's safe to ignore, it simply means another
+            // ledger in the same hierarchy has been marked as
+            // underreplicated.            
         } catch (KeeperException ke) {
             LOG.error("Error deleting underreplicated ledger znode", ke);
             throw new ReplicationException.UnavailableException("Error contacting zookeeper", ke);
@@ -267,12 +288,14 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
 
     private long getLedgerToRereplicateFromHierarchy(String parent, long depth, Watcher w)
             throws KeeperException, InterruptedException {
+        LOG.info("IKDEBUG searching in {}", parent);
         if (depth == 4) {
             List<String> children = zkc.getChildren(parent, w);
             Collections.shuffle(children);
 
             while (children.size() > 0) {
                 String tryChild = children.get(0);
+                LOG.info("IKDEBUG try child {}", tryChild);
                 try {
                     String lockPath = urLockPath + "/" + tryChild;
                     if (zkc.exists(lockPath, w) != null) {
