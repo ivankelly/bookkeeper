@@ -38,6 +38,11 @@ import org.apache.bookkeeper.jmx.BKMBeanRegistry;
 import org.apache.bookkeeper.proto.NIOServerFactory.Cnxn;
 import org.apache.bookkeeper.util.MathUtils;
 
+import com.google.protobuf.ByteString;
+import org.apache.bookkeeper.proto.DataFormats.AuthMessage;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
+
+import org.apache.bookkeeper.client.BKException;
 import static org.apache.bookkeeper.proto.BookieProtocol.PacketHeader;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.cli.BasicParser;
@@ -323,6 +328,38 @@ public class BookieServer implements NIOServerFactory.PacketProcessor, Bookkeepe
         }
     }
 
+
+    private void writeAuthMessage(AuthMessage am, Cnxn src) {
+        int totalHeaderSize = 4 // for the length of the packet
+                              + 4; // for request type
+
+        int totalSize = totalHeaderSize + am.getSerializedSize();
+
+        ByteBuffer buf = ByteBuffer.allocate(totalSize);
+        buf.putInt(totalSize - 4);
+        buf.putInt(new PacketHeader(BookieProtocol.CURRENT_PROTOCOL_VERSION,
+                                    BookieProtocol.AUTH,
+                                    BookieProtocol.FLAG_NONE).toInt());
+        buf.put(am.toByteArray());
+        buf.flip();
+
+        src.sendResponse(buf);
+    }
+
+    private void handleAuthMessage(AuthMessage am, final Cnxn src) {
+        GenericCallback cb = new GenericCallback<AuthMessage>() {
+            public void operationComplete(int rc, AuthMessage newam) {
+                if (rc != BKException.Code.OK) {
+                    LOG.error("Error processing auth message, closing connection");
+                    src.close();
+                }
+                writeAuthMessage(newam, src);
+            }
+        };
+
+        src.getAuthProvider().process(am, cb);
+    }
+
     public void processPacket(ByteBuffer packet, Cnxn src) {
         PacketHeader h = PacketHeader.fromInt(packet.getInt());
 
@@ -363,6 +400,25 @@ public class BookieServer implements NIOServerFactory.PacketProcessor, Bookkeepe
             return;
         }
         short flags = h.getFlags();
+
+        // make sure client is authenticated before allowing anything
+        if (!src.isAuthenticated()) {
+            try {
+                if (h.getOpCode() == BookieProtocol.AUTH) {
+                    ByteString buf = ByteString.copyFrom(packet);
+                    AuthMessage.Builder builder = AuthMessage.newBuilder();
+                    builder.mergeFrom(buf, src.getExtentionRegistry());
+                    handleAuthMessage(builder.build(), src);
+                    return;
+                }
+            } catch (IOException ioe) {
+                // allow to fall through to send EUA back to client
+            }
+            src.sendResponse(buildResponse(BookieProtocol.EUA, h.getVersion(), h.getOpCode(),
+                                               ledgerId, entryId));
+            return;
+        }
+
         switch (h.getOpCode()) {
         case BookieProtocol.ADDENTRY:
             statType = BKStats.STATS_ADD;

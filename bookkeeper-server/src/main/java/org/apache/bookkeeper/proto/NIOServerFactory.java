@@ -33,8 +33,14 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
-
+import java.util.concurrent.atomic.AtomicBoolean;
+import com.google.protobuf.ExtensionRegistry;
+import org.apache.bookkeeper.auth.AuthProviderFactoryFactory;
+import org.apache.bookkeeper.auth.BookieAuthProvider;
 import org.apache.bookkeeper.conf.ServerConfiguration;
+import org.apache.bookkeeper.client.BKException;
+
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +80,9 @@ public class NIOServerFactory extends Thread {
 
     ServerConfiguration conf;
 
+    final ExtensionRegistry extRegistry;
+    final BookieAuthProvider.Factory authProviderFactory;
+
     public NIOServerFactory(ServerConfiguration conf, PacketProcessor processor) throws IOException {
         super("NIOServerFactory-" + conf.getBookiePort());
         setDaemon(true);
@@ -83,6 +92,9 @@ public class NIOServerFactory extends Thread {
         ss.socket().bind(new InetSocketAddress(conf.getBookiePort()));
         ss.configureBlocking(false);
         ss.register(selector, SelectionKey.OP_ACCEPT);
+
+        extRegistry = ExtensionRegistry.newInstance();
+        authProviderFactory = AuthProviderFactoryFactory.newBookieAuthProviderFactory(conf, extRegistry);
     }
 
     public InetSocketAddress getLocalAddress() {
@@ -186,6 +198,9 @@ public class NIOServerFactory extends Thread {
         LinkedBlockingQueue<ByteBuffer> outgoingBuffers = new LinkedBlockingQueue<ByteBuffer>();
 
         int sessionTimeout;
+
+        AtomicBoolean authenticated = new AtomicBoolean(false);
+        final BookieAuthProvider authProvider;
 
         void doIO(SelectionKey k) throws InterruptedException {
             try {
@@ -361,6 +376,19 @@ public class NIOServerFactory extends Thread {
 
             lenBuffer.clear();
             incomingBuffer = lenBuffer;
+
+            authProvider = authProviderFactory.newProvider(
+                    getRemoteAddress(),
+                    new GenericCallback<Void>() {
+                        public void operationComplete(int rc, Void v) {
+                            if (rc == BKException.Code.OK) {
+                                authenticated.set(true);
+                            } else {
+                                LOG.error("Authorization failed, closing down socket");
+                                close();
+                            }
+                        }
+                    });
         }
 
         @Override
@@ -480,6 +508,18 @@ public class NIOServerFactory extends Thread {
 
         public InetSocketAddress getRemoteAddress() {
             return (InetSocketAddress) sock.socket().getRemoteSocketAddress();
+        }
+
+        BookieAuthProvider getAuthProvider() {
+            return authProvider;
+        }
+
+        ExtensionRegistry getExtentionRegistry() {
+            return extRegistry;
+        }
+
+        boolean isAuthenticated() {
+            return authenticated.get();
         }
 
         private class CnxnStats {
