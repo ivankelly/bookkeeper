@@ -25,6 +25,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.google.protobuf.ExtensionRegistry;
+import org.apache.bookkeeper.proto.DataFormats.AuthMessage;
+import org.apache.bookkeeper.auth.ClientAuthProvider;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.proto.BookieProtocol.PacketHeader;
@@ -36,6 +39,9 @@ import org.apache.bookkeeper.util.OrderedSafeExecutor;
 import org.apache.bookkeeper.util.SafeRunnable;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.buffer.ChannelBufferOutputStream;
+import org.jboss.netty.buffer.ChannelBufferInputStream;
+
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
@@ -97,14 +103,13 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
 
     private volatile ConnectionState state;
     private final ClientConfiguration conf;
+    private final ClientAuthProvider.Factory authProviderFactory;
+    volatile private ClientAuthProvider authProvider = null;
+    private final ExtensionRegistry extRegistry;
 
-    public PerChannelBookieClient(OrderedSafeExecutor executor, ClientSocketChannelFactory channelFactory,
-                                  InetSocketAddress addr, AtomicLong totalBytesOutstanding) {
-        this(new ClientConfiguration(), executor, channelFactory, addr, totalBytesOutstanding);
-    }
-            
     public PerChannelBookieClient(ClientConfiguration conf, OrderedSafeExecutor executor, ClientSocketChannelFactory channelFactory,
-                                  InetSocketAddress addr, AtomicLong totalBytesOutstanding) {
+                                  InetSocketAddress addr, AtomicLong totalBytesOutstanding,
+                                  ClientAuthProvider.Factory authProviderFactory, ExtensionRegistry extRegistry) {
         this.conf = conf;
         this.addr = addr;
         this.executor = executor;
@@ -112,6 +117,132 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
         this.channelFactory = channelFactory;
         this.state = ConnectionState.DISCONNECTED;
         this.readTimeoutTimer = null;
+
+        this.authProviderFactory = authProviderFactory;
+        this.extRegistry = extRegistry;
+    }
+
+    private void authComplete(int rc) {
+        Queue<GenericCallback<Void>> oldPendingOps;
+
+        synchronized (this) {
+            if (rc == BKException.Code.OK) {
+                LOG.info("Successfully authorized with bookie: " + addr);
+                state = ConnectionState.CONNECTED;
+            } else {
+                LOG.info("Authorization failed with bookie: " + addr);
+                // closing the set state to disconnected
+                // and complete the pending ops
+                close();
+                return;
+            }
+
+            // trick to not do operations under the lock, take the list
+            // of pending ops and assign it to a new variable, while
+            // emptying the pending ops by just assigning it to a new
+            // list
+            oldPendingOps = pendingOps;
+            pendingOps = new ArrayDeque<GenericCallback<Void>>();
+        }
+
+        for (GenericCallback<Void> pendingOp : oldPendingOps) {
+            pendingOp.operationComplete(rc, null);
+        }
+    }
+
+    private void connectComplete(ChannelFuture future) {
+        Queue<GenericCallback<Void>> opsToErr = null;
+
+        synchronized (PerChannelBookieClient.this) {
+            if (future.isSuccess()) {
+                LOG.info("Successfully connected to bookie: " + addr);
+                channel = future.getChannel();
+            } else {
+                LOG.error("Could not connect to bookie: " + addr);
+                channel = null;
+                state = ConnectionState.DISCONNECTED;
+
+                // trick to not do operations under the lock, take the list
+                // of pending ops and assign it to a new variable, while
+                // emptying the pending ops by just assigning it to a new
+                // list
+                opsToErr = pendingOps;
+                pendingOps = new ArrayDeque<GenericCallback<Void>>();
+            }
+        }
+        if (opsToErr == null) {
+            authProvider = authProviderFactory.newProvider(addr,
+                    new GenericCallback<Void>() {
+                        public void operationComplete(int rc, Void v) {
+                            authComplete(rc);
+                        }
+                    });
+            authProvider.init(new GenericCallback<AuthMessage>() {
+                    public void operationComplete(int rc, AuthMessage am) {
+                        if (rc != BKException.Code.OK) {
+                            authComplete(rc);
+                        }
+                        writeAuthMessage(am);
+                    }
+                });
+        } else {
+            for (GenericCallback<Void> pendingOp : opsToErr) {
+                pendingOp.operationComplete(BKException.Code.BookieHandleNotAvailableException,
+                                            null);
+            }
+        }
+    }
+
+    private void writeAuthMessage(AuthMessage am) {
+        Channel channel = this.channel;
+        if (channel == null) {
+            authComplete(BKException.Code.UnauthorizedAccessException);
+        }
+
+        int totalHeaderSize = 4 // for the length of the packet
+                              + 4; // for request type
+
+        int totalSize = totalHeaderSize + am.getSerializedSize();
+
+        ChannelBuffer msg = channel.getConfig().getBufferFactory()
+            .getBuffer(totalHeaderSize + am.getSerializedSize());
+        try {
+            ChannelBufferOutputStream bufStream = new ChannelBufferOutputStream(msg);
+            bufStream.writeInt(totalSize - 4);
+            bufStream.writeInt(new PacketHeader(BookieProtocol.CURRENT_PROTOCOL_VERSION,
+                                                BookieProtocol.AUTH,
+                                                BookieProtocol.FLAG_NONE).toInt());
+            am.writeTo(bufStream);
+        } catch (IOException ioe) {
+            LOG.error("Error generating auth message", ioe);
+            authComplete(BKException.Code.UnauthorizedAccessException);
+            return;
+        }
+
+        ChannelFuture future = channel.write(msg);
+        future.addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    if (future.isSuccess()) {
+                        LOG.debug("Successfully wrote auth message to bookie");
+                    } else {
+                        LOG.error("Failed to write auth message to channel {}", addr);
+                        authComplete(BKException.Code.UnauthorizedAccessException);
+                    }
+                }
+            });
+    }
+
+    private void handleAuthMessage(AuthMessage am) {
+        authProvider.process(am,
+                             new GenericCallback<AuthMessage>() {
+                                 public void operationComplete(int rc, AuthMessage am) {
+                                     if (rc != BKException.Code.OK) {
+                                         authComplete(rc);
+                                     }
+                                     writeAuthMessage(am);
+                                 }
+                             });
     }
 
     private void connect() {
@@ -127,38 +258,11 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
         ChannelFuture future = bootstrap.connect(addr);
 
         future.addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                int rc;
-                Queue<GenericCallback<Void>> oldPendingOps;
-
-                synchronized (PerChannelBookieClient.this) {
-
-                    if (future.isSuccess()) {
-                        LOG.info("Successfully connected to bookie: " + addr);
-                        rc = BKException.Code.OK;
-                        channel = future.getChannel();
-                        state = ConnectionState.CONNECTED;
-                    } else {
-                        LOG.error("Could not connect to bookie: " + addr);
-                        rc = BKException.Code.BookieHandleNotAvailableException;
-                        channel = null;
-                        state = ConnectionState.DISCONNECTED;
-                    }
-
-                    // trick to not do operations under the lock, take the list
-                    // of pending ops and assign it to a new variable, while
-                    // emptying the pending ops by just assigning it to a new
-                    // list
-                    oldPendingOps = pendingOps;
-                    pendingOps = new ArrayDeque<GenericCallback<Void>>();
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    connectComplete(future);
                 }
-
-                for (GenericCallback<Void> pendingOp : oldPendingOps) {
-                    pendingOp.operationComplete(rc, null);
-                }
-            }
-        });
+            });
     }
 
     void connectIfNeededAndDoOp(GenericCallback<Void> op) {
@@ -185,6 +289,7 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
                         // and waiting for the response.
                         return;
                     }
+                    authProvider = null;
                     // switch state to connecting and do connection attempt
                     state = ConnectionState.CONNECTING;
                 }
@@ -502,6 +607,17 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
 
         try {
             header = PacketHeader.fromInt(buffer.readInt());
+            if (header.getOpCode() == BookieProtocol.AUTH) {
+                ClientAuthProvider authProvider = this.authProvider;
+                if (authProvider != null) {
+                    ChannelBufferInputStream bufStream = new ChannelBufferInputStream(buffer);
+                    AuthMessage.Builder builder = AuthMessage.newBuilder();
+                    builder.mergeFrom(bufStream, extRegistry);
+                    handleAuthMessage(builder.build());
+                }
+                return;
+            }
+
             rc = buffer.readInt();
             ledgerId = buffer.readLong();
             entryId = buffer.readLong();

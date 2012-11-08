@@ -43,6 +43,10 @@ import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
+import com.google.protobuf.ExtensionRegistry;
+import org.apache.bookkeeper.auth.AuthProviderFactoryFactory;
+import org.apache.bookkeeper.auth.ClientAuthProvider;
+
 /**
  * Implements the client-side part of the BookKeeper protocol.
  *
@@ -56,6 +60,8 @@ public class BookieClient {
     OrderedSafeExecutor executor;
     ClientSocketChannelFactory channelFactory;
     ConcurrentHashMap<InetSocketAddress, PerChannelBookieClient> channels = new ConcurrentHashMap<InetSocketAddress, PerChannelBookieClient>();
+    final private ClientAuthProvider.Factory authProviderFactory;
+    final private ExtensionRegistry registry;
 
     private final ClientConfiguration conf;
 
@@ -63,13 +69,18 @@ public class BookieClient {
         this.conf = conf;
         this.channelFactory = channelFactory;
         this.executor = executor;
+
+        this.registry = ExtensionRegistry.newInstance();
+        this.authProviderFactory = AuthProviderFactoryFactory.newClientAuthProviderFactory(conf, registry);
     }
 
     public PerChannelBookieClient lookupClient(InetSocketAddress addr) {
         PerChannelBookieClient channel = channels.get(addr);
 
         if (channel == null) {
-            channel = new PerChannelBookieClient(conf, executor, channelFactory, addr, totalBytesOutstanding);
+            channel = new PerChannelBookieClient(conf, executor, channelFactory,
+                                                 addr, totalBytesOutstanding,
+                                                 authProviderFactory, registry);
             PerChannelBookieClient prevChannel = channels.putIfAbsent(addr, channel);
             if (prevChannel != null) {
                 channel = prevChannel;
