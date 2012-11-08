@@ -47,6 +47,10 @@ public class ClientConfiguration extends AbstractConfiguration {
     // Number Woker Threads
     protected final static String NUM_WORKER_THREADS = "numWorkerThreads";
 
+    // Client auth provider factory class name
+    protected final static String CLIENT_AUTH_PROVIDER_FACTORY_CLASS
+        = "clientAuthProviderFactoryClass";
+
     /**
      * Construct a default client-side configuration
      */
@@ -274,5 +278,27 @@ public class ClientConfiguration extends AbstractConfiguration {
     public ClientConfiguration setNumWorkerThreads(int numThreads) {
         setProperty(NUM_WORKER_THREADS, numThreads);
         return this;
+    }
+
+    /**
+     * Set the client authentication provider factory class name.
+     * If this is not set, no authentication will be used
+     *
+     * @param factoryClass
+     *          the client authentication provider factory class name
+     * @return void
+     */
+    public void setClientAuthProviderFactoryClass(String factoryClass) {
+        setProperty(CLIENT_AUTH_PROVIDER_FACTORY_CLASS, factoryClass);
+    }
+
+    /**
+     * Get the client authentication provider factory class name.
+     * If this returns null, no authentication will take place.
+     *
+     * @return the client authentication provider factory class name or null.
+     */
+    public String getClientAuthProviderFactoryClass() {
+        return getString(CLIENT_AUTH_PROVIDER_FACTORY_CLASS, null);
     }
 }
