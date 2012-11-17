@@ -183,7 +183,6 @@ public class TestLedgerManager extends BookKeeperClusterTestCase {
             LedgerManagerFactory.newLedgerManagerFactory(conf, zkc);
             fail("Shouldn't reach here");
         } catch (Exception e) {
-            System.out.println(e.getMessage());
             assertTrue("Invalid exception", 
                     e.getMessage().contains("Incompatible layout version found"));
         }
