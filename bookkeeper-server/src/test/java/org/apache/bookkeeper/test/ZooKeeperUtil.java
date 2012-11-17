@@ -80,7 +80,8 @@ public class ZooKeeperUtil {
         ZkTmpDir.delete();
         ZkTmpDir.mkdir();
 
-        zks = new ZooKeeperServer(ZkTmpDir, ZkTmpDir, ZooKeeperDefaultPort);
+        // 1000 is the tick time (1 second)
+        zks = new ZooKeeperServer(ZkTmpDir, ZkTmpDir, 1000);
         serverFactory = new NIOServerCnxnFactory();
         serverFactory.configure(zkaddr, 100);
         serverFactory.startup(zks);
