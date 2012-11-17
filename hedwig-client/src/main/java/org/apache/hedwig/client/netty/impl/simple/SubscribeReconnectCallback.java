@@ -84,6 +84,10 @@ class SubscribeReconnectCallback implements Callback<ResponseBody> {
         // a topic subscription has failed. So instead, we'll just keep
         // retrying in the background until success.
         logger.error("Subscribe reconnect failed with error: ", exception);
+        if (exception instanceof PubSubException.ServiceDownException) {
+            logger.error("Service down, stopping retries");
+            return;
+        }
         retrySubscribeRequest();
     }
 
