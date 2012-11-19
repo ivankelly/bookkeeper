@@ -85,11 +85,14 @@ checkForWarnings() {
     patchBugs=0
     for m in $(getModules); do
 	MODNAME=$(echo $m | sed 's/\///')
-	m_cleanBugs=`xpath -e '/BugCollection/BugInstance/Class/@classname' ${REPORTDIR}/${TASKNAME}-${MODNAME}-clean.xml | wc -l`
-	m_patchBugs=`xpath -e '/BugCollection/BugInstance/Class/@classname' ${REPORTDIR}/${TASKNAME}-${MODNAME}-patch.xml | wc -l`
+
+	m_cleanBugs=$(cat ${REPORTDIR}/${TASKNAME}-${MODNAME}-clean.xml \
+	    | sed 's/<\/BugInstance>/<\/BugInstance>\n/g' | grep BugInstance | wc -l)
+	m_patchBugs=$(cat ${REPORTDIR}/${TASKNAME}-${MODNAME}-patch.xml \
+	    | sed 's/<\/BugInstance>/<\/BugInstance>\n/g' | grep BugInstance | wc -l)
 	m_newBugs=`expr $m_patchBugs - $m_cleanBugs`
-	if [[ $m_newBugs -le 0 ]] ; then
-	    BUGMODULES="$BUGMODULES $m"
+	if [[ $m_newBugs != 0 ]] ; then
+	    BUGMODULES="$BUGMODULES $MODNAME"
 	fi
 
 	cleanBugs=$(($cleanBugs+$m_cleanBugs))
@@ -101,7 +104,7 @@ checkForWarnings() {
 	REPORT+=("{color:green}+1{color} the patch does not seem to introduce new Findbugs warnings")
 	newBugs=0
     else
-	REPORT+=("{color:red}-1{color} the patch seems to introduce $patchBugs new Findbugs warning(s)")
+	REPORT+=("{color:red}-1{color} the patch seems to introduce $patchBugs new Findbugs warning(s) in module(s) [$BUGMODULES]")
 	newBugs=1
     fi
     if [[ $cleanBugs != 0 ]] ; then
@@ -141,7 +144,7 @@ case $OP in
     if [[ $newBugs == 0 ]] ; then
       echo "{color:green}+1 ${TASKNAME}{color}" >> $SUMMARYFILE
     else
-      echo "{color:red}-1 ${TASKNAME}{color} in modules $BUGMODULES" >> $SUMMARYFILE
+      echo "{color:red}-1 ${TASKNAME}{color}" >> $SUMMARYFILE
     fi
     for line in "${REPORT[@]}" ; do
       echo ".    ${line}" >> $SUMMARYFILE
