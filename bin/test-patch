@@ -91,12 +91,12 @@ prepareSCM() {
 }
 ###############################################################################
 prepareTestPatchDirs() {
-  mkdir ${TESTPATCHDIR} 2> /dev/null
+  mkdir -p ${TESTPATCHDIR} 2> /dev/null
   rm -rf ${REPORTDIR} 2> /dev/null
   rm -rf ${TEMPDIR} 2> /dev/null
-  mkdir ${TOOLSDIR} 2> /dev/null
-  mkdir ${TEMPDIR} 2> /dev/null
-  mkdir ${REPORTDIR} 2> /dev/null
+  mkdir -p ${TOOLSDIR} 2> /dev/null
+  mkdir -p ${TEMPDIR} 2> /dev/null
+  mkdir -p ${REPORTDIR} 2> /dev/null
   if [ ! -e "${TESTPATCHDIR}" ] ; then
     echo "Could not create test-patch/ dir"
     exit 1
