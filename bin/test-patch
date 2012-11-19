@@ -408,5 +408,4 @@ cat ${SUMMARYFILE} | sed -e 's/{color}//' -e 's/{color:green}//' -e 's/{color:re
 
 cat ${SUMMARYFILETXT}
 
-grep "\-1" ${SUMMARYFILE} &> /dev/null
-cleanupAndExit `expr $? = 0`
+cleanupAndExit `expr $MINUSONES != 0`
