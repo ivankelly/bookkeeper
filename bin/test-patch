@@ -17,7 +17,8 @@ if [ "${TESTPATCHDEBUG}" == "true" ] ; then
 fi
 
 BASEDIR=$(pwd)
-TESTPATCHDIR=${BASEDIR}/test-patch
+TESTPATCHDIRNAME=test-patch
+TESTPATCHDIR=${BASEDIR}/${TESTPATCHDIRNAME}
 TOOLSDIR=${TESTPATCHDIR}/tools
 TEMPDIR=${TESTPATCHDIR}/tmp
 REPORTDIR=${TESTPATCHDIR}/reports
@@ -74,7 +75,7 @@ prepareSCM() {
     if [ "${RESETSCM}" == "true" ] ; then
       if [ "${SCM}" == "git" ] ; then
         git reset --hard HEAD > /dev/null
-        git clean -f -d -e $TESTPATCHDIR > /dev/null
+        git clean -f -d -e $TESTPATCHDIRNAME > /dev/null
       fi
       if [ "${SCM}" == "svn" ] ; then
         svn revert -R . > /dev/null
