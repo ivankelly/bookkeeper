@@ -92,13 +92,14 @@ checkForWarnings() {
 	    | sed 's/<\/BugInstance>/<\/BugInstance>\n/g' | grep BugInstance | wc -l)
 	m_newBugs=`expr $m_patchBugs - $m_cleanBugs`
 	if [[ $m_newBugs != 0 ]] ; then
-	    BUGMODULES="$BUGMODULES $MODNAME"
+	    BUGMODULES="$MODNAME $BUGMODULES"
 	fi
 
 	cleanBugs=$(($cleanBugs+$m_cleanBugs))
 	patchBugs=$(($patchBugs+$m_patchBugs))
     done
 
+    BUGMODULES=$(echo $BUGMODULES | sed 's/^ *// | sed s/ *$//'
     newBugs=`expr $patchBugs - $cleanBugs`
     if [[ $newBugs -le 0 ]] ; then
 	REPORT+=("{color:green}+1{color} the patch does not seem to introduce new Findbugs warnings")
