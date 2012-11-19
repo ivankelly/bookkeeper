@@ -85,8 +85,15 @@ checkForWarnings() {
     patchBugs=0
     for m in $(getModules); do
 	MODNAME=$(echo $m | sed 's/\///')
-	cleanBugs=$(($cleanBugs+`xpath -e '/BugCollection/BugInstance/Class/@classname' ${REPORTDIR}/${TASKNAME}-${MODNAME}-clean.xml | wc -l`))
-	patchBugs=$(($patchBugs+`xpath -e '/BugCollection/BugInstance/Class/@classname' ${REPORTDIR}/${TASKNAME}-${MODNAME}-patch.xml | wc -l`))
+	m_cleanBugs=`xpath -e '/BugCollection/BugInstance/Class/@classname' ${REPORTDIR}/${TASKNAME}-${MODNAME}-clean.xml | wc -l`
+	m_patchBugs=`xpath -e '/BugCollection/BugInstance/Class/@classname' ${REPORTDIR}/${TASKNAME}-${MODNAME}-patch.xml | wc -l`
+	m_newBugs=`expr $m_patchBugs - $m_cleanBugs`
+	if [[ $m_newBugs -le 0 ]] ; then
+	    BUGMODULES="$BUGMODULES $m"
+	fi
+
+	cleanBugs=$(($cleanBugs+$m_cleanBugs))
+	patchBugs=$(($patchBugs+$m_patchBugs))
     done
 
     newBugs=`expr $patchBugs - $cleanBugs`
@@ -131,10 +138,10 @@ case $OP in
     ;;
   report)
     checkForWarnings
-    if [[ $newWarns == 0 ]] ; then
+    if [[ $newBugs == 0 ]] ; then
       echo "{color:green}+1 ${TASKNAME}{color}" >> $SUMMARYFILE
     else
-      echo "{color:red}-1 ${TASKNAME}{color}" >> $SUMMARYFILE
+      echo "{color:red}-1 ${TASKNAME}{color} in modules $BUGMODULES" >> $SUMMARYFILE
     fi
     for line in "${REPORT[@]}" ; do
       echo ".    ${line}" >> $SUMMARYFILE
