@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 if [ "${TESTPATCHDEBUG}" == "true" ] ; then
-  set -x
+    set -x
 fi
 
 BASEDIR=$(pwd)
@@ -27,99 +27,138 @@ MVNPASSTHRU=""
 
 ###############################################################################
 cleanupAndExit() {
-  exit $1
+    exit $1
 }
 ###############################################################################
 printUsage() {
-  echo "Usage: $0 --taskname | (--op=pre|post|report --tempdir=<TEMP DIR> --reportdir=<REPORT DIR> --summaryfile=<SUMMARY FILE>) [-D<VALUE>...] [-P<VALUE>...]"
-  echo
+    echo "Usage: $0 --taskname | (--op=pre|post|report --tempdir=<TEMP DIR> --reportdir=<REPORT DIR> --summaryfile=<SUMMARY FILE>) [-D<VALUE>...] [-P<VALUE>...]"
+    echo
 }
 ###############################################################################
 parseArgs() {
-  for i in $*
-  do
-    case $i in
-    --taskname)
-      echo ${TASKNAME}
-      exit 0
-      ;;
-    --op=*)
-      OP=${i#*=}
-      ;;
-    --tempdir=*)
-      TEMPDIR=${i#*=}
-      ;;
-    --reportdir=*)
-      REPORTDIR=${i#*=}
-      ;;
-    --summaryfile=*)
-      SUMMARYFILE=${i#*=}
-      ;;
-    --verbose)
-      STDOUT="/dev/stdout"
-      ;;
-    -D*)
-      MVNPASSTHRU="${MVNPASSTHRU} $i"
-      ;;
-    -P*)
-      MVNPASSTHRU="${MVNPASSTHRU} $i"
-      ;;
-    esac
-  done
-  if [[ "${TASKNAME}" == "" || "${OP}" == "" || "${TEMPDIR}" == "" || "${REPORTDIR}" == "" || "${SUMMARYFILE}" == "" ]] ; then
-    echo "Missing options"
-    echo
-    printUsage
-    cleanupAndExit 1
-  fi
-  if [[ "${OP}" != "pre" && "${OP}" != "post" && "${OP}" != "report" ]] ; then
-    echo "Invalid operation"
-    echo
-    printUsage
-    cleanupAndExit 1
-  fi
+    for i in $*
+    do
+        case $i in
+            --taskname)
+                echo ${TASKNAME}
+                exit 0
+                ;;
+            --op=*)
+                OP=${i#*=}
+                ;;
+            --tempdir=*)
+                TEMPDIR=${i#*=}
+                ;;
+            --reportdir=*)
+                REPORTDIR=${i#*=}
+                ;;
+            --summaryfile=*)
+                SUMMARYFILE=${i#*=}
+                ;;
+            --verbose)
+                STDOUT="/dev/stdout"
+                ;;
+            -D*)
+                MVNPASSTHRU="${MVNPASSTHRU} $i"
+                ;;
+            -P*)
+                MVNPASSTHRU="${MVNPASSTHRU} $i"
+                ;;
+        esac
+    done
+    if [[ "${TASKNAME}" == "" || "${OP}" == "" || "${TEMPDIR}" == "" || "${REPORTDIR}" == "" || "${SUMMARYFILE}" == "" ]] ; then
+        echo "Missing options"
+        echo
+        printUsage
+        cleanupAndExit 1
+    fi
+    if [[ "${OP}" != "pre" && "${OP}" != "post" && "${OP}" != "report" ]] ; then
+        echo "Invalid operation"
+        echo
+        printUsage
+        cleanupAndExit 1
+    fi
+}
+###############################################################################
+getModules() {
+    echo ./
+    find . -name pom.xml | sed 's/^.\///' | sed 's/pom.xml$//' | grep -v compat
 }
 ###############################################################################
 checkForWarnings() {
-  cleanWarns=`grep -c '\!?????' ${REPORTDIR}/${TASKNAME}-clean.txt`
-  patchWarns=`grep -c '\!?????' ${REPORTDIR}/${TASKNAME}-patch.txt`
-  newWarns=`expr $patchWarns - $cleanWarns`
-  if [[ $newWarns -le 0 ]] ; then
-    REPORT+=("{color:green}+1{color} the patch does not seem to introduce new RAT warnings")
-    newWarns=0
-  else
-    REPORT+=("{color:red}-1{color} the patch seems to introduce $newWarns new RAT warning(s)")
-    newWarns=1
-  fi
-  if [[ $cleanWarns != 0 ]] ; then
-    REPORT+=("{color:red}WARNING: the current HEAD has $cleanWarns RAT warning(s), they should be addressed ASAP{color}")
-  fi
+    cleanWarns=0
+    patchWarns=0
+
+    set -x
+    for m in $(getModules); do
+        MODNAME=$(echo $m | sed 's/\///')
+
+        m_cleanWarns=0
+        m_patchWarns=0
+
+	m_cleanFile=${REPORTDIR}/${TASKNAME}-${MODNAME}-clean.txt
+	m_patchFile=${REPORTDIR}/${TASKNAME}-${MODNAME}-patch.txt
+	if [ -e $m_cleanFile ]; then
+            m_cleanWarns=`grep -c '\!?????' $m_cleanFile`
+	fi
+
+	if [ -e $m_patchFile ]; then
+            m_patchWarns=`grep -c '\!?????' $m_patchFile`
+	fi
+        m_newWarns=`expr $m_patchWarns - $m_cleanWarns`
+        if [[ $m_newWarns != 0 ]]; then
+            RATMODULES="$MODNAME $RATMODULES"
+        fi
+	cleanWarns=$(($m_cleanWarns+$cleanWarns))
+	patchWarns=$(($m_patchWarns+$patchWarns))
+    done
+
+    RATMODULES=$(echo $RATMODULES | sed 's/^ *//' | sed 's/ *$//')
+    newWarns=`expr $patchWarns - $cleanWarns`
+    if [[ $newWarns -le 0 ]] ; then
+        REPORT+=("{color:green}+1{color} the patch does not seem to introduce new RAT warnings")
+        newWarns=0
+    else
+        REPORT+=("{color:red}-1{color} the patch seems to introduce $newWarns new RAT warning(s) in [$RATMODULES]")
+        newWarns=1
+    fi
+    if [[ $cleanWarns != 0 ]] ; then
+        REPORT+=("{color:red}WARNING: the current HEAD has $cleanWarns RAT warning(s), they should be addressed ASAP{color}")
+    fi
 }
 ###############################################################################
 
+copyRatTxt() {
+    TAG=$1
+    for m in $(getModules); do
+        MODNAME=$(echo $m | sed 's/\///')
+        cp ${m}target/rat.txt ${REPORTDIR}/${TASKNAME}-${MODNAME}-$TAG.txt
+    done
+}
+###############################################################################
 
 parseArgs "$@"
 
 case $OP in
-  pre)
-    mvn apache-rat:check ${MVNPASSTHRU} > $STDOUT
-    cp target/rat.txt ${REPORTDIR}/${TASKNAME}-clean.txt
-    ;;
-  post)
-    mvn apache-rat:check ${MVNPASSTHRU} > $STDOUT
-    cp target/rat.txt ${REPORTDIR}/${TASKNAME}-patch.txt
-    ;;
-  report)
-    checkForWarnings
-    if [[ $newWarns == 0 ]] ; then
-      echo "{color:green}+1 ${TASKNAME}{color}" >> $SUMMARYFILE
-    else
-      echo "{color:red}-1 ${TASKNAME}{color}" >> $SUMMARYFILE
-    fi
-    for line in "${REPORT[@]}" ; do
-      echo ".    ${line}" >> $SUMMARYFILE
-    done
-    ;;
+    pre)
+        mvn apache-rat:check ${MVNPASSTHRU} > $STDOUT
+        copyRatTxt clean
+        ;;
+    post)
+        mvn apache-rat:check ${MVNPASSTHRU} > $STDOUT
+        copyRatTxt patch
+        ;;
+    report)
+        checkForWarnings
+        if [[ $newWarns == 0 ]] ; then
+            echo "{color:green}+1 ${TASKNAME}{color}" >> $SUMMARYFILE
+        else
+            echo "{color:red}-1 ${TASKNAME}{color}" >> $SUMMARYFILE
+        fi
+        for line in "${REPORT[@]}" ; do
+            echo ".    ${line}" >> $SUMMARYFILE
+        done
+        ;;
 esac
 
 exit 0
