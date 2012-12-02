@@ -389,7 +389,7 @@ public class LedgerCacheImpl implements LedgerCache {
      *          Ledger Id
      * @throws IOException
      */
-    private void flushLedger(long l) throws IOException {
+    public void flushLedger(long l) throws IOException {
         LinkedList<Long> firstEntryList;
         synchronized(this) {
             HashMap<Long, LedgerEntryPage> pageMap = pages.get(l);

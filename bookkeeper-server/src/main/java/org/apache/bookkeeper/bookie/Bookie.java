@@ -415,7 +415,7 @@ public class Bookie extends Thread {
         activeLedgerManager = activeLedgerManagerFactory.newActiveLedgerManager();
 
         syncThread = new SyncThread(conf);
-        ledgerStorage = new InterleavedLedgerStorage(conf, activeLedgerManager,
+        ledgerStorage = new MemSlabLedgerStorage(conf, activeLedgerManager,
                 ledgerDirsManager);
         handles = new HandleFactoryImpl(ledgerStorage);
         // instantiate the journal

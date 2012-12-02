@@ -38,6 +38,8 @@ interface LedgerCache extends Closeable {
     long getEntryOffset(long ledger, long entry) throws IOException;
 
     void flushLedger(boolean doAll) throws IOException;
+    void flushLedger(long l) throws IOException;
+
     long getLastEntry(long ledgerId) throws IOException;
 
     void deleteLedger(long ledgerId) throws IOException;
