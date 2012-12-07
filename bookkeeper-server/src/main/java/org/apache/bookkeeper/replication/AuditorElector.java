@@ -34,6 +34,7 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,11 +119,17 @@ public class AuditorElector {
 
             // starting Auditing service
             if (children.get(AUDITOR_INDEX).equals(voteNode)) {
-                // update the auditor bookie id in the election path. This is
-                // done for debugging purpose
-                zkc.setData(getVotePath(""), bookieId.getBytes(), -1);
-                auditor = new Auditor(bookieId, conf, zkc);
-                auditor.start();
+                synchronized(this) {
+                    if (!running) {
+                        return;
+                    }
+                    // update the auditor bookie id in the election path. This is
+                    // done for debugging purpose
+                    zkc.setData(getVotePath(""), bookieId.getBytes(), -1);
+
+                    auditor = new Auditor(bookieId, conf, zkc);
+                    auditor.start();
+                }
             } else {
                 // If not an auditor, will be watching to my predecessor and
                 // looking the previous node deletion.
@@ -194,7 +201,11 @@ public class AuditorElector {
 
         @Override
         public void process(WatchedEvent event) {
-            if (event.getType() == EventType.NodeDeleted) {
+            if (event.getState() == KeeperState.Disconnected
+                    || event.getState() == KeeperState.Expired) {
+                LOG.error("Lost ZK connection, shutting down");
+                shutdown();
+            } else if (event.getType() == EventType.NodeDeleted) {
                 try {
                     doElection();
                 } catch (UnavailableException e) {
@@ -210,10 +221,12 @@ public class AuditorElector {
      * Shutting down AuditorElector
      */
     public void shutdown() {
-        if (!running) {
-            return;
+        synchronized (this) {
+            if (!running) {
+                return;
+            }
+            running = false;
         }
-        running = false;
         LOG.info("Shutting down AuditorElector");
         try {
             zkc.delete(myVote, -1);
@@ -223,9 +236,11 @@ public class AuditorElector {
         } catch (KeeperException ke) {
             LOG.warn("Exception while deleting myVote:" + myVote, ke);
         }
-        if (auditor != null) {
-            auditor.shutdown();
-            auditor = null;
+        synchronized (this) {
+            if (auditor != null) {
+                auditor.shutdown();
+                auditor = null;
+            }
         }
     }
 

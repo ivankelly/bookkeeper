@@ -376,7 +376,9 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
                         public void process(WatchedEvent e) {
                             if (e.getType() == Watcher.Event.EventType.NodeChildrenChanged
                                 || e.getType() == Watcher.Event.EventType.NodeDeleted
-                                || e.getType() == Watcher.Event.EventType.NodeCreated) {
+                                || e.getType() == Watcher.Event.EventType.NodeCreated
+                                || e.getState() == Watcher.Event.KeeperState.Expired
+                                || e.getState() == Watcher.Event.KeeperState.Disconnected) {
                                 changedLatch.countDown();
                             }
                         }

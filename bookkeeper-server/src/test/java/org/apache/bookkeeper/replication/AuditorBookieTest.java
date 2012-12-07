@@ -28,10 +28,14 @@ import junit.framework.Assert;
 
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.proto.BookieServer;
+import org.apache.bookkeeper.util.ZkUtils;
+import org.apache.bookkeeper.zookeeper.ZooKeeperWatcherBase;
+
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.apache.bookkeeper.util.StringUtils;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooKeeper;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +52,7 @@ public class AuditorBookieTest extends BookKeeperClusterTestCase {
             .getLogger(AuditorBookieTest.class);
     private String electionPath;
     private HashMap<String, AuditorElector> auditorElectors = new HashMap<String, AuditorElector>();
+    private List<ZooKeeper> zkClients = new LinkedList<ZooKeeper>();
 
     public AuditorBookieTest() {
         super(6);
@@ -64,6 +69,10 @@ public class AuditorBookieTest extends BookKeeperClusterTestCase {
     @Override
     public void tearDown() throws Exception {
         stopAuditorElectors();
+        for (ZooKeeper zk : zkClients) {
+            zk.close();
+        }
+        zkClients.clear();
         super.tearDown();
     }
 
@@ -197,11 +206,35 @@ public class AuditorBookieTest extends BookKeeperClusterTestCase {
                 .getPort());
     }
 
-    private void startAuditorElectors() throws UnavailableException {
+    /**
+     * Test that, if an auditor looses its ZK connection/session
+     * it will shutdown.
+     */
+    @Test
+    public void testAuditorZKSessionLoss() throws Exception {
+        stopZKCluster();
+        for (AuditorElector e : auditorElectors.values()) {
+            for (int i = 0; i < 10; i++) { // give it 10 seconds to shutdown
+                if (!e.isRunning()) {
+                    break;
+                }
+
+                Thread.sleep(1000);
+            }
+            assertFalse("AuditorElector should have shutdown", e.isRunning());
+        }
+    }
+
+    private void startAuditorElectors() throws Exception {
         for (BookieServer bserver : bs) {
             String addr = StringUtils.addrToString(bserver.getLocalAddress());
+            ZooKeeperWatcherBase w = new ZooKeeperWatcherBase(10000);
+            ZooKeeper zk = ZkUtils.createConnectedZookeeperClient(
+                    zkUtil.getZooKeeperConnectString(), w);
+            zkClients.add(zk);
+
             AuditorElector auditorElector = new AuditorElector(addr,
-                    baseClientConf, zkc);
+                    baseClientConf, zk);
             auditorElectors.put(addr, auditorElector);
             auditorElector.doElection();
             LOG.debug("Starting Auditor Elector");
