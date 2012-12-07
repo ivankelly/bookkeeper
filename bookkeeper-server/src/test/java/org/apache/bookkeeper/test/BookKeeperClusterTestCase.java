@@ -145,7 +145,7 @@ public abstract class BookKeeperClusterTestCase extends TestCase {
         for (BookieServer server : bs) {
             server.shutdown();
         }
-
+        bs.clear();
         for (File f : tmpDirs) {
             FileUtils.deleteDirectory(f);
         }

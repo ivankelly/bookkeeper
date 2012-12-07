@@ -39,6 +39,7 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,13 +52,18 @@ import org.slf4j.LoggerFactory;
  */
 public class Auditor extends Thread implements Watcher {
     private static final Logger LOG = LoggerFactory.getLogger(Auditor.class);
-    private final LinkedBlockingQueue<EventType> bookieNotifications = new LinkedBlockingQueue<EventType>();
+    private final LinkedBlockingQueue<Notification> bookieNotifications
+        = new LinkedBlockingQueue<Notification>();
     private final AbstractConfiguration conf;
     private final ZooKeeper zkc;
     private BookieLedgerIndexer bookieLedgerIndexer;
     private LedgerUnderreplicationManager ledgerUnderreplicationManager;
     private volatile boolean running = true;
 
+    private enum Notification {
+        ZK_CONNECTION_LOSS,
+        BOOKIES_CHANGED
+    };
     public Auditor(String bookieIdentifier, AbstractConfiguration conf,
             ZooKeeper zkc) throws UnavailableException {
         setName("AuditorBookie-" + bookieIdentifier);
@@ -102,31 +108,33 @@ public class Auditor extends Thread implements Watcher {
             // available bookies determining the bookie failures.
             List<String> knownBookies = getAvailableBookies();
             auditingBookies(knownBookies);
-
             while (true) {
                 // wait for bookie join/failure notifications
-                bookieNotifications.take();
+                Notification notification = bookieNotifications.take();
+                if (notification == Notification.ZK_CONNECTION_LOSS) {
+                    break;
+                } else if (notification == Notification.BOOKIES_CHANGED) {
+                    // check whether ledger replication is enabled
+                    waitIfLedgerReplicationDisabled();
 
-                // check whether ledger replication is enabled
-                waitIfLedgerReplicationDisabled();
+                    List<String> availableBookies = getAvailableBookies();
 
-                List<String> availableBookies = getAvailableBookies();
+                    // casting to String, as knownBookies and availableBookies
+                    // contains only String values
+                    // find new bookies(if any) and update the known bookie list
+                    Collection<String> newBookies = CollectionUtils.subtract(
+                            availableBookies, knownBookies);
+                    knownBookies.addAll(newBookies);
 
-                // casting to String, as knownBookies and availableBookies
-                // contains only String values
-                // find new bookies(if any) and update the known bookie list
-                Collection<String> newBookies = CollectionUtils.subtract(
-                        availableBookies, knownBookies);
-                knownBookies.addAll(newBookies);
+                    // find lost bookies(if any)
+                    Collection<String> lostBookies = CollectionUtils.subtract(
+                            knownBookies, availableBookies);
 
-                // find lost bookies(if any)
-                Collection<String> lostBookies = CollectionUtils.subtract(
-                        knownBookies, availableBookies);
-
-                if (lostBookies.size() > 0) {
-                    knownBookies.removeAll(lostBookies);
-                    Map<String, Set<Long>> ledgerDetails = generateBookie2LedgersIndex();
-                    handleLostBookies(lostBookies, ledgerDetails);
+                    if (lostBookies.size() > 0) {
+                        knownBookies.removeAll(lostBookies);
+                        Map<String, Set<Long>> ledgerDetails = generateBookie2LedgersIndex();
+                        handleLostBookies(lostBookies, ledgerDetails);
+                    }
                 }
             }
         } catch (KeeperException ke) {
@@ -214,9 +222,13 @@ public class Auditor extends Thread implements Watcher {
     @Override
     public void process(WatchedEvent event) {
         // listen children changed event from ZooKeeper
-        if (event.getType() == EventType.NodeChildrenChanged) {
-            if (running)
-                bookieNotifications.add(event.getType());
+        if (event.getState() == KeeperState.Disconnected
+                || event.getState() == KeeperState.Expired) {
+            bookieNotifications.add(Notification.ZK_CONNECTION_LOSS);
+        } else if (event.getType() == EventType.NodeChildrenChanged) {
+            if (running) {
+                bookieNotifications.add(Notification.BOOKIES_CHANGED);
+            }
         }
     }
 
@@ -224,10 +236,12 @@ public class Auditor extends Thread implements Watcher {
      * Shutdown the auditor
      */
     public void shutdown() {
-        if (!running) {
-            return;
+        synchronized (this) {
+            if (!running) {
+                return;
+            }
+            running = false;
         }
-        running = false;
         LOG.info("Shutting down " + getName());
         this.interrupt();
         try {
