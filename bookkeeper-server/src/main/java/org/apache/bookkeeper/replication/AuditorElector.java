@@ -25,7 +25,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.io.Serializable;
 
-import org.apache.bookkeeper.conf.AbstractConfiguration;
+import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.zookeeper.CreateMode;
@@ -63,7 +63,7 @@ public class AuditorElector {
     private final String electionPath;
 
     private final String bookieId;
-    private final AbstractConfiguration conf;
+    private final ServerConfiguration conf;
     private final ZooKeeper zkc;
 
     private String myVote;
@@ -82,7 +82,7 @@ public class AuditorElector {
      * @throws UnavailableException
      *             throws unavailable exception while initializing the elector
      */
-    public AuditorElector(String bookieId, AbstractConfiguration conf,
+    public AuditorElector(String bookieId, ServerConfiguration conf,
             ZooKeeper zkc) throws UnavailableException {
         this.bookieId = bookieId;
         this.conf = conf;
