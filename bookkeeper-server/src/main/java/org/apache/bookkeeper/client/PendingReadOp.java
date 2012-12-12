@@ -22,6 +22,8 @@ package org.apache.bookkeeper.client;
  */
 import java.net.InetSocketAddress;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.NoSuchElementException;
@@ -30,9 +32,6 @@ import java.util.BitSet;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.List;
-
-import java.util.Timer;
-import java.util.TimerTask;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
@@ -54,7 +53,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
     Logger LOG = LoggerFactory.getLogger(PendingReadOp.class);
 
     final int speculativeReadTimeout;
-    Timer speculativeReadTimer;
+    final private ScheduledExecutorService scheduler;
     Queue<LedgerEntryRequest> seq;
     Set<InetSocketAddress> heardFromHosts;
     ReadCallback cb;
@@ -65,6 +64,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
     long endEntryId;
 
     class LedgerEntryRequest extends LedgerEntry {
+        final static int NOT_FOUND = -1;
         int nextReplicaIndexToReadFrom = 0;
         AtomicBoolean complete = new AtomicBoolean(false);
 
@@ -87,7 +87,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
         private int getReplicaIndex(InetSocketAddress host) {
             int bookieIndex = ensemble.indexOf(host);
             if (bookieIndex == -1) {
-                return -1;
+                return NOT_FOUND;
             }
             return writeSet.indexOf(bookieIndex);
         }
@@ -175,7 +175,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
                       + host);
 
             int replica = getReplicaIndex(host);
-            if (replica == -1) {
+            if (replica == NOT_FOUND) {
                 LOG.error("Received error from a host which is not in the ensemble {} {}.", host, ensemble);
                 return;
             }
@@ -219,20 +219,17 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
         }
     }
 
-    PendingReadOp(LedgerHandle lh, long startEntryId, long endEntryId, ReadCallback cb, Object ctx) {
+    PendingReadOp(LedgerHandle lh, ScheduledExecutorService scheduler,
+                  long startEntryId, long endEntryId, ReadCallback cb, Object ctx) {
         seq = new ArrayBlockingQueue<LedgerEntryRequest>((int) ((endEntryId + 1) - startEntryId));
         this.cb = cb;
         this.ctx = ctx;
         this.lh = lh;
         this.startEntryId = startEntryId;
         this.endEntryId = endEntryId;
+        this.scheduler = scheduler;
         numPendingEntries = endEntryId - startEntryId + 1;
         speculativeReadTimeout = lh.bk.getConf().getSpeculativeReadTimeout();
-        if (speculativeReadTimeout > 0) {
-            speculativeReadTimer = new Timer("SpeculativeRead-L"+lh.getId()+"-S"+startEntryId+"-E"+endEntryId);
-        } else {
-            speculativeReadTimer = null;
-        }
         heardFromHosts = new HashSet<InetSocketAddress>();
     }
 
@@ -241,8 +238,8 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
 
         ArrayList<InetSocketAddress> ensemble = null;
 
-        if (speculativeReadTimer != null) {
-            speculativeReadTimer.schedule(new TimerTask() {
+        if (speculativeReadTimeout > 0) {
+            scheduler.scheduleWithFixedDelay(new Runnable() {
                     public void run() {
                         for (LedgerEntryRequest r : seq) {
                             if (!r.isComplete()) {
@@ -250,7 +247,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
                             }
                         }
                     }
-                }, speculativeReadTimeout, speculativeReadTimeout);
+                }, speculativeReadTimeout, speculativeReadTimeout, TimeUnit.MILLISECONDS);
         }
 
         do {
@@ -324,9 +321,6 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
     }
 
     private void submitCallback(int code) {
-        if (speculativeReadTimer != null) {
-            speculativeReadTimer.cancel();
-        }
         cb.readComplete(code, lh, PendingReadOp.this, PendingReadOp.this.ctx);
     }
     public boolean hasMoreElements() {

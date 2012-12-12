@@ -111,7 +111,7 @@ public class TestSpeculativeRead extends BaseTestCase {
     }
 
     /**
-     * Test basic speculative functionallity.
+     * Test basic speculative functionality.
      * - Create 2 clients with read timeout disabled, one with spec
      *   read enabled, the other not.
      * - create ledger
@@ -290,7 +290,8 @@ public class TestSpeculativeRead extends BaseTestCase {
         secondHostOnly.add(ensemble.get(1));
         try {
             LatchCallback latch0 = new LatchCallback();
-            PendingReadOp op = new PendingReadOp(l, 0, 5, latch0, null);
+            PendingReadOp op = new PendingReadOp(l, bkspec.scheduler,
+                                                 0, 5, latch0, null);
 
             // if we've already heard from all hosts,
             // we only send the initial read
