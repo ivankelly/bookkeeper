@@ -64,6 +64,7 @@ public abstract class BookieException extends Exception {
 
         int InvalidCookieException = -102;
         int UpgradeException = -103;
+        int IOException = -104;
     }
 
     public void setCode(int code) {
