@@ -22,6 +22,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 
@@ -91,9 +92,12 @@ public class OrderedSafeExecutor {
         chooseThread(orderingKey).submit(r);
     }
 
-    public void shutdown() {
+    public void shutdown() throws InterruptedException {
         for (int i = 0; i < threads.length; i++) {
             threads[i].shutdown();
+        }
+        for (int i = 0; i < threads.length; i++) {
+            threads[i].awaitTermination(10, TimeUnit.SECONDS);
         }
     }
 

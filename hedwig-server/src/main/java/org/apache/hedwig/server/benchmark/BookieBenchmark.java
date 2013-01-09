@@ -90,7 +90,7 @@ public class BookieBenchmark extends AbstractBenchmark {
     }
 
     @Override
-    public void tearDown() {
+    public void tearDown() throws Exception {
         bkc.close();
         channelFactory.releaseExternalResources();
         executor.shutdown();

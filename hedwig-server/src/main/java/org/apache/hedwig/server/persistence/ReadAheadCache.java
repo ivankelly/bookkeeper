@@ -328,7 +328,13 @@ public class ReadAheadCache implements PersistenceManager, Runnable, HedwigJMXSe
      * Stop method which will enqueue a ShutdownCacheRequest.
      */
     public void stop() {
-        enqueueWithoutFailure(new ShutdownCacheRequest());
+        keepRunning = false;
+        try {
+            cacheWorkers.shutdown();
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            logger.error("Interrupted while shutting down ReadAheadCache", ie);
+        }
     }
 
     /**
@@ -772,16 +778,6 @@ public class ReadAheadCache implements PersistenceManager, Runnable, HedwigJMXSe
             if (readAheadRequest != null) {
                 realPersistenceManager.scanMessages(readAheadRequest);
             }
-        }
-    }
-
-    protected class ShutdownCacheRequest implements CacheRequest {
-        // This is a simple type of CacheRequest we will enqueue when
-        // the PubSubServer is shut down and we want to stop the ReadAheadCache
-        // thread.
-        public void performRequest() {
-            keepRunning = false;
-            cacheWorkers.shutdown();
         }
     }
 
