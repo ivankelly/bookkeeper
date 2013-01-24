@@ -66,12 +66,12 @@ public class BookieServerBean implements BookieServerMXBean, BKMBeanInfo {
 
     @Override
     public OpStatData getAddStats() {
-        return bks.bkStats.getOpStats(BKStats.STATS_ADD).toOpStatData();
+        return BKStats.getInstance().getOpStats(BKStats.STATS_ADD).toOpStatData();
     }
 
     @Override
     public OpStatData getReadStats() {
-        return bks.bkStats.getOpStats(BKStats.STATS_READ).toOpStatData();
+        return BKStats.getInstance().getOpStats(BKStats.STATS_READ).toOpStatData();
     }
 
     @Override
