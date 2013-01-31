@@ -36,9 +36,6 @@ import org.apache.hedwig.jms.spi.HedwigConnectionFactoryImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author Rajani Chennamaneni
- */
 public class DispatchMultipleConsumersTest extends JmsTestBase {
     private final static Logger logger = LoggerFactory.getLogger(DispatchMultipleConsumersTest.class);
     Destination dest;

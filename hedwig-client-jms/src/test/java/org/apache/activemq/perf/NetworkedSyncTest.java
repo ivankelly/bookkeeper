@@ -52,7 +52,7 @@ public class NetworkedSyncTest extends JmsTestBase {
         super(name);
         LOG.info("Testcase started.");
     }
-    
+
    public static void main(String args[]) {
        TestRunner.run(NetworkedSyncTest.class);
    }
@@ -61,7 +61,7 @@ public class NetworkedSyncTest extends JmsTestBase {
         LOG.info("testMessageExchange() called.");
 
         long start = System.currentTimeMillis();
-        
+
         // create producer and consumer threads
         Thread producer = new Thread(new Producer());
         Thread consumer = new Thread(new Consumer());
@@ -69,22 +69,18 @@ public class NetworkedSyncTest extends JmsTestBase {
         consumer.start();
         Thread.sleep(2000);
         producer.start();
-        
 
         // wait for threads to finish
         producer.join();
         consumer.join();
         long end = System.currentTimeMillis();
-        
+
         System.out.println("Duration: "+(end-start));
     }
 }
 
 /**
  * Message producer running as a separate thread, connecting to broker1
- * 
- * @author tmielke
- * 
  */
 class Producer implements Runnable {
 
@@ -151,15 +147,12 @@ class Producer implements Runnable {
 }
 
 /*
- * * Message consumer running as a separate thread, connecting to broker2
- * @author tmielke
- * 
+ * Message consumer running as a separate thread, connecting to broker2
  */
 class Consumer implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(Consumer.class);;
 
-    
     /**
      * connect to broker and receive messages
      */
@@ -187,7 +180,7 @@ class Consumer implements Runnable {
 
             long counter = 0;
             // Wait for a message
-            for (int i = 0; i < NetworkedSyncTest.MESSAGE_COUNT; i++) { 
+            for (int i = 0; i < NetworkedSyncTest.MESSAGE_COUNT; i++) {
                 Message message2 = consumer.receive();
                 if (message2 instanceof TextMessage) {
                     TextMessage textMessage = (TextMessage) message2;
@@ -199,8 +192,6 @@ class Consumer implements Runnable {
                 counter++;
                 if ((counter % 1000) == 0)
                     LOG.info("received " + counter + " messages");
-
-                
             }
         } catch (Exception e) {
             LOG.error("Error in Consumer: " + e);

@@ -70,12 +70,15 @@ public class JmsTopicSelectorTest extends TestSupport {
             producerDestination = session.createTopic(getProducerSubject());
         }
 
-        LOG.info("Created  consumer destination: " + consumerDestination + " of type: " + consumerDestination.getClass());
-        LOG.info("Created  producer destination: " + producerDestination + " of type: " + producerDestination.getClass());
+        LOG.info("Created  consumer destination: " + consumerDestination
+                 + " of type: " + consumerDestination.getClass());
+        LOG.info("Created  producer destination: " + producerDestination
+                 + " of type: " + producerDestination.getClass());
         producer = session.createProducer(producerDestination);
         producer.setDeliveryMode(deliveryMode);
 
-        LOG.info("Created producer: " + producer + " delivery mode = " + (deliveryMode == DeliveryMode.PERSISTENT ? "PERSISTENT" : "NON_PERSISTENT"));
+        LOG.info("Created producer: " + producer + " delivery mode = "
+                 + (deliveryMode == DeliveryMode.PERSISTENT ? "PERSISTENT" : "NON_PERSISTENT"));
         connection.start();
     }
 

@@ -37,8 +37,6 @@ import org.slf4j.LoggerFactory;
  * chain these instances together with the {@link #setParent(MessageListener)}
  * method so that you can aggregate the total number of messages consumed across
  * a number of consumers.
- * 
- * 
  */
 public class MessageIdList extends Assert implements MessageListener {
 
@@ -161,7 +159,7 @@ public class MessageIdList extends Assert implements MessageListener {
     /**
      * Performs a testing assertion that the correct number of messages have
      * been received without waiting
-     * 
+     *
      * @param messageCount
      */
     public void assertMessagesReceivedNoWait(int messageCount) {
@@ -172,7 +170,6 @@ public class MessageIdList extends Assert implements MessageListener {
      * Performs a testing assertion that the correct number of messages have
      * been received waiting for the messages to arrive up to a fixed amount of
      * time.
-     * 
      * @param messageCount
      */
     public void assertMessagesReceived(int messageCount) {
@@ -193,7 +190,7 @@ public class MessageIdList extends Assert implements MessageListener {
     /**
      * Asserts that there are at most the number of messages received without
      * waiting
-     * 
+     *
      * @param messageCount
      */
     public void assertAtMostMessagesReceived(int messageCount) {
@@ -250,7 +247,7 @@ public class MessageIdList extends Assert implements MessageListener {
     /**
      * Gets the amount of time the message listener will spend sleeping to
      * simulate a processing delay.
-     * 
+     *
      * @return
      */
     public long getProcessingDelay() {
@@ -260,7 +257,7 @@ public class MessageIdList extends Assert implements MessageListener {
     /**
      * Sets the amount of time the message listener will spend sleeping to
      * simulate a processing delay.
-     * 
+     *
      * @param processingDelay
      */
     public void setProcessingDelay(long processingDelay) {

@@ -24,9 +24,6 @@ import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
-/**
- * 
- */
 public class JmsClientAckTest extends TestSupport {
 
     private Connection connection;
@@ -96,7 +93,7 @@ public class JmsClientAckTest extends TestSupport {
         Message msg = consumer.receive(1000);
         assertNotNull(msg);
         msg = consumer.receive(1000);
-        assertNotNull(msg);        
+        assertNotNull(msg);
         msg = consumer.receive(1000);
         assertNotNull(msg);
         msg.acknowledge();
@@ -112,10 +109,10 @@ public class JmsClientAckTest extends TestSupport {
 
         session.close();
     }
-    
+
     /**
      * Tests if unacknowledged messages are being re-delivered when the consumer connects again.
-     * 
+     *
      * @throws JMSException
      */
     public void testUnAckedMessageAreNotConsumedOnSessionClose() throws JMSException {
@@ -128,19 +125,19 @@ public class JmsClientAckTest extends TestSupport {
 
         // Consume the message...
         Message msg = consumer.receive(1000);
-        assertNotNull(msg);        
+        assertNotNull(msg);
         // Don't ack the message.
-        
+
         // Reset the session.  This should cause the unacknowledged message to be re-delivered.
         session.close();
         session = connection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
-                
+
         // Attempt to Consume the message...
         consumer = session.createDurableSubscriber(queue, "subscriber-id3");
         msg = consumer.receive(2000);
-        assertNotNull(msg);        
+        assertNotNull(msg);
         msg.acknowledge();
-        
+
         session.close();
     }
 

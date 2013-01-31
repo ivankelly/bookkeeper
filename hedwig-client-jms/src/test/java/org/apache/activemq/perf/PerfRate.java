@@ -16,9 +16,6 @@
  */
 package org.apache.activemq.perf;
 
-/**
- * 
- */
 public class PerfRate {
 
     protected int totalCount;

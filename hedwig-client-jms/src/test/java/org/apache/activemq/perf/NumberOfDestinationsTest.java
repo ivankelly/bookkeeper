@@ -37,9 +37,7 @@ import org.apache.hedwig.jms.spi.HedwigConnectionFactoryImpl;
 import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-/**
- * 
- */
+
 // For now, ignore it ...
 @Ignore
 public class NumberOfDestinationsTest extends JmsTestBase {
@@ -55,17 +53,15 @@ public class NumberOfDestinationsTest extends JmsTestBase {
         MessageProducer mp = session.createProducer(null);
         for (int j = 0; j < NUMBER_OF_DESTINATIONS; j++) {
             Destination dest = getDestination(session);
-          
+
             for (int i = 0; i < MESSAGE_COUNT; i++) {
                 Message msg = session.createTextMessage("test" + i);
                 mp.send(dest, msg);
-                
             }
             if (j % 500 == 0) {
                 LOG.info("Iterator " + j);
             }
         }
-        
         connection.close();
     }
 

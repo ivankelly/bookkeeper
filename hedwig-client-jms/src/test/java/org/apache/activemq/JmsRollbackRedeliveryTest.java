@@ -44,7 +44,7 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
     final String destinationName = "Destination";
     boolean consumerClose = true;
     boolean rollback = true;
-    
+
     public void setUp() throws Exception {
         setAutoFail(true);
         super.setUp();
@@ -53,7 +53,6 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
     public void tearDown() throws Exception {
         super.tearDown();
     }
-    
 
     public void testRedelivery() throws Exception {
         doTestRedelivery(false);
@@ -63,11 +62,9 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
         doTestRedelivery(true);
     }
 
-    
     public void doTestRedelivery(boolean interleaveProducer) throws Exception {
 
         ConnectionFactory connectionFactory = new HedwigConnectionFactoryImpl();
-        
         Connection connection = connectionFactory.createConnection();
         Session session = connection.createSession(true, Session.AUTO_ACKNOWLEDGE);
         Destination destination = session.createTopic(destinationName);
@@ -79,7 +76,6 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
         } else {
             populateDestination(nbMessages, destinationName, connection);
         }
-        
         // Consume messages and rollback transactions
         {
             AtomicInteger received = new AtomicInteger();
@@ -88,13 +84,15 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
                 TextMessage msg = (TextMessage) consumer.receive(6000000);
                 if (msg != null) {
                     if (msg != null && rolledback.put(msg.getText(), Boolean.TRUE) != null) {
-                        LOG.info("Received message " + msg.getText() + " (" + received.getAndIncrement() + ")" + msg.getJMSMessageID());
+                        LOG.info("Received message " + msg.getText()
+                                 + " (" + received.getAndIncrement() + ")" + msg.getJMSMessageID());
                         assertTrue(msg.getJMSRedelivered());
                         // assertEquals(2, msg.getLongProperty("JMSXDeliveryCount"));
                         session.commit();
                     } else {
                         LOG.info("Rollback message " + msg.getText() + " id: " +  msg.getJMSMessageID());
-                        assertFalse("should not have redelivery flag set, id: " + msg.getJMSMessageID(), msg.getJMSRedelivered());
+                        assertFalse("should not have redelivery flag set, id: "
+                                    + msg.getJMSMessageID(), msg.getJMSRedelivered());
                         session.rollback();
                     }
                 }
@@ -103,10 +101,10 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
             session.close();
         }
     }
-       
+
     public void testRedeliveryOnSingleConsumer() throws Exception {
 
-        ConnectionFactory connectionFactory = 
+        ConnectionFactory connectionFactory =
             new HedwigConnectionFactoryImpl();
         Connection connection = connectionFactory.createConnection();
         connection.start();
@@ -124,7 +122,8 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
                 TextMessage msg = (TextMessage) consumer.receive(6000000);
                 if (msg != null) {
                     if (msg != null && rolledback.put(msg.getText(), Boolean.TRUE) != null) {
-                        LOG.info("Received message " + msg.getText() + " (" + received.getAndIncrement() + ")" + msg.getJMSMessageID());
+                        LOG.info("Received message " + msg.getText() + " ("
+                                 + received.getAndIncrement() + ")" + msg.getJMSMessageID());
                         assertTrue(msg.getJMSRedelivered());
                         session.commit();
                     } else {
@@ -137,11 +136,11 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
             session.close();
         }
     }
-    
+
     public void testRedeliveryOnSingleSession() throws Exception {
 
-        ConnectionFactory connectionFactory = 
-            new HedwigConnectionFactoryImpl(); 
+        ConnectionFactory connectionFactory =
+            new HedwigConnectionFactoryImpl();
         Connection connection = connectionFactory.createConnection();
         Session session = connection.createSession(true, Session.AUTO_ACKNOWLEDGE);
         Destination destination = session.createTopic(destinationName);
@@ -158,7 +157,8 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
                 TextMessage msg = (TextMessage) consumer.receive(6000000);
                 if (msg != null) {
                     if (msg != null && rolledback.put(msg.getText(), Boolean.TRUE) != null) {
-                        LOG.info("Received message " + msg.getText() + " (" + received.getAndIncrement() + ")" + msg.getJMSMessageID());
+                        LOG.info("Received message " + msg.getText() + " ("
+                                 + received.getAndIncrement() + ")" + msg.getJMSMessageID());
                         assertTrue(msg.getJMSRedelivered());
                         session.commit();
                     } else {
@@ -171,12 +171,12 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
             session.close();
         }
     }
-    
+
     // AMQ-1593
     public void testValidateRedeliveryCountOnRollback() throws Exception {
 
         final int numMessages = 1;
-       ConnectionFactory connectionFactory = 
+        ConnectionFactory connectionFactory =
             new HedwigConnectionFactoryImpl();
         Connection connection = connectionFactory.createConnection();
         Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
@@ -195,7 +195,8 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
                 TextMessage msg = (TextMessage) consumer.receive(1000);
                 assert msg != null;
                 if (msg != null) {
-                    LOG.info("Received message " + msg.getText() + " (" + received.getAndIncrement() + ")" + msg.getJMSMessageID());
+                    LOG.info("Received message " + msg.getText() + " ("
+                             + received.getAndIncrement() + ")" + msg.getJMSMessageID());
                     session.rollback();
                 }
             }
@@ -203,12 +204,12 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
             consumeMessage(connection, "subscriber-id-1");
         }
     }
-    
+
     // AMQ-1593
     public void testValidateRedeliveryCountOnRollbackWithPrefetch0() throws Exception {
 
        final int numMessages = 1;
-       ConnectionFactory connectionFactory = 
+       ConnectionFactory connectionFactory =
             new HedwigConnectionFactoryImpl();
         Connection connection = connectionFactory.createConnection();
         Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
@@ -227,7 +228,8 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
                 TextMessage msg = (TextMessage) consumer.receive(1000);
                 assert msg != null;
                 if (msg != null) {
-                    LOG.info("Received message " + msg.getText() + " (" + received.getAndIncrement() + ")" + msg.getJMSMessageID());
+                    LOG.info("Received message " + msg.getText() + " ("
+                             + received.getAndIncrement() + ")" + msg.getJMSMessageID());
                     session.rollback();
                 }
             }
@@ -254,12 +256,12 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
 
     public void testRedeliveryPropertyWithNoRollback() throws Exception {
         final int numMessages = 1;
-        ConnectionFactory connectionFactory = 
+        ConnectionFactory connectionFactory =
             new HedwigConnectionFactoryImpl();
         Connection connection = connectionFactory.createConnection();
         // ensure registration of durable subscription
         {
-	    connection.setClientID(getName() + "-client-id-1");
+            connection.setClientID(getName() + "-client-id-1");
             Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
             Destination destination = session.createTopic(destinationName);
 
@@ -269,14 +271,13 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
 
         populateDestination(numMessages, destinationName, connection);
         connection.close();
-        
         {
             AtomicInteger received = new AtomicInteger();
             // hardcoded, we actually allow for infinite rollback/redelivery ...
             final int maxRetries = 5;
             while (received.get() < maxRetries) {
                 connection = connectionFactory.createConnection();
-	        connection.setClientID(getName() + "-client-id-1");
+                connection.setClientID(getName() + "-client-id-1");
                 connection.start();
                 Session session = connection.createSession(true, Session.SESSION_TRANSACTED);
                 Destination destination = session.createTopic(destinationName);
@@ -285,18 +286,19 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
                 TextMessage msg = (TextMessage) consumer.receive(2000);
                 assert msg != null;
                 if (msg != null) {
-                    LOG.info("Received message " + msg.getText() + " (" + received.getAndIncrement() + ")" + msg.getJMSMessageID());
+                    LOG.info("Received message " + msg.getText() + " ("
+                             + received.getAndIncrement() + ")" + msg.getJMSMessageID());
                 }
                 session.close();
                 connection.close();
             }
             connection = connectionFactory.createConnection();
-	    connection.setClientID(getName() + "-client-id-1");
+            connection.setClientID(getName() + "-client-id-1");
             connection.start();
             consumeMessage(connection, "subscriber-id-3");
         }
     }
-    
+
     private void populateDestination(final int nbMessages,
             final String destinationName, Connection connection)
             throws JMSException {
@@ -310,7 +312,7 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
         session.close();
     }
 
-    
+
     private void populateDestinationWithInterleavedProducer(final int nbMessages,
             final String destinationName, Connection connection)
             throws JMSException {
@@ -320,7 +322,7 @@ public class JmsRollbackRedeliveryTest extends AutoFailTestSupport {
         Session session2 = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
         Destination destination2 = session2.createTopic(destinationName);
         MessageProducer producer2 = session2.createProducer(destination2);
-        
+
         for (int i = 1; i <= nbMessages; i++) {
             if (i%2 == 0) {
                 producer1.send(session1.createTextMessage("<hello id='" + i + "'/>"));

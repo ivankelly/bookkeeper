@@ -305,7 +305,9 @@ public class HedwigMessagingSessionFacade implements MessagingSessionFacade, Mes
         }
 
         // Now acknowledge the messages in ackList by running its runnable.
-        if (logger.isTraceEnabled()) logger.trace("facade acknowledge ackList (" + ackList.size() + ") ... " + ackList);
+        if (logger.isTraceEnabled()) {
+            logger.trace("facade acknowledge ackList (" + ackList.size() + ") ... " + ackList);
+        }
         for (SessionImpl.ReceivedMessage msg : ackList){
             try {
                 msg.originalMessage.getAckRunnable().run();
@@ -541,7 +543,8 @@ public class HedwigMessagingSessionFacade implements MessagingSessionFacade, Mes
             PubSubProtocol.MessageSeqId seqId =
                 (null != response && response.hasPublishedMsgId() ? response.getPublishedMsgId() : null);
             if (null == seqId){
-                // if (logger.isDebugEnabled()) logger.debug("Unexpected NOT to receive the sequence id in response to publish " + response);
+                // if (logger.isDebugEnabled())
+                // logger.debug("Unexpected NOT to receive the sequence id in response to publish " + response);
                 logger.warn("Unexpected NOT to receive the sequence id in response to publish " + response);
                 return null;
             }

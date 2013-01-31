@@ -34,16 +34,13 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-/**
- * 
- */
 public class JmsRedeliveredTest extends JmsTestBase {
 
     private Connection connection;
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see junit.framework.TestCase#setUp()
      */
     protected void setUp() throws Exception {
@@ -64,7 +61,7 @@ public class JmsRedeliveredTest extends JmsTestBase {
 
     /**
      * Creates a connection.
-     * 
+     *
      * @return connection
      * @throws Exception
      */
@@ -76,7 +73,7 @@ public class JmsRedeliveredTest extends JmsTestBase {
     /**
      * Tests if a message unacknowledged message gets to be resent when the
      * session is closed and then a new consumer session is created.
-     * 
+     *
      */
     public void testTopicSessionCloseMarksMessageRedelivered() throws JMSException {
         connection.start();
@@ -109,7 +106,6 @@ public class JmsRedeliveredTest extends JmsTestBase {
         session.close();
     }
 
-    
 
     public void testTopicSessionCloseMarksUnAckedMessageRedelivered() throws JMSException {
         connection.start();
@@ -127,13 +123,13 @@ public class JmsRedeliveredTest extends JmsTestBase {
         assertFalse("Message should not be redelivered.", msg.getJMSRedelivered());
         assertEquals("1", ((TextMessage)msg).getText());
         msg.acknowledge();
-        
+
         // Don't ack the message.
         msg = consumer.receive(1000);
         assertNotNull(msg);
         assertFalse("Message should not be redelivered.", msg.getJMSRedelivered());
         assertEquals("2", ((TextMessage)msg).getText());
-        
+
         // Reset the session. This should cause the Unacked message to be
         // redelivered.
         session.close();
@@ -154,7 +150,7 @@ public class JmsRedeliveredTest extends JmsTestBase {
     /**
      * Tests session recovery and that the redelivered message is marked as
      * such. Session uses client acknowledgement, the destination is a queue.
-     * 
+     *
      * @throws JMSException
      */
     public void testTopicRecoverMarksMessageRedelivered() throws Exception {
@@ -173,7 +169,8 @@ public class JmsRedeliveredTest extends JmsTestBase {
         assertFalse("Message should not be redelivered.", msg.getJMSRedelivered());
         // Don't ack the message.
 
-        // We DO NOT support session recovery - to unblock this test, I am stopp'ing and start'ing connection : not the same, but ...
+        // We DO NOT support session recovery
+        // - to unblock this test, I am stopp'ing and start'ing connection : not the same, but ...
         // Reset the session. This should cause the Unacked message to be
         // redelivered.
         // session.recover();
@@ -196,7 +193,7 @@ public class JmsRedeliveredTest extends JmsTestBase {
     /**
      * Tests rollback message to be marked as redelivered. Session uses client
      * acknowledgement and the destination is a queue.
-     * 
+     *
      * @throws JMSException
      */
     public void testTopicRollbackMarksMessageRedelivered() throws JMSException {
@@ -231,7 +228,7 @@ public class JmsRedeliveredTest extends JmsTestBase {
      * that the re-delivered message is marked as such. Session uses client
      * acknowledgment, the destination is a topic and the consumer is a durable
      * subscriber.
-     * 
+     *
      * @throws JMSException
      */
     public void testDurableTopicSessionCloseMarksMessageRedelivered() throws JMSException {
@@ -274,7 +271,7 @@ public class JmsRedeliveredTest extends JmsTestBase {
     /**
      * Tests rollback message to be marked as redelivered. Session uses client
      * acknowledgement and the destination is a topic.
-     * 
+     *
      * @throws JMSException
      */
     public void testDurableTopicRollbackMarksMessageRedelivered() throws JMSException {
@@ -308,7 +305,7 @@ public class JmsRedeliveredTest extends JmsTestBase {
 
     /**
      * Creates a text message.
-     * 
+     *
      * @param session
      * @return TextMessage.
      * @throws JMSException
@@ -320,10 +317,10 @@ public class JmsRedeliveredTest extends JmsTestBase {
     private TextMessage createTextMessage(Session session, String txt) throws JMSException {
         return session.createTextMessage(txt);
     }
-    
+
     /**
      * Creates a producer.
-     * 
+     *
      * @param session
      * @param queue - destination.
      * @return MessageProducer
@@ -337,7 +334,7 @@ public class JmsRedeliveredTest extends JmsTestBase {
 
     /**
      * Returns delivery mode.
-     * 
+     *
      * @return int - persistent delivery mode.
      */
     protected int getDeliveryMode() {
@@ -351,7 +348,7 @@ public class JmsRedeliveredTest extends JmsTestBase {
 
         /**
          * Returns delivery mode.
-         * 
+         *
          * @return int - persistent delivery mode.
          */
         protected int getDeliveryMode() {
@@ -366,7 +363,7 @@ public class JmsRedeliveredTest extends JmsTestBase {
 
         /**
          * Returns delivery mode.
-         * 
+         *
          * @return int - non-persistent delivery mode.
          */
         protected int getDeliveryMode() {

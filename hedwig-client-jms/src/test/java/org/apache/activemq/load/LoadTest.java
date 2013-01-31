@@ -32,15 +32,12 @@ import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 // For now, ignore it ...
 @Ignore
 public class LoadTest extends JmsTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(LoadTest.class);
-    
+
     protected LoadController controller;
     protected LoadClient[] clients;
     protected ConnectionFactory factory;
@@ -56,7 +53,7 @@ public class LoadTest extends JmsTestBase {
 
     /**
      * Sets up a test where the producer and consumer have their own connection.
-     * 
+     *
      * @see junit.framework.TestCase#setUp()
      */
     protected void setUp() throws Exception {
@@ -64,7 +61,7 @@ public class LoadTest extends JmsTestBase {
         factory = createConnectionFactory();
         managementConnection = factory.createConnection();
         managementSession = managementConnection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-        
+
         Destination startDestination = createDestination(managementSession, getClass()+".start");
         Destination endDestination = createDestination(managementSession, getClass()+".end");
         LOG.info("Running with " + numberOfClients + " clients - sending "
@@ -99,7 +96,6 @@ public class LoadTest extends JmsTestBase {
             client.setNextDestination(outDestination);
             clients[i] = client;
         }
-        
         super.setUp();
     }
 
@@ -126,7 +122,6 @@ public class LoadTest extends JmsTestBase {
         }
         controller.start();
         assertEquals((batchSize* numberOfBatches),controller.awaitTestComplete());
-        
     }
 
 }

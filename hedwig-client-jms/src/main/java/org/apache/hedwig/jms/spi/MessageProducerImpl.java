@@ -82,7 +82,8 @@ public abstract class MessageProducerImpl implements MessageProducer {
             throw new JMSException("Invalid delivery mode specified : " + deliveryMode);
         }
 
-        // if (DeliveryMode.NON_PERSISTENT == deliveryMode) throw new JMSException("non-persistent delivery mode is not yet supported");
+        // if (DeliveryMode.NON_PERSISTENT == deliveryMode)
+        // throw new JMSException("non-persistent delivery mode is not yet supported");
         this.deliveryMode = deliveryMode;
     }
 

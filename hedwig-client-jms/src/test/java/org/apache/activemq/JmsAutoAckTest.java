@@ -24,9 +24,6 @@ import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
-/**
- * 
- */
 public class JmsAutoAckTest extends TestSupport {
 
     private Connection connection;
@@ -46,10 +43,10 @@ public class JmsAutoAckTest extends TestSupport {
         }
         super.tearDown();
     }
-    
+
     /**
      * Tests if acknowleged messages are being consumed.
-     * 
+     *
      * @throws javax.jms.JMSException
      */
     public void testAckedMessageAreConsumed() throws JMSException {
@@ -63,18 +60,16 @@ public class JmsAutoAckTest extends TestSupport {
         // Consume the message...
         Message msg = consumer.receive(1000);
         assertNotNull(msg);
-        
+
         // Reset the session.
         session.close();
         session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-        
+
         // Attempt to Consume the message...
         consumer = session.createDurableSubscriber(queue, "subscriber-id1");
         msg = consumer.receive(1000);
-        assertNull(msg);        
+        assertNull(msg);
 
         session.close();
     }
-    
-
 }

@@ -32,9 +32,6 @@ import org.apache.activemq.test.TestSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class DurableConsumerCloseAndReconnectTest extends TestSupport {
     protected static final long RECEIVE_TIMEOUT = 5000L;
     private static final Logger LOG = LoggerFactory.getLogger(DurableConsumerCloseAndReconnectTest.class);
@@ -46,7 +43,6 @@ public class DurableConsumerCloseAndReconnectTest extends TestSupport {
     private Destination destination;
     private int messageCount;
 
-    
     @Override
     protected void setUp() throws Exception {
         super.setUp();
@@ -65,7 +61,7 @@ public class DurableConsumerCloseAndReconnectTest extends TestSupport {
         dummyConnection.start();
         dummyConnection.close();
     }
-    
+
     protected HedwigConnectionFactoryImpl createConnectionFactory() throws Exception {
         return new HedwigConnectionFactoryImpl();
     }
@@ -80,7 +76,7 @@ public class DurableConsumerCloseAndReconnectTest extends TestSupport {
         dummyConnection.close();
 
         // now lets try again without one connection open
-        consumeMessagesDeliveredWhileConsumerClosed();       
+        consumeMessagesDeliveredWhileConsumerClosed();
     }
 
     protected void consumeMessagesDeliveredWhileConsumerClosed() throws Exception {

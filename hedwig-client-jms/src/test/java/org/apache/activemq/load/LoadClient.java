@@ -31,9 +31,6 @@ import org.apache.hedwig.jms.LRUCacheSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class LoadClient implements Runnable{
     private static final Logger LOG = LoggerFactory.getLogger(LoadClient.class);
     protected static int SLEEP_TIME = 2;
@@ -50,14 +47,11 @@ public class LoadClient implements Runnable{
     protected boolean connectionPerMessage = false;
     protected boolean running;
     protected int timeout = 10000;
-    
 
     public LoadClient(String name,ConnectionFactory factory) {
        this.name=name;
        this.factory = factory;
     }
-
-   
 
     public synchronized void start() throws JMSException {
         if (!running) {
@@ -70,9 +64,7 @@ public class LoadClient implements Runnable{
                 consumer = session.createConsumer(getConsumeDestination());
                 producer = session.createProducer(getSendDestination());
                 producer.setDeliveryMode(this.deliveryMode);
-                
             }
-            
             Thread t = new  Thread(this);
             t.setName(name);
             t.start();
@@ -86,7 +78,6 @@ public class LoadClient implements Runnable{
         }
     }
 
-    
     public void run() {
         try {
             while (running) {
@@ -101,7 +92,7 @@ public class LoadClient implements Runnable{
             }
         } catch (Throwable e) {
             e.printStackTrace();
-        } 
+        }
     }
 
     private LRUCacheSet<String> messageIdCache = new LRUCacheSet<String>(2048, false);
@@ -128,7 +119,7 @@ public class LoadClient implements Runnable{
         }
         return result != null ? result.getText() : null;
     }
-    
+
     protected void send(String text) throws Exception {
         Connection con  = connection;
         MessageProducer p = producer;
@@ -219,11 +210,11 @@ public class LoadClient implements Runnable{
     public void setTimeout(int timeout) {
         this.timeout = timeout;
     }
-    
+
     protected Destination getSendDestination() {
         return nextDestination;
     }
-    
+
     protected Destination getConsumeDestination() {
         return startDestination;
     }

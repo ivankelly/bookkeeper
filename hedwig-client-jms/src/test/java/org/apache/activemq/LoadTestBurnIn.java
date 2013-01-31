@@ -48,8 +48,6 @@ import org.slf4j.LoggerFactory;
  * Small burn test moves sends a moderate amount of messages through the broker,
  * to checking to make sure that the broker does not lock up after a while of
  * sustained messaging.
- * 
- * 
  */
 public class LoadTestBurnIn extends JmsTestSupport {
     private static final transient Logger LOG = LoggerFactory.getLogger(LoadTestBurnIn.class);

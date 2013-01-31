@@ -18,9 +18,6 @@ package org.apache.activemq.usecases;
 
 import javax.jms.Topic;
 
-/**
- * 
- */
 public class PublishOnDurableTopicConsumedMessageTest extends PublishOnTopicConsumedMessageTest {
 
     protected void setUp() throws Exception {

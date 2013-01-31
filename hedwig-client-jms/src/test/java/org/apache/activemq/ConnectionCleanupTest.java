@@ -24,9 +24,6 @@ import org.apache.hedwig.JmsTestBase;
 import org.apache.hedwig.jms.spi.HedwigConnectionFactoryImpl;
 import org.apache.hedwig.jms.spi.HedwigConnectionImpl;
 
-/**
- * 
- */
 public class ConnectionCleanupTest extends JmsTestBase {
 
     private HedwigConnectionImpl connection;

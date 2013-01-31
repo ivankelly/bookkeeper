@@ -19,9 +19,7 @@ package org.apache.activemq.util;
 
 
 public class Wait {
-    
     public static final long MAX_WAIT_MILLIS = 30*1000;
-    
     public interface Condition {
         boolean isSatisified() throws Exception;
     }
@@ -29,14 +27,14 @@ public class Wait {
     public static boolean waitFor(Condition condition) throws Exception {
         return waitFor(condition, MAX_WAIT_MILLIS);
     }
-    
+
     public static boolean waitFor(final Condition condition, final long duration) throws Exception {
         final long expiry = System.currentTimeMillis() + duration;
         boolean conditionSatisified = condition.isSatisified();
         while (!conditionSatisified && System.currentTimeMillis() < expiry) {
             Thread.sleep(1000);
             conditionSatisified = condition.isSatisified();
-        }   
+        }
         return conditionSatisified;
-    }  
+    }
 }

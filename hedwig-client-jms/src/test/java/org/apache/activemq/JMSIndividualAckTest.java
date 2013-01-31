@@ -84,7 +84,8 @@ public class JMSIndividualAckTest extends TestSupport {
      *
      * @throws JMSException
      */
-    // This test cant, unfortunately, pass - in hedwig, acknowledge is a ACKNOWLEDGE UNTIL. So the last ack will ack all messages until then ...
+    // This test cant, unfortunately, pass
+    //- in hedwig, acknowledge is a ACKNOWLEDGE UNTIL. So the last ack will ack all messages until then ...
     /*
     public void testLastMessageAcked() throws JMSException {
         connection.start();

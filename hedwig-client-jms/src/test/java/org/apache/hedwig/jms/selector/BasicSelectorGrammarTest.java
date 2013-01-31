@@ -159,12 +159,14 @@ public class BasicSelectorGrammarTest {
         // check for String header with quote ...
         Assert.assertEquals(Boolean.TRUE,
                 SelectorParser.evaluateSelector(
-                        SelectorParser.parseMessageSelector(STRING_QUOTES_HEADER + " = '" + STRING_QUOTED_QUOTES_VALUE + "'"),
+                        SelectorParser.parseMessageSelector(STRING_QUOTES_HEADER + " = '"
+                                                            + STRING_QUOTED_QUOTES_VALUE + "'"),
                         message)
         );
         Assert.assertEquals(Boolean.FALSE,
                 SelectorParser.evaluateSelector(
-                        SelectorParser.parseMessageSelector(STRING_QUOTES_HEADER + " <> '" + STRING_QUOTED_QUOTES_VALUE + "'"),
+                        SelectorParser.parseMessageSelector(STRING_QUOTES_HEADER
+                                                            + " <> '" + STRING_QUOTED_QUOTES_VALUE + "'"),
                         message)
         );
 
@@ -197,19 +199,22 @@ public class BasicSelectorGrammarTest {
         );
         Assert.assertEquals(Boolean.TRUE,
                 SelectorParser.evaluateSelector(
-                        SelectorParser.parseMessageSelector(INT_HEADER1 + " + ( 2 * " + INT_HEADER2 + " + " + INT_HEADER1 + " ) < " +
+                        SelectorParser.parseMessageSelector(INT_HEADER1 + " + ( 2 * " + INT_HEADER2
+                                                            + " + " + INT_HEADER1 + " ) < " +
                                 " 4 * ( " + INT_HEADER1 + " + " + INT_VALUE2 + " ) "),
                         message)
         );
 
         Assert.assertEquals(Boolean.TRUE,
                 SelectorParser.evaluateSelector(
-                        SelectorParser.parseMessageSelector(DOUBLE_HEADER1 + " + " + DOUBLE_HEADER2 + " > " + DOUBLE_VALUE1),
+                        SelectorParser.parseMessageSelector(DOUBLE_HEADER1 + " + "
+                                                            + DOUBLE_HEADER2 + " > " + DOUBLE_VALUE1),
                         message)
         );
         Assert.assertEquals(Boolean.TRUE,
                 SelectorParser.evaluateSelector(
-                        SelectorParser.parseMessageSelector(DOUBLE_HEADER1 + " * 7.5 + 1 + 2 * ( " + DOUBLE_HEADER2 + " + 2.0 * " + DOUBLE_HEADER1 + " ) = " +
+                        SelectorParser.parseMessageSelector(DOUBLE_HEADER1 + " * 7.5 + 1 + 2 * ( "
+                                                            + DOUBLE_HEADER2 + " + 2.0 * " + DOUBLE_HEADER1 + " ) = " +
                                 " 0.5 + 4 * ( 2.0 * " + DOUBLE_HEADER1 + " + " + DOUBLE_VALUE2 + " ) "),
                         message)
         );
@@ -217,7 +222,9 @@ public class BasicSelectorGrammarTest {
         // Incompatible header in computation - string used in arithmetic.
         Assert.assertNull(
                 SelectorParser.evaluateSelector(
-                        SelectorParser.parseMessageSelector(STRING_HEADER1 + " * 4 + " + DOUBLE_HEADER1 + " * 7.5 + 1 + 2 * ( " + DOUBLE_HEADER2 + " + 2.0 * " + DOUBLE_HEADER1 + " ) = " +
+                        SelectorParser.parseMessageSelector(STRING_HEADER1 + " * 4 + " + DOUBLE_HEADER1
+                                                            + " * 7.5 + 1 + 2 * ( " + DOUBLE_HEADER2
+                                                            + "+ 2.0 * " + DOUBLE_HEADER1 + " ) = " +
                                 " 0.5 + 4 * ( 2.0 * " + DOUBLE_HEADER1 + " + " + DOUBLE_VALUE2 + " ) "),
                         message)
         );
@@ -225,7 +232,9 @@ public class BasicSelectorGrammarTest {
         // Unknown header in computation.
         Assert.assertNull(
                 SelectorParser.evaluateSelector(
-                        SelectorParser.parseMessageSelector(" unknown_header * 4 + " + DOUBLE_HEADER1 + " * 7.5 + 1 + 2 * ( " + DOUBLE_HEADER2 + " + 2.0 * " + DOUBLE_HEADER1 + " ) = " +
+                        SelectorParser.parseMessageSelector(" unknown_header * 4 + "
+                                                            + DOUBLE_HEADER1 + " * 7.5 + 1 + 2 * ( "
+                                                            + DOUBLE_HEADER2 + " + 2.0 * " + DOUBLE_HEADER1 + " ) = " +
                                 " 0.5 + 4 * ( 2.0 * " + DOUBLE_HEADER1 + " + " + DOUBLE_VALUE2 + " ) "),
                         message)
         );
@@ -262,25 +271,32 @@ public class BasicSelectorGrammarTest {
         );
         Assert.assertEquals(Boolean.TRUE,
                 SelectorParser.evaluateSelector(
-                        SelectorParser.parseMessageSelector(" ( - " + INT_HEADER1 + " * 2 + " + DOUBLE_HEADER1 + " * 4 ) / 10.0 between 0 and 3 * " + INT_HEADER2 + " * 2.4"),
+                        SelectorParser.parseMessageSelector(" ( - " + INT_HEADER1 + " * 2 + "
+                                                            + DOUBLE_HEADER1 + " * 4 ) / 10.0 between 0 and 3 * "
+                                                            + INT_HEADER2 + " * 2.4"),
                         message)
         );
         Assert.assertEquals(Boolean.FALSE,
                 SelectorParser.evaluateSelector(
-                        SelectorParser.parseMessageSelector(INT_HEADER2 + " not between (0.4 * 2 + (0.01 + 0.3 * 0.2) ) AND 10.0"),
+                        SelectorParser.parseMessageSelector(INT_HEADER2
+                                                            + " not between (0.4 * 2 + (0.01 + 0.3 * 0.2) ) AND 10.0"),
                         // SelectorParser.parseMessageSelector(INT_HEADER2 + " NOT BETWEEN 1 AND 3"),
                         message)
         );
         Assert.assertEquals(Boolean.FALSE,
                 SelectorParser.evaluateSelector(
-                        SelectorParser.parseMessageSelector(INT_HEADER2 + " NOT BETWEEN (0.4 * 2 + (0.01 + 0.3 * 0.2) + " + DOUBLE_VALUE1 + " / 10.0 ) AND 10.0"),
+                        SelectorParser.parseMessageSelector(INT_HEADER2
+                                + " NOT BETWEEN (0.4 * 2 + (0.01 + 0.3 * 0.2) + "
+                                + DOUBLE_VALUE1 + " / 10.0 ) AND 10.0"),
                         message)
         );
 
         // must throw runtime evaluation exception and return null (NOT parse time exception ) and so evaluate to false.
         Assert.assertNull(
                 SelectorParser.evaluateSelector(
-                        SelectorParser.parseMessageSelector(STRING_HEADER1 + " * 2 + " + DOUBLE_HEADER1 + " / 1.4 NOT BETWEEN (0.4 * 2 + (0.01 + 0.3 * 0.2) + " + DOUBLE_VALUE1 + " / 10.0 ) AND 10.0"),
+                        SelectorParser.parseMessageSelector(STRING_HEADER1 + " * 2 + " + DOUBLE_HEADER1
+                                                            + " / 1.4 NOT BETWEEN (0.4 * 2 + (0.01 + 0.3 * 0.2) + "
+                                                            + DOUBLE_VALUE1 + " / 10.0 ) AND 10.0"),
                         message)
         );
 
@@ -289,37 +305,41 @@ public class BasicSelectorGrammarTest {
         Assert.assertEquals(Boolean.TRUE,
                 SelectorParser.evaluateSelector(
                         SelectorParser.parseMessageSelector(
-                                STRING_HEADER3 + " IN ( '" + STRING_VALUE1 + "', '" + STRING_VALUE2 + "', '" + STRING_VALUE3 +
-                                        "', '" + STRING_VALUE4 + "', '" + STRING_QUOTED_QUOTES_VALUE + "') "),
+                                STRING_HEADER3 + " IN ( '" + STRING_VALUE1
+                                + "', '" + STRING_VALUE2 + "', '" + STRING_VALUE3 +
+                                "', '" + STRING_VALUE4 + "', '" + STRING_QUOTED_QUOTES_VALUE + "') "),
                         message)
         );
         Assert.assertEquals(Boolean.TRUE,
                 SelectorParser.evaluateSelector(
                         SelectorParser.parseMessageSelector(
-                                STRING_QUOTES_HEADER + " IN ( '" + STRING_VALUE1 + "', '" + STRING_VALUE2 + "', '" + STRING_VALUE3 +
-                                        "', '" + STRING_VALUE4 + "', '" + STRING_QUOTED_QUOTES_VALUE + "') "),
+                                STRING_QUOTES_HEADER + " IN ( '" + STRING_VALUE1
+                                + "', '" + STRING_VALUE2 + "', '" + STRING_VALUE3 +
+                                "', '" + STRING_VALUE4 + "', '" + STRING_QUOTED_QUOTES_VALUE + "') "),
                         message)
         );
         Assert.assertEquals(Boolean.TRUE,
                 SelectorParser.evaluateSelector(
                         SelectorParser.parseMessageSelector(
-                                STRING_QUOTES_HEADER + " NOT IN ( '" + STRING_VALUE1 + "', '" + STRING_VALUE2 + "', '" + STRING_VALUE3 +
-                                        "', '" + STRING_VALUE4 + "') "),
+                                STRING_QUOTES_HEADER + " NOT IN ( '" + STRING_VALUE1
+                                + "', '" + STRING_VALUE2 + "', '" + STRING_VALUE3 +
+                                "', '" + STRING_VALUE4 + "') "),
                         message)
         );
         // using non string identifiers used in 'IN' construct should return null.
         Assert.assertNull(
                 SelectorParser.evaluateSelector(
                         SelectorParser.parseMessageSelector(
-                                INT_HEADER1 + " NOT IN ( '" + STRING_VALUE1 + "', '" + STRING_VALUE2 + "', '" + STRING_VALUE3 +
+                                INT_HEADER1 + " NOT IN ( '" + STRING_VALUE1 + "', '"
+                                + STRING_VALUE2 + "', '" + STRING_VALUE3 +
                                         "', '" + STRING_VALUE4 + "') "),
                         message)
         );
         Assert.assertNull(
                 SelectorParser.evaluateSelector(
                         SelectorParser.parseMessageSelector(
-                                BOOLEAN_HEADER1 + " IN ( '" + STRING_VALUE1 + "', '" + STRING_VALUE2 + "', '" + STRING_VALUE3 +
-                                        "', '" + STRING_VALUE4 + "') "),
+                                BOOLEAN_HEADER1 + " IN ( '" + STRING_VALUE1 + "', '" + STRING_VALUE2
+                                + "', '" + STRING_VALUE3 + "', '" + STRING_VALUE4 + "') "),
                         message)
         );
 

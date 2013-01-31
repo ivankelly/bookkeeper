@@ -33,9 +33,6 @@ import javax.jms.Session;
 import javax.jms.TextMessage;
 import javax.jms.Topic;
 
-/**
- * 
- */
 public class JmsConnectionStartStopTest extends TestSupport {
 
     private static final org.apache.commons.logging.Log LOG = org.apache.commons.logging.LogFactory
@@ -70,7 +67,7 @@ public class JmsConnectionStartStopTest extends TestSupport {
     /**
      * Tests if the consumer receives the messages that were sent before the
      * connection was started.
-     * 
+     *
      * @throws JMSException
      */
     public void testStoppedConsumerHoldsMessagesTillStarted() throws JMSException {
@@ -105,7 +102,7 @@ public class JmsConnectionStartStopTest extends TestSupport {
     /**
      * Tests if the consumer is able to receive messages eveb when the
      * connecction restarts multiple times.
-     * 
+     *
      * @throws Exception
      */
     public void testMultipleConnectionStops() throws Exception {

@@ -34,9 +34,6 @@ import org.apache.hedwig.jms.spi.HedwigConnectionImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- *
- */
 public class JmsSendReceiveWithMessageExpirationTest extends TestSupport {
 
     private static final Logger LOG = LoggerFactory.getLogger(JmsSendReceiveWithMessageExpirationTest.class);
@@ -75,7 +72,7 @@ public class JmsSendReceiveWithMessageExpirationTest extends TestSupport {
 
     /**
      * Test consuming an expired queue.
-     * 
+     *
      * @throws Exception
      */
     public void testConsumeExpiredQueue() throws Exception {
@@ -99,7 +96,8 @@ public class JmsSendReceiveWithMessageExpirationTest extends TestSupport {
                 }
             }
 
-            producer.send(producerDestination, message, producer.getDeliveryMode(), producer.getPriority(), timeToLive);
+            producer.send(producerDestination, message, producer.getDeliveryMode(),
+                          producer.getPriority(), timeToLive);
         }
 
         // sleeps a second longer than the expiration time.
@@ -112,7 +110,7 @@ public class JmsSendReceiveWithMessageExpirationTest extends TestSupport {
 
     /**
      * Sends and consumes the messages to a queue destination.
-     * 
+     *
      * @throws Exception
      */
     public void testConsumeQueue() throws Exception {
@@ -145,7 +143,7 @@ public class JmsSendReceiveWithMessageExpirationTest extends TestSupport {
 
     /**
      * Test consuming an expired topic.
-     * 
+     *
      * @throws Exception
      */
     public void testConsumeExpiredTopic() throws Exception {
@@ -182,7 +180,7 @@ public class JmsSendReceiveWithMessageExpirationTest extends TestSupport {
 
     /**
      * Sends and consumes the messages to a topic destination.
-     * 
+     *
      * @throws Exception
      */
     public void testConsumeTopic() throws Exception {

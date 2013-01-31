@@ -160,9 +160,9 @@ public class DurableSubSelectorDelayTest extends JmsTestBase {
         private final String conClientId;
         private final String selector;
 
-	private final Session sess;
-	private final MessageConsumer consumer;
-	private final Connection con;
+        private final Session sess;
+        private final MessageConsumer consumer;
+        private final Connection con;
 
         public DurableSubscriber(int id) throws JMSException {
             this.id = id;

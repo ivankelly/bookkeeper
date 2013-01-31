@@ -90,18 +90,22 @@ public class SelectorParser {
         ast.jjtAccept(interpreter, data);
         if (1 != data.getStack().size() ||
                 SelectorConstant.SelectorDataType.BOOLEAN != data.getStack().peek().type){
-            if (MyNode.logger.isDebugEnabled()) MyNode.logger.debug("Expected only a single boolean in stack, obtained : " + data.getStack());
+            if (MyNode.logger.isDebugEnabled())
+                MyNode.logger.debug("Expected only a single boolean in stack, obtained : " + data.getStack());
             return null;
         }
         return data.getStack().peek().getBoolValue();
     } catch (SelectorEvaluationException e) {
-        if (MyNode.logger.isDebugEnabled()) MyNode.logger.debug("Unable to run interpreter on " + message + ", exception : " + e + " ... ignoring message", e);
+        if (MyNode.logger.isDebugEnabled())
+            MyNode.logger.debug("Unable to run interpreter on " + message + ", exception : "
+                                + e + " ... ignoring message", e);
         return null;
     }
   }
 
   private static final int CACHED_AST_SIZE = Integer.getInteger("CACHED_AST_SIZE", 128);
-  private static final LinkedHashMap<String, Node> parsedSelectorCache = new LinkedHashMap<String, Node>(CACHED_AST_SIZE, 0.75f, true){
+  private static final LinkedHashMap<String, Node> parsedSelectorCache
+       = new LinkedHashMap<String, Node>(CACHED_AST_SIZE, 0.75f, true){
     @Override
     protected boolean removeEldestEntry(Map.Entry<String, Node> eldest) {
       return size() > CACHED_AST_SIZE;
@@ -143,7 +147,8 @@ public class SelectorParser {
           node.jjtAccept(visitor, data);
 
           if (1 != data.getStack().size()){
-            throw new IllegalArgumentException("Invalid proposition '" + arg + "'. Unexpected result stack : " + data.getStack());
+            throw new IllegalArgumentException("Invalid proposition '" + arg
+                                               + "'. Unexpected result stack : " + data.getStack());
           }
           else System.out.println("Result : " + data.getStack().peek());
       }

@@ -24,10 +24,6 @@ import javax.jms.JMSException;
 import org.apache.hedwig.jms.spi.HedwigConnectionFactoryImpl;
 import org.junit.Ignore;
 
-
-/**
- * 
- */
 // For now, ignore it ...
 @Ignore
 public class SimpleDurableTopicTest extends SimpleTopicTest {
@@ -41,10 +37,10 @@ public class SimpleDurableTopicTest extends SimpleTopicTest {
         playloadSize = 1024;
         super.setUp();
     }
-    
-    
+
     @Override
-    protected PerfProducer createProducer(ConnectionFactory fac, Destination dest, int number, byte payload[]) throws JMSException {
+    protected PerfProducer createProducer(ConnectionFactory fac, Destination dest,
+                                          int number, byte payload[]) throws JMSException {
         PerfProducer pp = new PerfProducer(fac, dest, payload);
         pp.setDeliveryMode(DeliveryMode.PERSISTENT);
         return pp;
@@ -56,7 +52,7 @@ public class SimpleDurableTopicTest extends SimpleTopicTest {
         result.setInitialDelay(this.initialConsumerDelay);
         return result;
     }
-    
+
     @Override
     protected HedwigConnectionFactoryImpl createConnectionFactory() throws Exception {
         HedwigConnectionFactoryImpl result = super.createConnectionFactory();

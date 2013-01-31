@@ -33,9 +33,6 @@ import org.apache.activemq.test.JmsSendReceiveTestSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class CompositePublishTest extends JmsSendReceiveTestSupport {
     private static final Logger LOG = LoggerFactory.getLogger(CompositePublishTest.class);
 
@@ -72,8 +69,10 @@ public class CompositePublishTest extends JmsSendReceiveTestSupport {
         consumerDestination = session.createTopic(getConsumerSubject());
         producerDestination = session.createTopic(getProducerSubject());
 
-        LOG.info("Created  consumer destination: " + consumerDestination + " of type: " + consumerDestination.getClass());
-        LOG.info("Created  producer destination: " + producerDestination + " of type: " + producerDestination.getClass());
+        LOG.info("Created  consumer destination: " + consumerDestination
+                 + " of type: " + consumerDestination.getClass());
+        LOG.info("Created  producer destination: " + producerDestination
+                 + " of type: " + producerDestination.getClass());
 
         Destination[] destinations = getDestinations();
         consumers = new MessageConsumer[destinations.length];
@@ -108,7 +107,8 @@ public class CompositePublishTest extends JmsSendReceiveTestSupport {
      * Returns the destinations to which we consume
      */
     protected Destination[] getDestinations() {
-        // return new Destination[] {SessionImpl.asTopic(getPrefix() + "FOO.BAR"), SessionImpl.asTopic(getPrefix() + "FOO.*"), SessionImpl.asTopic(getPrefix() + "FOO.X.Y")};
+        // return new Destination[] {SessionImpl.asTopic(getPrefix() + "FOO.BAR"),
+        // SessionImpl.asTopic(getPrefix() + "FOO.*"), SessionImpl.asTopic(getPrefix() + "FOO.X.Y")};
         return new Destination[] {SessionImpl.asTopic(getPrefix() + "FOO.BAR")};
     }
 

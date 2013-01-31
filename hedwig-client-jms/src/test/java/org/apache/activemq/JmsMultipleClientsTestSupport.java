@@ -49,13 +49,11 @@ import org.apache.activemq.util.MessageIdList;
 /**
  * Test case support used to test multiple message comsumers and message
  * producers connecting to a single broker.
- * 
- * 
  */
 public class JmsMultipleClientsTestSupport extends CombinationTestSupport {
 
-    protected Map<MessageConsumer, MessageIdList> consumers = new HashMap<MessageConsumer, MessageIdList>(); // Map of consumer with messages
-                                                // received
+    protected Map<MessageConsumer, MessageIdList> consumers
+        = new HashMap<MessageConsumer, MessageIdList>(); // Map of consumer with messages received
     protected int consumerCount = 1;
     protected int producerCount = 1;
 
@@ -77,7 +75,8 @@ public class JmsMultipleClientsTestSupport extends CombinationTestSupport {
         startProducers(createConnectionFactory(), dest, msgCount);
     }
 
-    protected void startProducers(final ConnectionFactory factory, final Destination dest, final int msgCount) throws Exception {
+    protected void startProducers(final ConnectionFactory factory,
+                                  final Destination dest, final int msgCount) throws Exception {
         // Use concurrent send
         if (useConcurrentSend) {
             producerLock = new AtomicInteger(producerCount);

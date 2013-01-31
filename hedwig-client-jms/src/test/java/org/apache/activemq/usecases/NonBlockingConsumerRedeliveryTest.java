@@ -92,7 +92,8 @@ public class NonBlockingConsumerRedeliveryTest extends JmsTestBase {
             }
         });
 
-        assertTrue("Pre-Rollback expects to receive: " + MSG_COUNT + " messages, got " + received.size() + ".",MSG_COUNT == received.size());
+        assertTrue("Pre-Rollback expects to receive: " + MSG_COUNT + " messages, got "
+                   + received.size() + ".",MSG_COUNT == received.size());
 
         beforeRollback.addAll(received);
         received.clear();
@@ -165,7 +166,8 @@ public class NonBlockingConsumerRedeliveryTest extends JmsTestBase {
                     return received.size() == MSG_COUNT * 2;
                 }
             });
-            assertTrue("Post-Rollback expects to receive: " + MSG_COUNT + " messages, received " + received.size() + " messages.", messagesReceived);
+            assertTrue("Post-Rollback expects to receive: " + MSG_COUNT + " messages, received "
+                       + received.size() + " messages.", messagesReceived);
         }
 
         afterRollback.addAll(received);
@@ -222,7 +224,8 @@ public class NonBlockingConsumerRedeliveryTest extends JmsTestBase {
             );
             // We do not have any notion of delaying rederlivery - so we immediately get the message (unlike activemq's
             // connection.getRedeliveryPolicy().setInitialRedeliveryDelay(TimeUnit.SECONDS.toMillis(6));
-            // assertFalse("Delayed redelivery test not expecting any messages yet. got " + received.size() + " messages", condition);
+            // assertFalse("Delayed redelivery test not expecting any messages yet. got "
+            // + received.size() + " messages", condition);
             assertTrue("Rollback expects to receive: " + MSG_COUNT + " messages.",
                 Wait.waitFor(new Wait.Condition(){
                     public boolean isSatisified() throws Exception {

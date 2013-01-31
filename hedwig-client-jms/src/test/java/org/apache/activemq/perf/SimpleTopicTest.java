@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 public class SimpleTopicTest extends JmsTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(SimpleTopicTest.class);
-    
+
     protected PerfProducer[] producers;
     protected PerfConsumer[] consumers;
     protected String destinationName = getClass().getName();
@@ -53,10 +53,10 @@ public class SimpleTopicTest extends JmsTestBase {
     protected int playloadSize = 12;
     protected byte[] array;
     protected ConnectionFactory factory;
-    
-     /**
+
+    /**
      * Sets up a test where the producer and consumer have their own connection.
-     * 
+     *
      * @see junit.framework.TestCase#setUp()
      */
     protected void setUp() throws Exception {
@@ -64,10 +64,10 @@ public class SimpleTopicTest extends JmsTestBase {
         factory = createConnectionFactory();
         Connection con = factory.createConnection();
         Session session = con.createSession(false, Session.AUTO_ACKNOWLEDGE);
-       
-        
-        LOG.info("Running " + numberofProducers + " producer(s) and " + numberOfConsumers + " consumer(s) per " + numberOfDestinations + " Destination(s)");
-       
+
+        LOG.info("Running " + numberofProducers + " producer(s) and " + numberOfConsumers
+                 + " consumer(s) per " + numberOfDestinations + " Destination(s)");
+
         totalNumberOfConsumers=numberOfConsumers*numberOfDestinations;
         totalNumberOfProducers=numberofProducers*numberOfDestinations;
         producers = new PerfProducer[totalNumberOfProducers];
@@ -108,14 +108,15 @@ public class SimpleTopicTest extends JmsTestBase {
         return s.createTopic(destinationName);
     }
 
-    protected PerfProducer createProducer(ConnectionFactory fac, Destination dest, int number, byte[] payload) throws JMSException {
+    protected PerfProducer createProducer(ConnectionFactory fac, Destination dest,
+                                          int number, byte[] payload) throws JMSException {
         return new PerfProducer(fac, dest, payload);
     }
 
     protected PerfConsumer createConsumer(ConnectionFactory fac, Destination dest, int number) throws JMSException {
         return new PerfConsumer(fac, dest);
     }
-    
+
     protected HedwigConnectionFactoryImpl createConnectionFactory() throws Exception {
         return new HedwigConnectionFactoryImpl();
     }
@@ -172,7 +173,8 @@ public class SimpleTopicTest extends JmsTestBase {
         }
         if (consumers != null && consumers.length > 0) {
             int avgRate = totalRate / consumers.length;
-            System.out.println("Avg consumer rate = " + avgRate + " msg/sec | Total rate = " + totalRate + ", received = " + totalCount);
+            System.out.println("Avg consumer rate = " + avgRate + " msg/sec | Total rate = "
+                               + totalRate + ", received = " + totalCount);
             System.out.println(consumerString);
         }
     }

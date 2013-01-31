@@ -18,10 +18,7 @@ package org.apache.activemq;
 
 import javax.jms.Topic;
 import org.apache.hedwig.jms.spi.HedwigConnectionFactoryImpl;
-/**
- * 
- * 
- */
+
 public class JmsTopicSendReceiveWithTwoConnectionsWithJMXTest extends
     JmsTopicSendReceiveWithTwoConnectionsTest {
 

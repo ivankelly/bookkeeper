@@ -54,7 +54,8 @@ public class JmsTestBase extends HedwigHubTestBase {
         init();
         super.setUp();
         // Now generate HEDWIG_CLIENT_CONFIG_FILE and set the right host/port to it.
-        this.generatedConfig = generateConfig(new HubClientConfiguration().getDefaultServerHedwigSocketAddress().getPort());
+        this.generatedConfig = generateConfig(new HubClientConfiguration()
+                                              .getDefaultServerHedwigSocketAddress().getPort());
         System.setProperty(org.apache.hedwig.jms.ConnectionImpl.HEDWIG_CLIENT_CONFIG_FILE, generatedConfig);
     }
 
@@ -72,7 +73,8 @@ public class JmsTestBase extends HedwigHubTestBase {
     protected String generateConfig(int serverPort) throws IOException {
         File configFile = File.createTempFile("jms_", ".conf");
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(configFile), "utf-8"));
-        writer.write("# The default Hedwig server host to contact\ndefault_server_host=" + HOST + ":" + serverPort + "\n");
+        writer.write("# The default Hedwig server host to contact\n"
+                     + "default_server_host=" + HOST + ":" + serverPort + "\n");
         writer.write("# Flag indicating if the server should also operate in SSL mode.\nssl_enabled=false\n");
         writer.flush();
         writer.close();

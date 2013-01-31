@@ -40,8 +40,6 @@ import javax.naming.NamingException;
 /**
  * A simple polymorphic JMS consumer which can work with Queues or Topics which
  * uses JNDI to lookup the JMS connection factory and destination
- * 
- * 
  */
 public final class SimpleConsumer {
 

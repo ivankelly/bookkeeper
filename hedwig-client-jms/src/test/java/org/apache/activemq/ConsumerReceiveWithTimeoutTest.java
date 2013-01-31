@@ -24,9 +24,6 @@ import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.Topic;
 
-/**
- * 
- */
 public class ConsumerReceiveWithTimeoutTest extends TestSupport {
 
     private Connection connection;
@@ -50,7 +47,7 @@ public class ConsumerReceiveWithTimeoutTest extends TestSupport {
     /**
      * Test to check if consumer thread wakes up inside a receive(timeout) after
      * a message is dispatched to the consumer
-     * 
+     *
      * @throws javax.jms.JMSException
      */
     public void testConsumerReceiveBeforeMessageDispatched() throws JMSException {

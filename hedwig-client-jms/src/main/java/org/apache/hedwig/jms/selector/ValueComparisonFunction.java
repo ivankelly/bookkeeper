@@ -116,12 +116,14 @@ public abstract class ValueComparisonFunction extends BinaryExprFunction {
 
         @Override
         protected Boolean compareWithString(String left, String right) throws SelectorEvaluationException {
-            throw new SelectorEvaluationException(getClass() + " Unsupported string comparison for greater_than operator");
+            throw new SelectorEvaluationException(getClass()
+                    + " Unsupported string comparison for greater_than operator");
         }
 
         @Override
         protected Boolean compareWithBoolean(Boolean left, Boolean right) throws SelectorEvaluationException {
-            throw new SelectorEvaluationException(getClass() + " Unsupported boolean comparison for greater_than operator");
+            throw new SelectorEvaluationException(getClass()
+                    + " Unsupported boolean comparison for greater_than operator");
         }
     };
 

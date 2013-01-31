@@ -62,7 +62,8 @@ Currently I am simulating noLocal, but this IS fragile and works for the duratio
     the topicName will be known to the user/client anyway.</li>
 
   <li>Explicit session recovery is not supported.<br/>
-Reconnection of hedwig session (either explicitly or implicitly by underlying client implementation) will automatically trigger redelivery of un-acknowledged messages.
+Reconnection of hedwig session (either explicitly or implicitly by underlying client implementation) will
+automatically trigger redelivery of un-acknowledged messages.
   </li>
 
   <li>Because of the above, setting the JMSRedelivered flag is almost impossible in a consistent way.<br/>

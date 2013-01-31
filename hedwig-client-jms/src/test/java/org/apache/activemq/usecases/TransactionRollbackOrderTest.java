@@ -42,9 +42,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Test case for AMQ-268
- * 
- * @author Paul Smith
- * 
  */
 public final class TransactionRollbackOrderTest extends JmsTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(TransactionRollbackOrderTest.class);
@@ -93,7 +90,8 @@ public final class TransactionRollbackOrderTest extends JmsTestBase {
                         msgRedelivered.add(receivedText);
                     }
 
-                    LOG.info("consumer received message: " + receivedText + (tm.getJMSRedelivered() ? " ** Redelivered **" : ""));
+                    LOG.info("consumer received message: " + receivedText
+                             + (tm.getJMSRedelivered() ? " ** Redelivered **" : ""));
                     if (msgCount == 3) {
                         msgRolledBack.add(receivedText);
                         consumerSession.rollback();

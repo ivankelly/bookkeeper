@@ -23,9 +23,8 @@ import org.apache.log4j.spi.ErrorHandler;
 import org.apache.log4j.spi.Filter;
 
 public abstract class DefaultTestAppender implements Appender {
-    
     String name = this.getClass().getSimpleName();
-    
+
     @Override
     public void addFilter(Filter newFilter) {
 

@@ -28,7 +28,7 @@ import javax.jms.JMSException;
 // For now, ignore it ...
 @Ignore
 public class SimpleDurableTopicNetworkTest extends SimpleNetworkTest {
-    
+
     protected void setUp() throws Exception {
         numberofProducers=1;
         numberOfConsumers=1;
@@ -36,9 +36,9 @@ public class SimpleDurableTopicNetworkTest extends SimpleNetworkTest {
         playloadSize = 1024;
         super.setUp();
     }
-    
-    
-    protected PerfProducer createProducer(ConnectionFactory fac, Destination dest, int number, byte payload[]) throws JMSException {
+
+    protected PerfProducer createProducer(ConnectionFactory fac, Destination dest,
+                                          int number, byte payload[]) throws JMSException {
         PerfProducer pp = new PerfProducer(fac, dest, payload);
         pp.setDeliveryMode(DeliveryMode.PERSISTENT);
         return pp;

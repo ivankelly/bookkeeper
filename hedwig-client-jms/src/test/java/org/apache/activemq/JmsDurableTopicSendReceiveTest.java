@@ -29,9 +29,6 @@ import org.apache.activemq.test.JmsTopicSendReceiveTest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class JmsDurableTopicSendReceiveTest extends JmsTopicSendReceiveTest {
     private static final Logger LOG = LoggerFactory.getLogger(JmsDurableTopicSendReceiveTest.class);
 
@@ -45,7 +42,7 @@ public class JmsDurableTopicSendReceiveTest extends JmsTopicSendReceiveTest {
 
     /**
      * Set up a durable suscriber test.
-     * 
+     *
      * @see junit.framework.TestCase#setUp()
      */
     protected void setUp() throws Exception {
@@ -55,7 +52,7 @@ public class JmsDurableTopicSendReceiveTest extends JmsTopicSendReceiveTest {
 
     /**
      * Test if all the messages sent are being received.
-     * 
+     *
      * @throws Exception
      */
     public void testSendWhileClosed() throws Exception {

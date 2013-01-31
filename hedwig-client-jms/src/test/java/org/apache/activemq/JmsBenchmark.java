@@ -53,15 +53,14 @@ import org.slf4j.LoggerFactory;
  * same destination. Make sure you run with jvm option -server (makes a big
  * difference). The tests simulate storing 1000 1k jms messages to see the rate
  * of processing msg/sec.
- * 
- * 
  */
 public class JmsBenchmark extends JmsTestSupport {
     private static final transient Logger LOG = LoggerFactory.getLogger(JmsBenchmark.class);
 
     private static final long SAMPLE_DELAY = Integer.parseInt(System.getProperty("SAMPLE_DELAY", "" + 1000 * 5));
     private static final long SAMPLES = Integer.parseInt(System.getProperty("SAMPLES", "10"));
-    private static final long SAMPLE_DURATION = Integer.parseInt(System.getProperty("SAMPLES_DURATION", "" + 1000 * 60));
+    private static final long SAMPLE_DURATION = Integer.parseInt(System.getProperty("SAMPLES_DURATION",
+                                                                                    "" + 1000 * 60));
     private static final int PRODUCER_COUNT = Integer.parseInt(System.getProperty("PRODUCER_COUNT", "10"));
     private static final int CONSUMER_COUNT = Integer.parseInt(System.getProperty("CONSUMER_COUNT", "10"));
 
@@ -170,7 +169,8 @@ public class JmsBenchmark extends JmsTestSupport {
 
         LOG.info(getName() + ": Waiting for Producers and Consumers to startup.");
         connectionsEstablished.acquire();
-        LOG.info("Producers and Consumers are now running.  Waiting for system to reach steady state: " + (SAMPLE_DELAY / 1000.0f) + " seconds");
+        LOG.info("Producers and Consumers are now running.  Waiting for system to reach steady state: "
+                 + (SAMPLE_DELAY / 1000.0f) + " seconds");
         Thread.sleep(1000 * 10);
 
         LOG.info("Starting sample: " + SAMPLES + " each lasting " + (SAMPLE_DURATION / 1000.0f) + " seconds");
@@ -187,7 +187,8 @@ public class JmsBenchmark extends JmsTestSupport {
             int r = receivedMessages.get();
             int p = producedMessages.get();
 
-            LOG.info("published: " + p + " msgs at " + (p * 1000f / (end - start)) + " msgs/sec, " + "consumed: " + r + " msgs at " + (r * 1000f / (end - start)) + " msgs/sec");
+            LOG.info("published: " + p + " msgs at " + (p * 1000f / (end - start)) + " msgs/sec, "
+                     + "consumed: " + r + " msgs at " + (r * 1000f / (end - start)) + " msgs/sec");
         }
 
         LOG.info("Sample done.");

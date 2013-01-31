@@ -27,9 +27,6 @@ import org.apache.hedwig.jms.message.MessageUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class PublishOnTopicConsumedMessageTest extends JmsTopicSendReceiveWithTwoConnectionsTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(PublishOnTopicConsumedMessageTest.class);

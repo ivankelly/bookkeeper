@@ -56,8 +56,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Test cases used to test the JMS message consumer.
- * 
- * 
  */
 public class JMSConsumerTest extends JmsTestSupport {
 
@@ -79,8 +77,10 @@ public class JMSConsumerTest extends JmsTestSupport {
     }
 
     public void initCombosForTestMessageListenerWithConsumerCanBeStopped() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
-        addCombinationValues("destinationType", new MessagingSessionFacade.DestinationType[] {MessagingSessionFacade.DestinationType.TOPIC});
+        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT),
+                                                           Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("destinationType", new MessagingSessionFacade.DestinationType[] {
+                MessagingSessionFacade.DestinationType.TOPIC});
     }
 
     public void testMessageListenerWithConsumerCanBeStopped() throws Exception {
@@ -130,7 +130,7 @@ public class JMSConsumerTest extends JmsTestSupport {
 
         final AtomicInteger counter = new AtomicInteger(0);
         final CountDownLatch closeDone = new CountDownLatch(1);
-        
+
         connection.start();
         Session session = connection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
         destination = createDestination(session, MessagingSessionFacade.DestinationType.TOPIC);
@@ -176,7 +176,8 @@ public class JMSConsumerTest extends JmsTestSupport {
         final ExecutorService executor = Executors.newCachedThreadPool();
         consumer.setMessageListener(new MessageListener() {
             public void onMessage(Message m) {
-                // close can be in a different thread, but NOT acknowledge iirc - this will not cause a problem for us though ...
+                // close can be in a different thread, but NOT acknowledge iirc
+                // - this will not cause a problem for us though ...
                 // ack and close eventually in separate thread
                 int val = listenerReceivedCount.incrementAndGet();
                 // System.out.println("message count : " + val + ", message : " + m);
@@ -188,7 +189,9 @@ public class JMSConsumerTest extends JmsTestSupport {
         // preload the queue
         sendMessages(session, destination, 600);
 
-        assert closeDone.await(10, TimeUnit.SECONDS) : "closeDone : " + closeDone.getCount() + ", counter : " + counter.get() + ", listenerReceivedCount : " + listenerReceivedCount.get();
+        assert closeDone.await(10, TimeUnit.SECONDS) :
+        "closeDone : " + closeDone.getCount() + ", counter : " + counter.get()
+            + ", listenerReceivedCount : " + listenerReceivedCount.get();
         // await possible exceptions
         Thread.sleep(1000);
         assertTrue("no exceptions: " + exceptions, exceptions.isEmpty());
@@ -196,9 +199,11 @@ public class JMSConsumerTest extends JmsTestSupport {
 
 
     public void initCombosForTestMutiReceiveWithPrefetch1() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
-        addCombinationValues("ackMode", new Object[] {Integer.valueOf(Session.AUTO_ACKNOWLEDGE), Integer.valueOf(Session.DUPS_OK_ACKNOWLEDGE),
-                                                      Integer.valueOf(Session.CLIENT_ACKNOWLEDGE)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("ackMode", new Object[] {
+                Integer.valueOf(Session.AUTO_ACKNOWLEDGE), Integer.valueOf(Session.DUPS_OK_ACKNOWLEDGE),
+                Integer.valueOf(Session.CLIENT_ACKNOWLEDGE)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
@@ -227,7 +232,8 @@ public class JMSConsumerTest extends JmsTestSupport {
     }
 
     public void initCombosForTestDurableConsumerSelectorChange() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
@@ -271,7 +277,8 @@ public class JMSConsumerTest extends JmsTestSupport {
     }
 
     public void initCombosForTestSendReceiveBytesMessage() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
@@ -299,7 +306,8 @@ public class JMSConsumerTest extends JmsTestSupport {
     }
 
     public void initCombosForTestSetMessageListenerAfterStart() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
@@ -367,14 +375,14 @@ public class JMSConsumerTest extends JmsTestSupport {
         assertEquals(4, counter.get());
     }
 
-    public void initCombosForTestMessageListenerOnMessageCloseUnackedWithPrefetch1StayInQueue() { 
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+    public void initCombosForTestMessageListenerOnMessageCloseUnackedWithPrefetch1StayInQueue() {
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
         addCombinationValues("ackMode", new Object[] {Integer.valueOf(Session.CLIENT_ACKNOWLEDGE)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
     public void testMessageListenerOnMessageCloseUnackedWithPrefetch1StayInQueue() throws Exception {
-    
         final AtomicInteger counter = new AtomicInteger(0);
         final CountDownLatch sendDone = new CountDownLatch(1);
         final CountDownLatch got2Done = new CountDownLatch(1);
@@ -417,7 +425,8 @@ public class JMSConsumerTest extends JmsTestSupport {
         sendDone.countDown();
 
         // Wait for first 2 messages to arrive.
-        assert got2Done.await(5, TimeUnit.SECONDS) : "counter1 : " + counter.get() + ", got2Done : " + got2Done.getCount() + ", sendDone : " + sendDone.getCount();
+        assert got2Done.await(5, TimeUnit.SECONDS) :
+        "counter1 : " + counter.get() + ", got2Done : " + got2Done.getCount() + ", sendDone : " + sendDone.getCount();
 
         // Re-start connection.
         connection.close();
@@ -449,7 +458,8 @@ public class JMSConsumerTest extends JmsTestSupport {
 
         connection.start();
 
-        assert done2.await(2000, TimeUnit.MILLISECONDS) : "count2 : " + done2.getCount() + ", counter : " + counter.get();
+        assert done2.await(2000, TimeUnit.MILLISECONDS) :
+        "count2 : " + done2.getCount() + ", counter : " + counter.get();
         Thread.sleep(200);
 
         // assert msg 2 was redelivered as close() from onMessages() will only ack in auto_ack and dups_ok mode
@@ -457,13 +467,14 @@ public class JMSConsumerTest extends JmsTestSupport {
     }
 
     public void initCombosForTestMessageListenerAutoAckOnCloseWithPrefetch1() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
-        addCombinationValues("ackMode", new Object[] {Integer.valueOf(Session.AUTO_ACKNOWLEDGE), Integer.valueOf(Session.CLIENT_ACKNOWLEDGE)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("ackMode", new Object[] {
+                Integer.valueOf(Session.AUTO_ACKNOWLEDGE), Integer.valueOf(Session.CLIENT_ACKNOWLEDGE)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
     public void testMessageListenerAutoAckOnCloseWithPrefetch1() throws Exception {
-    
         final AtomicInteger counter = new AtomicInteger(0);
         final CountDownLatch sendDone = new CountDownLatch(1);
         final CountDownLatch got2Done = new CountDownLatch(1);
@@ -507,7 +518,8 @@ public class JMSConsumerTest extends JmsTestSupport {
         sendDone.countDown();
 
         // Wait for first 2 messages to arrive.
-        assert got2Done.await(5, TimeUnit.SECONDS) : "counter : " + counter.get() + ", got2Done : " + got2Done.getCount() + ", sendDone : " + sendDone.getCount();
+        assert got2Done.await(5, TimeUnit.SECONDS) :
+        "counter : " + counter.get() + ", got2Done : " + got2Done.getCount() + ", sendDone : " + sendDone.getCount();
 
         // Re-start connection.
         connection.close();
@@ -543,11 +555,14 @@ public class JMSConsumerTest extends JmsTestSupport {
 
         // close from onMessage with Auto_ack will ack
         // Make sure only 4 messages were delivered.
-        assert 4 == counter.get() : "counter : " + counter.get() + ", got2Done : " + got2Done.getCount() + ", sendDone : " + sendDone.getCount() + ", messages : " + receivedMessages;
+        assert 4 == counter.get() :
+        "counter : " + counter.get() + ", got2Done : " + got2Done.getCount() + ", sendDone : "
+            + sendDone.getCount() + ", messages : " + receivedMessages;
     }
 
     public void initCombosForTestMessageListenerWithConsumerWithPrefetch1() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
@@ -582,7 +597,8 @@ public class JMSConsumerTest extends JmsTestSupport {
     }
 
     public void initCombosForTestMessageListenerWithConsumer() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
@@ -616,9 +632,11 @@ public class JMSConsumerTest extends JmsTestSupport {
     }
 
     public void initCombosForTestUnackedWithPrefetch1StayInQueue() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
-        addCombinationValues("ackMode", new Object[] {Integer.valueOf(Session.AUTO_ACKNOWLEDGE), Integer.valueOf(Session.DUPS_OK_ACKNOWLEDGE),
-                                                      Integer.valueOf(Session.CLIENT_ACKNOWLEDGE)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("ackMode", new Object[] {
+                Integer.valueOf(Session.AUTO_ACKNOWLEDGE), Integer.valueOf(Session.DUPS_OK_ACKNOWLEDGE),
+                Integer.valueOf(Session.CLIENT_ACKNOWLEDGE)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
@@ -642,7 +660,8 @@ public class JMSConsumerTest extends JmsTestSupport {
             message = consumer.receive(1000);
             assertNotNull(message);
             assert (message instanceof TextMessage);
-            assert (((TextMessage) message).getText().equals(messageTextPrefix  + i)) : "Received message " + ((TextMessage) message).getText() + " .. i = " + i;
+            assert (((TextMessage) message).getText().equals(messageTextPrefix  + i))
+                : "Received message " + ((TextMessage) message).getText() + " .. i = " + i;
         }
         assert null != message;
         message.acknowledge();
@@ -661,7 +680,8 @@ public class JMSConsumerTest extends JmsTestSupport {
             message = consumer.receive(1000);
             assertNotNull(message);
             assert (message instanceof TextMessage);
-            assert (((TextMessage) message).getText().equals(messageTextPrefix  + (i + 2))) : "Received message " + ((TextMessage) message).getText() + " .. i = " + i;
+            assert (((TextMessage) message).getText().equals(messageTextPrefix  + (i + 2))) :
+            "Received message " + ((TextMessage) message).getText() + " .. i = " + i;
         }
         message.acknowledge();
         // assertNull(consumer.receiveNoWait());
@@ -673,7 +693,8 @@ public class JMSConsumerTest extends JmsTestSupport {
     }
 
     public void initCombosForTestPrefetch1MessageNotDispatched() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
     }
 
     public void testPrefetch1MessageNotDispatched() throws Exception {
@@ -757,7 +778,8 @@ public class JMSConsumerTest extends JmsTestSupport {
     }
 
     public void initCombosForTestReceiveMessageWithConsumer() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
@@ -797,10 +819,10 @@ public class JMSConsumerTest extends JmsTestSupport {
             assertNotNull(m);
         }
         assertNull(consumer.receive(1000));
-        
+
         // Close out the consumer.. no other messages should be left on the queue.
         consumer.close();
-        
+
         consumer = session.createDurableSubscriber((Topic) destination, "subscriber-id4");
         assertNull(consumer.receive(1000));
     }
@@ -813,17 +835,18 @@ public class JMSConsumerTest extends JmsTestSupport {
         MessageConsumer consumer = session.createDurableSubscriber((Topic) destination, "subscriber-id2");
 
         sendMessages(connection, destination, 2);
-        
+
         assertNotNull(consumer.receive(1000));
         assertNotNull(consumer.receive(1000));
-        
+
         // install another consumer while message dispatch is unacked/uncommitted
 
         // no commit so will auto rollback and get re-dispatched to redisptachConsumer
         session.close();
-                
+
         Session redispatchSession = connection.createSession(true, Session.SESSION_TRANSACTED);
-        MessageConsumer redispatchConsumer = redispatchSession.createDurableSubscriber((Topic) destination, "subscriber-id2");
+        MessageConsumer redispatchConsumer
+            = redispatchSession.createDurableSubscriber((Topic) destination, "subscriber-id2");
 
         Message msg = redispatchConsumer.receive(1000);
         assertNotNull(msg);
@@ -833,7 +856,7 @@ public class JMSConsumerTest extends JmsTestSupport {
         assertNotNull(msg);
         // assertTrue(msg.getJMSRedelivered());
         redispatchSession.commit();
-        
+
         assertNull(redispatchConsumer.receive(500));
         redispatchSession.close();
     }
@@ -847,17 +870,18 @@ public class JMSConsumerTest extends JmsTestSupport {
         MessageConsumer consumer = session.createDurableSubscriber((Topic) destination, "subscriber-id1");
 
         sendMessages(connection, destination, 2);
-        
+
         assertNotNull(consumer.receive(1000));
         assertNotNull(consumer.receive(1000));
-        
+
         // install another consumer while message dispatch is unacked/uncommitted
 
         session.rollback();
         session.close();
-                
+
         Session redispatchSession = connection.createSession(true, Session.SESSION_TRANSACTED);
-        MessageConsumer redispatchConsumer = redispatchSession.createDurableSubscriber((Topic) destination, "subscriber-id1");
+        MessageConsumer redispatchConsumer
+            = redispatchSession.createDurableSubscriber((Topic) destination, "subscriber-id1");
 
         Message msg = redispatchConsumer.receive(1000);
         assertNotNull(msg);
@@ -866,30 +890,28 @@ public class JMSConsumerTest extends JmsTestSupport {
         assertNotNull(msg);
         // assertTrue(msg.getJMSRedelivered());
         redispatchSession.commit();
-        
+
         assertNull(redispatchConsumer.receive(500));
         redispatchSession.close();
     }
 
-    
     public void initCombosForTestAckOfExpired() {
-        addCombinationValues("destinationType", 
+        addCombinationValues("destinationType",
                 new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
     public void testAckOfExpired() throws Exception {
-        
         HedwigConnectionFactoryImpl fact = new HedwigConnectionFactoryImpl();
         connection = fact.createConnection();
-        
+
         connection.start();
-        Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);  
+        Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
         destination = (Destination) (destinationType == MessagingSessionFacade.DestinationType.QUEUE ?
                 session.createTopic("test") : session.createTopic("test"));
-                    
+
         MessageConsumer consumer = session.createConsumer(destination);
 
-        Session sendSession = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);  
+        Session sendSession = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             MessageProducer producer = sendSession.createProducer(destination);
         final int count = 4;
 
@@ -899,14 +921,14 @@ public class JMSConsumerTest extends JmsTestSupport {
             TextMessage message = sendSession.createTextMessage("no expiry" + i);
             producer.send(message);
         }
-        
+
         MessageConsumer amqConsumer = (MessageConsumer) consumer;
 
         for(int i=0; i<count; i++) {
             TextMessage msg = (TextMessage) amqConsumer.receive();
             assertNotNull(msg);
             assertTrue("message has \"no expiry\" text: " + msg.getText(), msg.getText().contains("no expiry"));
-            
+
             // force an ack when there are expired messages
             msg.acknowledge();
         }

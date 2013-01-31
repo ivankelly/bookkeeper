@@ -205,14 +205,16 @@ public class SelectorTest {
 
         assertSelector(
                 message,
-                "modelClassId LIKE 'com.whatever.something.%' AND modelInstanceId = '170' AND (modelRequestError IS NULL OR modelCorrelatedClientId = 'whatever')",
+                "modelClassId LIKE 'com.whatever.something.%' AND modelInstanceId = '170'"
+                + " AND (modelRequestError IS NULL OR modelCorrelatedClientId = 'whatever')",
                 true);
 
         message.setStringProperty("modelCorrelatedClientId", "shouldFailNow");
 
         assertSelector(
                 message,
-                "modelClassId LIKE 'com.whatever.something.%' AND modelInstanceId = '170' AND (modelRequestError IS NULL OR modelCorrelatedClientId = 'whatever')",
+                "modelClassId LIKE 'com.whatever.something.%' AND modelInstanceId = '170'"
+                +" AND (modelRequestError IS NULL OR modelCorrelatedClientId = 'whatever')",
                 false);
 
         message = createMessage();
@@ -222,7 +224,8 @@ public class SelectorTest {
 
         assertSelector(
                 message,
-                "modelClassId LIKE 'com.whatever.something.%' AND modelInstanceId = '170' AND (modelRequestError IS NULL OR modelCorrelatedClientId = 'whatever')",
+                "modelClassId LIKE 'com.whatever.something.%' AND modelInstanceId = '170'"
+                +" AND (modelRequestError IS NULL OR modelCorrelatedClientId = 'whatever')",
                 true);
     }
 
@@ -365,12 +368,14 @@ public class SelectorTest {
     protected void assertInvalidSelector(MessageImpl message, String text) {
         try {
             // either throw exception, or return null on evaluation.
-            assert null == SelectorParser.evaluateSelector(SelectorParser.parseMessageSelector(text), message) : "Created a valid selector";
+            assert null == SelectorParser.evaluateSelector(SelectorParser.parseMessageSelector(text),
+                                                           message) : "Created a valid selector";
         } catch (ParseException e) {
         }
     }
 
-    protected void assertSelector(MessageImpl message, String text, Boolean expected) throws JMSException, ParseException {
+    protected void assertSelector(MessageImpl message, String text, Boolean expected)
+            throws JMSException, ParseException {
         Node ast = SelectorParser.parseMessageSelector(text);
 
         assert null != ast : "Created a valid selector";

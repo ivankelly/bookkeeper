@@ -44,8 +44,6 @@ import javax.jms.Destination;
 
 /**
  * Test cases used to test the JMS message consumer.
- * 
- * 
  */
 public class JmsTestSupport extends CombinationTestSupport {
 
@@ -64,7 +62,8 @@ public class JmsTestSupport extends CombinationTestSupport {
     // Test support methods.
     //
     // /////////////////////////////////////////////////////////////////
-    protected Destination createDestination(Session session, MessagingSessionFacade.DestinationType type) throws JMSException {
+    protected Destination createDestination(Session session,
+            MessagingSessionFacade.DestinationType type) throws JMSException {
         String testMethod = getName();
         if( testMethod.indexOf(" ")>0 ) {
             testMethod = testMethod.substring(0, testMethod.indexOf(" "));

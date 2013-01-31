@@ -46,8 +46,6 @@ import javax.jms.Destination;
 
 /**
  * Test cases used to test the JMS message consumer.
- * 
- * 
  */
 public class JMSMessageTest extends JmsTestSupport {
 

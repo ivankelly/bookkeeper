@@ -36,18 +36,17 @@ public class SimpleNetworkTest extends SimpleTopicTest {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleNetworkTest.class);
     protected HedwigConnectionFactoryImpl consumerFactory;
     protected HedwigConnectionFactoryImpl producerFactory;
-    
-    
+
     protected void setUp() throws Exception {
         super.setUp();
         consumerFactory = createConnectionFactory();
         producerFactory = createConnectionFactory();
         Connection con = consumerFactory.createConnection();
         Session session = con.createSession(false, Session.AUTO_ACKNOWLEDGE);
-        
+
         producers = new PerfProducer[numberofProducers*numberOfDestinations];
         consumers = new PerfConsumer[numberOfConsumers*numberOfDestinations];
-        
+
         for (int k =0; k < numberOfDestinations;k++) {
             Destination destination = createDestination(session, destinationName+":"+k);
             LOG.info("Testing against destination: " + destination);
@@ -62,7 +61,6 @@ public class SimpleNetworkTest extends SimpleTopicTest {
                 }
                 producers[i] = createProducer(producerFactory, destination, i, array);
                 producers[i].start();
-               
             }
         }
         con.close();

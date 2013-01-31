@@ -30,9 +30,6 @@ import javax.jms.Topic;
 
 import org.apache.hedwig.jms.spi.HedwigConnectionFactoryImpl;
 
-/**
- * 
- */
 public class JmsResourceProvider {
 
     private boolean transacted;
@@ -44,7 +41,7 @@ public class JmsResourceProvider {
 
     /**
      * Creates a connection factory.
-     * 
+     *
      * @see org.apache.activemq.test.JmsResourceProvider#createConnectionFactory()
      */
     public ConnectionFactory createConnectionFactory() throws Exception {
@@ -53,7 +50,7 @@ public class JmsResourceProvider {
 
     /**
      * Creates a connection.
-     * 
+     *
      * @see org.apache.activemq.test.JmsResourceProvider#createConnection(javax.jms.ConnectionFactory)
      */
     public Connection createConnection(ConnectionFactory cf) throws JMSException {
@@ -84,17 +81,18 @@ public class JmsResourceProvider {
 
     /**
      * Creates a connection for a consumer.
-     * 
+     *
      * @param ssp - ServerSessionPool
      * @return ConnectionConsumer
      */
-    public ConnectionConsumer createConnectionConsumer(Connection connection, Destination destination, ServerSessionPool ssp) throws JMSException {
+    public ConnectionConsumer createConnectionConsumer(Connection connection,
+            Destination destination, ServerSessionPool ssp) throws JMSException {
         return connection.createConnectionConsumer(destination, null, ssp, 1);
     }
 
     /**
      * Creates a producer.
-     * 
+     *
      * @see org.apache.activemq.test.JmsResourceProvider#createProducer(javax.jms.Session,
      *      javax.jms.Destination)
      */
@@ -106,7 +104,7 @@ public class JmsResourceProvider {
 
     /**
      * Creates a destination, which can either a topic or a queue.
-     * 
+     *
      * @see org.apache.activemq.test.JmsResourceProvider#createDestination(javax.jms.Session,
      *      java.lang.String)
      */
@@ -120,7 +118,7 @@ public class JmsResourceProvider {
 
     /**
      * Returns true if the subscriber is durable.
-     * 
+     *
      * @return isDurableSubscriber
      */
     public boolean isDurableSubscriber() {
@@ -129,7 +127,7 @@ public class JmsResourceProvider {
 
     /**
      * Returns the acknowledgement mode.
-     * 
+     *
      * @return Returns the ackMode.
      */
     public int getAckMode() {
@@ -138,7 +136,7 @@ public class JmsResourceProvider {
 
     /**
      * Sets the acnknowledgement mode.
-     * 
+     *
      * @param ackMode The ackMode to set.
      */
     public void setAckMode(int ackMode) {
@@ -148,7 +146,7 @@ public class JmsResourceProvider {
     /**
      * Returns true if the destination is a topic, false if the destination is a
      * queue.
-     * 
+     *
      * @return Returns the isTopic.
      */
     public boolean isTopic() {
@@ -164,7 +162,7 @@ public class JmsResourceProvider {
 
     /**
      * Return true if the session is transacted.
-     * 
+     *
      * @return Returns the transacted.
      */
     public boolean isTransacted() {
@@ -173,7 +171,7 @@ public class JmsResourceProvider {
 
     /**
      * Sets the session to be transacted.
-     * 
+     *
      * @param transacted
      */
     public void setTransacted(boolean transacted) {
@@ -185,7 +183,7 @@ public class JmsResourceProvider {
 
     /**
      * Returns the delivery mode.
-     * 
+     *
      * @return deliveryMode
      */
     public int getDeliveryMode() {
@@ -194,7 +192,7 @@ public class JmsResourceProvider {
 
     /**
      * Sets the delivery mode.
-     * 
+     *
      * @param deliveryMode
      */
     public void setDeliveryMode(int deliveryMode) {
@@ -203,7 +201,7 @@ public class JmsResourceProvider {
 
     /**
      * Returns the client id.
-     * 
+     *
      * @return clientID
      */
     public String getClientID() {
@@ -212,7 +210,7 @@ public class JmsResourceProvider {
 
     /**
      * Sets the client id.
-     * 
+     *
      * @param clientID
      */
     public void setClientID(String clientID) {
@@ -221,7 +219,7 @@ public class JmsResourceProvider {
 
     /**
      * Returns the durable name of the provider.
-     * 
+     *
      * @return durableName
      */
     public String getDurableName() {
@@ -230,7 +228,7 @@ public class JmsResourceProvider {
 
     /**
      * Sets the durable name of the provider.
-     * 
+     *
      * @param durableName
      */
     public void setDurableName(String durableName) {

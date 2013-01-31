@@ -26,9 +26,6 @@ import org.apache.hedwig.jms.SessionImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class CompositeConsumeTest extends JmsTopicSendReceiveWithTwoConnectionsTest {
     private static final Logger LOG = LoggerFactory.getLogger(CompositeConsumeTest.class);
 

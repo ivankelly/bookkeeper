@@ -344,7 +344,8 @@ public abstract class ConnectionImpl implements Connection, TopicConnection, Que
             if (connectionState.isClosed()) return ;
             if (! connectionState.isStopped()) {
                 if (connectionState.isTransitionState()){
-                    connectionState.waitForTransientStateChange(StateManager.WAIT_TIME_FOR_TRANSIENT_STATE_CHANGE, logger);
+                    connectionState.waitForTransientStateChange(
+                            StateManager.WAIT_TIME_FOR_TRANSIENT_STATE_CHANGE, logger);
                     // Not expected actually, present to guard against future changes ...
                     if (connectionState.isTransitionState())
                       throw new JMSException("Connection did not make state change to steady state ?");

@@ -37,15 +37,12 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Useful base class for unit test cases
- * 
- * 
  */
 // Does not contain any testcases.
 @Ignore
 public class TestSupport extends JmsTestBase {
-    
     private static final Logger LOG = LoggerFactory.getLogger(TestSupport.class);
-    
+
     protected HedwigConnectionFactoryImpl connectionFactory;
     protected boolean topic = true;
 
@@ -78,7 +75,8 @@ public class TestSupport extends JmsTestBase {
      * @param firstSet
      * @param secondSet
      */
-    protected void assertTextMessagesEqual(String messsage, Message[] firstSet, Message[] secondSet) throws JMSException {
+    protected void assertTextMessagesEqual(String messsage, Message[] firstSet,
+                                           Message[] secondSet) throws JMSException {
         assertEquals("Message count does not match: " + messsage, firstSet.length, secondSet.length);
         for (int i = 0; i < secondSet.length; i++) {
             TextMessage m1 = (TextMessage)firstSet[i];

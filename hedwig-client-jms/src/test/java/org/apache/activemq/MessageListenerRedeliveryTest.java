@@ -130,13 +130,11 @@ public class MessageListenerRedeliveryTest extends JmsTestBase {
 
     public void testTopicSessionListenerExceptionRetry() throws  Exception {
         connection.start();
-            
+
         Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
         Topic queue = session.createTopic("queue-" + getName());
         Message message = createTextMessage(session, "1");
         MessageConsumer consumer = session.createConsumer(queue);
-
-        
 
         final int maxDeliveries = 2;
         final CountDownLatch gotMessage = new CountDownLatch(2);
@@ -166,7 +164,7 @@ public class MessageListenerRedeliveryTest extends JmsTestBase {
         producer.send(message);
 
         assertTrue("got message before retry expiry", gotMessage.await(20, TimeUnit.SECONDS));
-        
+
         for (int i=0; i<maxDeliveries; i++) {
             assertEquals("got first redelivered: " + i, "1", received.get(i));
         }
@@ -175,7 +173,6 @@ public class MessageListenerRedeliveryTest extends JmsTestBase {
         }
         session.close();
     }
-        
 
     private TextMessage createTextMessage(Session session, String text) throws JMSException {
         return session.createTextMessage(text);

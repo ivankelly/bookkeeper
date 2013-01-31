@@ -36,9 +36,6 @@ import javax.jms.TextMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class JmsSendReceiveTestSupport extends TestSupport implements MessageListener {
     private static final Logger LOG = LoggerFactory.getLogger(JmsSendReceiveTestSupport.class);
 
@@ -80,7 +77,7 @@ public class JmsSendReceiveTestSupport extends TestSupport implements MessageLis
 
     /**
      * Sends and consumes the messages.
-     * 
+     *
      * @throws Exception
      */
     public void testSendReceive() throws Exception {
@@ -113,12 +110,12 @@ public class JmsSendReceiveTestSupport extends TestSupport implements MessageLis
      */
     protected void sendToProducer(MessageProducer producer,
             Destination producerDestination, Message message) throws JMSException {
-        producer.send(producerDestination, message);   
+        producer.send(producerDestination, message);
     }
 
     /**
      * Asserts messages are received.
-     * 
+     *
      * @throws JMSException
      */
     protected void assertMessagesAreReceived() throws JMSException {
@@ -128,7 +125,7 @@ public class JmsSendReceiveTestSupport extends TestSupport implements MessageLis
 
     /**
      * Tests if the messages received are valid.
-     * 
+     *
      * @param receivedMessages - list of received messages.
      * @throws JMSException
      */
@@ -188,7 +185,7 @@ public class JmsSendReceiveTestSupport extends TestSupport implements MessageLis
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see javax.jms.MessageListener#onMessage(javax.jms.Message)
      */
     public synchronized void onMessage(Message message) {
@@ -197,7 +194,7 @@ public class JmsSendReceiveTestSupport extends TestSupport implements MessageLis
 
     /**
      * Consumes messages.
-     * 
+     *
      * @param message - message to be consumed.
      * @param messageList -list of consumed messages.
      */
@@ -219,7 +216,7 @@ public class JmsSendReceiveTestSupport extends TestSupport implements MessageLis
 
     /**
      * Returns the ArrayList as a synchronized list.
-     * 
+     *
      * @return List
      */
     protected List<Message> createConcurrentList() {
@@ -228,7 +225,7 @@ public class JmsSendReceiveTestSupport extends TestSupport implements MessageLis
 
     /**
      * Just a hook so can insert failure tests
-     * 
+     *
      * @throws Exception
      */
     protected void messageSent() throws Exception {

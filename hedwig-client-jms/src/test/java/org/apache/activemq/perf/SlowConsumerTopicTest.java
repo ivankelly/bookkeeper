@@ -26,28 +26,23 @@ import org.apache.hedwig.jms.spi.HedwigConnectionFactoryImpl;
 import org.junit.Ignore;
 
 
-/**
- * 
- */
 // For now, ignore it ...
 @Ignore
 public class SlowConsumerTopicTest extends SimpleTopicTest {
 
     protected PerfConsumer[] slowConsumers;
-    
     protected void setUp() throws Exception {
-        
         playloadSize = 10 * 1024;
         super.setUp();
     }
-   
 
     protected PerfConsumer createConsumer(ConnectionFactory fac, Destination dest, int number) throws JMSException {
         PerfConsumer result = new SlowConsumer(fac, dest);
         return result;
     }
 
-    protected PerfProducer createProducer(ConnectionFactory fac, Destination dest, int number, byte[] payload) throws JMSException {
+    protected PerfProducer createProducer(ConnectionFactory fac, Destination dest,
+                                          int number, byte[] payload) throws JMSException {
         PerfProducer result = super.createProducer(fac, dest, number, payload);
         result.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
         result.setSleep(10);

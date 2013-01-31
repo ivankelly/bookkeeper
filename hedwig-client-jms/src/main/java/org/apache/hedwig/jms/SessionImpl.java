@@ -104,7 +104,8 @@ public class SessionImpl implements Session {
     // messageList is a leaf in call graph - so it must not cause MT interactions with other locks
     // acquired prior to it.
     private final List<ReceivedMessage> messageList = new LinkedList<ReceivedMessage>();
-    private final List<TransactedReceiveOperation> rolledbackMessageList = new LinkedList<TransactedReceiveOperation>();
+    private final List<TransactedReceiveOperation> rolledbackMessageList
+        = new LinkedList<TransactedReceiveOperation>();
 
     private StateManager sessionState = new StateManager(StateManager.State.STOPPED, lockObject);
 
@@ -1840,7 +1841,8 @@ public class SessionImpl implements Session {
         private final ConcurrentHashMap<QueueSubscription, Node> queueSubscriptionToSelectorMap =
             new ConcurrentHashMap<QueueSubscription, Node>(32);
 
-        // We make use of concurrent api for this map (and its list) since we will be reading it heavily concurrently while modifying it rarely.
+        // We make use of concurrent api for this map (and its list) since we will be reading
+        // it heavily concurrently while modifying it rarely.
         private final Map<Subscription, CopyOnWriteArrayList<MessageConsumer>> topicSubscriptionToSubscriberMap =
             new ConcurrentHashMap<Subscription, CopyOnWriteArrayList<MessageConsumer>>();
         private final Map<Subscription, CopyOnWriteArrayList<MessageConsumer>> queueSubscriptionToSubscriberMap =
@@ -1857,7 +1859,8 @@ public class SessionImpl implements Session {
             new LRUCacheMap<String, String>(SUBSCRIBER_ID_TO_DESTINATION_CACHE_SIZE, true);
 
         public Map<Subscription, CopyOnWriteArrayList<MessageConsumer>> createSubscriptionToSubscriberMapCopy() {
-          Map<Subscription, CopyOnWriteArrayList<MessageConsumer>> retval = new HashMap<Subscription, CopyOnWriteArrayList<MessageConsumer>>();
+          Map<Subscription, CopyOnWriteArrayList<MessageConsumer>> retval
+              = new HashMap<Subscription, CopyOnWriteArrayList<MessageConsumer>>();
           retval.putAll(topicSubscriptionToSubscriberMap);
           retval.putAll(queueSubscriptionToSubscriberMap);
           return retval;

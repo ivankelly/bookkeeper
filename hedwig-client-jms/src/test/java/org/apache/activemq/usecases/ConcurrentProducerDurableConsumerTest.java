@@ -45,11 +45,6 @@ import junit.framework.Test;
 import org.apache.hedwig.jms.spi.HedwigConnectionFactoryImpl;
 import org.apache.activemq.TestSupport;
 
-
-
-//
-
-
 import org.apache.activemq.util.MessageIdList;
 import org.apache.activemq.util.Wait;
 //import org.apache.commons.dbcp.BasicDataSource;
@@ -60,7 +55,8 @@ public class ConcurrentProducerDurableConsumerTest extends TestSupport {
     private static final Logger LOG = LoggerFactory.getLogger(ConcurrentProducerDurableConsumerTest.class);
     private int consumerCount = 5;
     protected List<Connection> connections = Collections.synchronizedList(new ArrayList<Connection>());
-    protected Map<MessageConsumer, TimedMessageListener> consumers = new HashMap<MessageConsumer, TimedMessageListener>();
+    protected Map<MessageConsumer, TimedMessageListener> consumers
+        = new HashMap<MessageConsumer, TimedMessageListener>();
     protected MessageIdList allMessagesList = new MessageIdList();
     private int messageSize = 1024;
 
@@ -76,7 +72,8 @@ public class ConcurrentProducerDurableConsumerTest extends TestSupport {
         // preload the durable consumers
         double[] inactiveConsumerStats = produceMessages(destination, 500, 10, session, producer, null);
         LOG.info("With inactive consumers: ave: " + inactiveConsumerStats[1]
-                + ", max: " + inactiveConsumerStats[0] + ", multiplier: " + (inactiveConsumerStats[0]/inactiveConsumerStats[1]));
+                + ", max: " + inactiveConsumerStats[0] + ", multiplier: "
+                 + (inactiveConsumerStats[0]/inactiveConsumerStats[1]));
 
         // periodically start a durable sub that has a backlog
         final int consumersToActivate = 5;
@@ -97,7 +94,8 @@ public class ConcurrentProducerDurableConsumerTest extends TestSupport {
                             addConsumerSignal.wait(30 * 60 * 1000);
                         }
                         TimedMessageListener listener = new TimedMessageListener();
-                        consumer = createDurableSubscriber(factory.createConnection(), destination, "consumer" + (i + 1));
+                        consumer = createDurableSubscriber(factory.createConnection(),
+                                                           destination, "consumer" + (i + 1));
                         LOG.info("Created consumer " + consumer);
                         consumer.setMessageListener(listener);
                         consumers.put(consumer, listener);
@@ -111,7 +109,8 @@ public class ConcurrentProducerDurableConsumerTest extends TestSupport {
 
         double[] statsWithActive = produceMessages(destination, 500, 10, session, producer, addConsumerSignal);
 
-        LOG.info(" with concurrent activate, ave: " + statsWithActive[1] + ", max: " + statsWithActive[0] + ", multiplier: " + (statsWithActive[0]/ statsWithActive[1]));
+        LOG.info(" with concurrent activate, ave: " + statsWithActive[1]
+                 + ", max: " + statsWithActive[0] + ", multiplier: " + (statsWithActive[0]/ statsWithActive[1]));
 
         while(consumers.size() < consumersToActivate) {
             TimeUnit.SECONDS.sleep(2);
@@ -126,10 +125,12 @@ public class ConcurrentProducerDurableConsumerTest extends TestSupport {
         LOG.info("Ave time to first message =" + timeToFirstAccumulator/consumers.size());
 
         for (TimedMessageListener listener : consumers.values()) {
-            LOG.info("Ave batch receipt time: " + listener.waitForReceivedLimit(10000) + " max receipt: " + listener.maxReceiptTime);
+            LOG.info("Ave batch receipt time: " + listener.waitForReceivedLimit(10000)
+                     + " max receipt: " + listener.maxReceiptTime);
         }
 
-        //assertTrue("max (" + statsWithActive[0] + ") within reasonable multiplier of ave (" + statsWithActive[1] + ")",
+        //assertTrue("max (" + statsWithActive[0] + ") within reasonable
+        // multiplier of ave (" + statsWithActive[1] + ")",
         //        statsWithActive[0] < 5 * statsWithActive[1]);
 
         // compare no active to active
@@ -211,7 +212,8 @@ public class ConcurrentProducerDurableConsumerTest extends TestSupport {
         }
     }
 
-    protected TopicSubscriber createDurableSubscriber(Connection conn, Destination dest, String name) throws Exception {
+    protected TopicSubscriber createDurableSubscriber(Connection conn,
+                                                      Destination dest, String name) throws Exception {
         conn.setClientID(name);
         connections.add(conn);
         conn.start();
@@ -326,7 +328,8 @@ public class ConcurrentProducerDurableConsumerTest extends TestSupport {
         long batchReceiptAccumulator = 0;
         long maxReceiptTime = 0;
         AtomicLong count = new AtomicLong(0);
-        Map<Integer, MessageIdList> messageLists = new ConcurrentHashMap<Integer, MessageIdList>(new HashMap<Integer, MessageIdList>());
+        Map<Integer, MessageIdList> messageLists
+            = new ConcurrentHashMap<Integer, MessageIdList>(new HashMap<Integer, MessageIdList>());
 
         @Override
         public void onMessage(Message message) {
@@ -346,7 +349,8 @@ public class ConcurrentProducerDurableConsumerTest extends TestSupport {
                 firstReceiptLatch.countDown();
                 LOG.info("First receipt in " + firstReceipt + "ms");
             } else if (count.get() % batchSize == 0) {
-                LOG.info("Consumed " + count.get() + " in " + batchReceiptAccumulator + "ms" + ", priority:" + priority);
+                LOG.info("Consumed " + count.get() + " in "
+                         + batchReceiptAccumulator + "ms" + ", priority:" + priority);
                 batchReceiptAccumulator=0;
             }
             maxReceiptTime = Math.max(maxReceiptTime, duration);

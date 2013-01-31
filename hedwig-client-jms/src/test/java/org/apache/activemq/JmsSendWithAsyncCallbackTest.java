@@ -27,9 +27,6 @@ import javax.jms.Session;
 import javax.jms.Topic;
 import javax.jms.Message;
 
-/**
- * 
- */
 public class JmsSendWithAsyncCallbackTest extends TestSupport {
 
     private Connection connection;
@@ -49,7 +46,6 @@ public class JmsSendWithAsyncCallbackTest extends TestSupport {
         }
         super.tearDown();
     }
-    
 
     public void testAsyncCallbackIsFaster() throws JMSException, InterruptedException {
         connection.start();

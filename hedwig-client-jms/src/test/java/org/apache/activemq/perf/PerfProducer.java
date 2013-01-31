@@ -26,9 +26,6 @@ import javax.jms.JMSException;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
-/**
- * 
- */
 public class PerfProducer implements Runnable {
     protected Connection connection;
     protected MessageProducer producer;
@@ -54,7 +51,6 @@ public class PerfProducer implements Runnable {
         }
         producer = session.createProducer(dest);
         this.payload = payload;
-       
     }
 
     public void setDeliveryMode(int mode) throws JMSException {

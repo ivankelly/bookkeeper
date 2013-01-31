@@ -25,14 +25,10 @@ import org.apache.activemq.test.JmsTopicSendReceiveTest;
 import org.apache.hedwig.jms.SessionImpl;
 import org.apache.hedwig.jms.spi.HedwigConnectionImpl;
 
-
-/**
- * 
- */
 public class JmsTopicCompositeSendReceiveTest extends JmsTopicSendReceiveTest {
     private static final org.apache.commons.logging.Log LOG = org.apache.commons.logging.LogFactory
             .getLog(JmsTopicCompositeSendReceiveTest.class);
-    
+
     Destination consumerDestination2;
     MessageConsumer consumer2;
 
@@ -45,7 +41,8 @@ public class JmsTopicCompositeSendReceiveTest extends JmsTopicSendReceiveTest {
         deliveryMode = DeliveryMode.NON_PERSISTENT;
         super.setUp();
         consumerDestination2 = consumeSession.createTopic("FOO.BAR.HUMBUG2");
-        LOG.info("Created  consumer destination: " + consumerDestination2 + " of type: " + consumerDestination2.getClass());
+        LOG.info("Created  consumer destination: " + consumerDestination2
+                 + " of type: " + consumerDestination2.getClass());
 
         /*
         JMS spec 6.11.1

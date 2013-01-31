@@ -21,11 +21,8 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 
-/**
- * 
- */
-public class JmsTopicSendReceiveWithTwoConnectionsAndByteSelectorTest extends JmsTopicSendReceiveWithTwoConnectionsTest {
-    
+public class JmsTopicSendReceiveWithTwoConnectionsAndByteSelectorTest
+    extends JmsTopicSendReceiveWithTwoConnectionsTest {
 
     protected void configureMessage(Message message) throws JMSException {
         message.setByteProperty("dummy", (byte) 33);

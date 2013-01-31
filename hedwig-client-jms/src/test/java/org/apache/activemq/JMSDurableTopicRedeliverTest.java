@@ -24,9 +24,6 @@ import javax.jms.TextMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class JMSDurableTopicRedeliverTest extends JmsTopicRedeliverTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(JMSDurableTopicRedeliverTest.class);
@@ -38,7 +35,7 @@ public class JMSDurableTopicRedeliverTest extends JmsTopicRedeliverTest {
 
     /**
      * Sends and consumes the messages.
-     * 
+     *
      * @throws Exception
      */
     public void testRedeliverNewSession() throws Exception {

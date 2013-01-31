@@ -52,7 +52,8 @@ public class TopicSubscriberImpl extends MessageConsumerImpl implements TopicSub
     // Any publically exposed object MUST NOT rely on 'this' for its locking semantics unless it is
     // explicitly exposing this behavior.
     private final Object lockObject = new Object();
-    private final LinkedList<SessionImpl.ReceivedMessage> pendingMessageList = new LinkedList<SessionImpl.ReceivedMessage>();
+    private final LinkedList<SessionImpl.ReceivedMessage> pendingMessageList
+        = new LinkedList<SessionImpl.ReceivedMessage>();
 
     public TopicSubscriberImpl(SessionImpl session, Topic topic, String subscriberId,
                                boolean forceUnsubscribe) throws JMSException {

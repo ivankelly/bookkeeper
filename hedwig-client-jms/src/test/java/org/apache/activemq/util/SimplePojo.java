@@ -31,7 +31,7 @@ public class SimplePojo {
     List<Destination> favorites = new ArrayList<Destination>();
     List<Destination> nonFavorites = new ArrayList<Destination>();
     List<Destination> others = new ArrayList<Destination>();
-    
+
     public int getAge() {
         return age;
     }
@@ -56,23 +56,22 @@ public class SimplePojo {
     public void setUri(URI uri) {
         this.uri = uri;
     }
-	public List<Destination> getFavorites() {
-		return favorites;
-	}
-	public void setFavorites(List<Destination> favorites) {
-		this.favorites = favorites;
-	}
-	public List<Destination> getNonFavorites() {
-		return nonFavorites;
-	}
-	public void setNonFavorites(List<Destination> nonFavorites) {
-		this.nonFavorites = nonFavorites;
-	}
-	public List<Destination> getOthers() {
-		return others;
-	}
-	public void setOthers(List<Destination> others) {
-		this.others = others;
-	}
-    
+    public List<Destination> getFavorites() {
+        return favorites;
+    }
+    public void setFavorites(List<Destination> favorites) {
+        this.favorites = favorites;
+    }
+    public List<Destination> getNonFavorites() {
+        return nonFavorites;
+    }
+    public void setNonFavorites(List<Destination> nonFavorites) {
+        this.nonFavorites = nonFavorites;
+    }
+    public List<Destination> getOthers() {
+        return others;
+    }
+    public void setOthers(List<Destination> others) {
+        this.others = others;
+    }
 }

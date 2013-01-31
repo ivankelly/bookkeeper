@@ -26,9 +26,6 @@ import org.apache.hedwig.jms.spi.HedwigConnectionFactoryImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class JmsTopicSendReceiveWithTwoConnectionsTest extends JmsSendReceiveTestSupport {
 
     private static final Logger LOG = LoggerFactory.getLogger(JmsTopicSendReceiveWithTwoConnectionsTest.class);
@@ -39,7 +36,7 @@ public class JmsTopicSendReceiveWithTwoConnectionsTest extends JmsSendReceiveTes
 
     /**
      * Sets up a test where the producer and consumer have their own connection.
-     * 
+     *
      * @see junit.framework.TestCase#setUp()
      */
     protected void setUp() throws Exception {
@@ -69,13 +66,16 @@ public class JmsTopicSendReceiveWithTwoConnectionsTest extends JmsSendReceiveTes
         producer = session.createProducer(null);
         producer.setDeliveryMode(deliveryMode);
 
-        LOG.info("Created producer: " + producer + " delivery mode = " + (deliveryMode == DeliveryMode.PERSISTENT ? "PERSISTENT" : "NON_PERSISTENT"));
+        LOG.info("Created producer: " + producer + " delivery mode = "
+                 + (deliveryMode == DeliveryMode.PERSISTENT ? "PERSISTENT" : "NON_PERSISTENT"));
 
         consumerDestination = session.createTopic(getConsumerSubject());
         producerDestination = session.createTopic(getProducerSubject());
 
-        LOG.info("Created  consumer destination: " + consumerDestination + " of type: " + consumerDestination.getClass());
-        LOG.info("Created  producer destination: " + producerDestination + " of type: " + producerDestination.getClass());
+        LOG.info("Created  consumer destination: " + consumerDestination
+                 + " of type: " + consumerDestination.getClass());
+        LOG.info("Created  producer destination: " + producerDestination
+                 + " of type: " + producerDestination.getClass());
 
         consumer = createConsumer();
         consumer.setMessageListener(this);
@@ -100,7 +100,7 @@ public class JmsTopicSendReceiveWithTwoConnectionsTest extends JmsSendReceiveTes
 
     /**
      * Creates a connection.
-     * 
+     *
      * @return Connection
      * @throws Exception
      */
@@ -110,7 +110,7 @@ public class JmsTopicSendReceiveWithTwoConnectionsTest extends JmsSendReceiveTes
 
     /**
      * Creates a connection.
-     * 
+     *
      * @return Connection
      * @throws Exception
      */
@@ -120,7 +120,7 @@ public class JmsTopicSendReceiveWithTwoConnectionsTest extends JmsSendReceiveTes
 
     /**
      * Creates an HedwigConnectionFactoryImpl.
-     * 
+     *
      * @see org.apache.activemq.test.TestSupport#createConnectionFactory()
      */
     protected HedwigConnectionFactoryImpl createConnectionFactory() throws Exception {

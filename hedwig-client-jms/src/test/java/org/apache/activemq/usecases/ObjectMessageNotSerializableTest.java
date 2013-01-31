@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 public class ObjectMessageNotSerializableTest extends CombinationTestSupport {
 
     private static final Logger LOG = LoggerFactory.getLogger(ObjectMessageNotSerializableTest.class);
-    
+
     AtomicInteger numReceived = new AtomicInteger(0);
     final Vector<Throwable> exceptions = new Vector<Throwable>();
 
@@ -54,28 +54,28 @@ public class ObjectMessageNotSerializableTest extends CombinationTestSupport {
     public static void main(String[] args) {
         junit.textui.TestRunner.run(suite());
     }
-	
-	protected void setUp() throws Exception {
+
+    protected void setUp() throws Exception {
         super.setUp();
         exceptions.clear();
     }
-	
-	public void testSendNotSerializeableObjectMessage() throws Exception {
+
+    public void testSendNotSerializeableObjectMessage() throws Exception {
 
         final  Destination destination = SessionImpl.asTopic("testT");
         final MyObject obj = new MyObject("A message");
 
         final CountDownLatch consumerStarted = new CountDownLatch(1);
 
-		Thread vmConsumerThread = new Thread("Consumer Thread") {
-			public void run() {
-				try {
+        Thread vmConsumerThread = new Thread("Consumer Thread") {
+                public void run() {
+                    try {
                     HedwigConnectionFactoryImpl factory = new HedwigConnectionFactoryImpl();
 
                     Connection connection = factory.createConnection();
-		            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-		            MessageConsumer consumer = session.createConsumer(destination);
-		            connection.start();
+                    Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+                    MessageConsumer consumer = session.createConsumer(destination);
+                    connection.start();
                     consumerStarted.countDown();
                     ObjectMessage message = (ObjectMessage) consumer.receive(30000);
                     if ( message != null ) {
@@ -83,34 +83,34 @@ public class ObjectMessageNotSerializableTest extends CombinationTestSupport {
                         LOG.info("Got message " + object.getMessage());
                         numReceived.incrementAndGet();
                     }
-					consumer.close();
-				} catch (Throwable ex) {
-					exceptions.add(ex);
-				}
-			}
-		};
+                    consumer.close();
+                    } catch (Throwable ex) {
+                        exceptions.add(ex);
+                    }
+                }
+            };
         vmConsumerThread.start();
 
-		Thread producingThread = new Thread("Producing Thread") {
-            public void run() {
-                try {
-                    HedwigConnectionFactoryImpl factory = new HedwigConnectionFactoryImpl();
+        Thread producingThread = new Thread("Producing Thread") {
+                public void run() {
+                    try {
+                        HedwigConnectionFactoryImpl factory = new HedwigConnectionFactoryImpl();
 
-                    Connection connection = factory.createConnection();
-		            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-		            MessageProducer producer = session.createProducer(destination);
-                    ObjectMessage message = session.createObjectMessage();
-                    message.setObject(obj);
-                    producer.send(message);
-                	producer.close();
-                } catch (Throwable ex) {
-                    exceptions.add(ex);
+                        Connection connection = factory.createConnection();
+                        Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+                        MessageProducer producer = session.createProducer(destination);
+                        ObjectMessage message = session.createObjectMessage();
+                        message.setObject(obj);
+                        producer.send(message);
+                        producer.close();
+                    } catch (Throwable ex) {
+                        exceptions.add(ex);
+                    }
                 }
-            }
-		};
+            };
 
         assertTrue("consumers started", consumerStarted.await(10, TimeUnit.SECONDS));
-		producingThread.start();
+        producingThread.start();
 
         vmConsumerThread.join();
         producingThread.join();
@@ -121,7 +121,7 @@ public class ObjectMessageNotSerializableTest extends CombinationTestSupport {
 
         assertEquals("Got expected messages", 1, numReceived.get());
         assertTrue("no unexpected exceptions: " + exceptions, exceptions.isEmpty());
-	}
+    }
 
     public void testSendNotSerializeableObjectMessageOverTcp() throws Exception {
         final  Destination destination = SessionImpl.asTopic("testTopic");
@@ -129,41 +129,41 @@ public class ObjectMessageNotSerializableTest extends CombinationTestSupport {
 
         final CountDownLatch consumerStarted = new CountDownLatch(3);
         final Vector<Throwable> exceptions = new Vector<Throwable>();
-		Thread vmConsumerThread = new Thread("Consumer Thread") {
-			public void run() {
-				try {
-                    HedwigConnectionFactoryImpl factory = new HedwigConnectionFactoryImpl();
+        Thread vmConsumerThread = new Thread("Consumer Thread") {
+                public void run() {
+                    try {
+                        HedwigConnectionFactoryImpl factory = new HedwigConnectionFactoryImpl();
 
-                    Connection connection = factory.createConnection();
-		            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-		            MessageConsumer consumer = session.createConsumer(destination);
-		            connection.start();
-                    consumerStarted.countDown();
-                    ObjectMessage message = (ObjectMessage)consumer.receive(30000);
-                    if ( message != null ) {                  
+                        Connection connection = factory.createConnection();
+                        Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+                        MessageConsumer consumer = session.createConsumer(destination);
+                        connection.start();
+                        consumerStarted.countDown();
+                        ObjectMessage message = (ObjectMessage)consumer.receive(30000);
+                        if ( message != null ) {
                         MyObject object = (MyObject)message.getObject();
                         LOG.info("Got message " + object.getMessage());
                         numReceived.incrementAndGet();
                     }
-					consumer.close();
-				} catch (Throwable ex) {
-					exceptions.add(ex);
-				}
-			}
-		};
+                        consumer.close();
+                    } catch (Throwable ex) {
+                        exceptions.add(ex);
+                    }
+                }
+            };
         vmConsumerThread.start();
 
         Thread tcpConsumerThread = new Thread("Consumer Thread") {
-			public void run() {
-				try {
+                public void run() {
+                    try {
 
                     HedwigConnectionFactoryImpl factory =
-                            new HedwigConnectionFactoryImpl();
+                        new HedwigConnectionFactoryImpl();
 
                     Connection connection = factory.createConnection();
-		            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-		            MessageConsumer consumer = session.createConsumer(destination);
-		            connection.start();
+                    Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+                    MessageConsumer consumer = session.createConsumer(destination);
+                    connection.start();
                     consumerStarted.countDown();
                     ObjectMessage message = (ObjectMessage)consumer.receive(30000);
                     if ( message != null ) {
@@ -172,12 +172,12 @@ public class ObjectMessageNotSerializableTest extends CombinationTestSupport {
                         numReceived.incrementAndGet();
                         assert object.getReadObjectCalled() > 0 : "readObject called";
                     }
-					consumer.close();
-				} catch (Throwable ex) {
-					exceptions.add(ex);
-				}
-			}
-		};
+                    consumer.close();
+                    } catch (Throwable ex) {
+                        exceptions.add(ex);
+                    }
+                }
+            };
         tcpConsumerThread.start();
 
 
@@ -205,27 +205,27 @@ public class ObjectMessageNotSerializableTest extends CombinationTestSupport {
         };
         notherVmConsumerThread.start();
 
-		Thread producingThread = new Thread("Producing Thread") {
+        Thread producingThread = new Thread("Producing Thread") {
             public void run() {
                 try {
                     HedwigConnectionFactoryImpl factory = new HedwigConnectionFactoryImpl();
 
                     Connection connection = factory.createConnection();
-		            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-		            MessageProducer producer = session.createProducer(destination);
+                    Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+                    MessageProducer producer = session.createProducer(destination);
                     ObjectMessage message = (ObjectMessage)session.createObjectMessage();
                     message.setObject(obj);
                     producer.send(message);
-                	producer.close();
+                    producer.close();
                 } catch (Throwable ex) {
                     exceptions.add(ex);
                 }
             }
-		};
+            };
 
         assertTrue("consumers started", consumerStarted.await(10, TimeUnit.SECONDS));
-		producingThread.start();
-		
+        producingThread.start();
+
         vmConsumerThread.join();
         tcpConsumerThread.join();
         notherVmConsumerThread.join();
@@ -237,5 +237,5 @@ public class ObjectMessageNotSerializableTest extends CombinationTestSupport {
 
         assertEquals("Got expected messages", 3, numReceived.get());
         assertTrue("no unexpected exceptions: " + exceptions, exceptions.isEmpty());
-	}
+    }
 }

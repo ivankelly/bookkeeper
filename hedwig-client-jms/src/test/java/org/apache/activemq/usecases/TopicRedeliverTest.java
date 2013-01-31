@@ -34,9 +34,6 @@ import org.apache.activemq.util.IdGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class TopicRedeliverTest extends TestSupport {
 
     private static final Logger LOG = LoggerFactory.getLogger(TopicRedeliverTest.class);
@@ -59,7 +56,6 @@ public class TopicRedeliverTest extends TestSupport {
 
     /**
      * test messages are acknowledged and recovered properly
-     * 
      * @throws Exception
      */
     public void testClientAcknowledge() throws Exception {
@@ -103,7 +99,8 @@ public class TopicRedeliverTest extends TestSupport {
         // assertTrue(rec4.equals(sent4));
         assert rec4 instanceof TextMessage;
         assertTrue(((TextMessage) rec4).getText().equals(sent4.getText()));
-        // We DO NOT support session recovery - to unblock this test, I am stopp'ing and start'ing connection : not the same, but ...
+        // We DO NOT support session recovery - to unblock this test,
+        // I am stopp'ing and start'ing connection : not the same, but ...
         // consumerSession.recover();
         connection.close();
         connection = createConnection();
@@ -126,7 +123,7 @@ public class TopicRedeliverTest extends TestSupport {
 
     /**
      * Test redelivered flag is set on rollbacked transactions
-     * 
+     *
      * @throws Exception
      */
     public void testRedilveredFlagSetOnRollback() throws Exception {
@@ -213,7 +210,7 @@ public class TopicRedeliverTest extends TestSupport {
 
     /**
      * Check a session is rollbacked on a Session close();
-     * 
+     *
      * @throws Exception
      */
 
@@ -255,7 +252,7 @@ public class TopicRedeliverTest extends TestSupport {
 
     /**
      * check messages are actuallly sent on a tx rollback
-     * 
+     *
      * @throws Exception
      */
 

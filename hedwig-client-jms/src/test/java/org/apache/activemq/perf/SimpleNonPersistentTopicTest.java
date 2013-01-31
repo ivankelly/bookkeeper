@@ -24,14 +24,12 @@ import javax.jms.DeliveryMode;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 
-/**
- * 
- */
 // For now, ignore it ...
 @Ignore
 public class SimpleNonPersistentTopicTest extends SimpleTopicTest {
 
-    protected PerfProducer createProducer(ConnectionFactory fac, Destination dest, int number, byte[] payload) throws JMSException {
+    protected PerfProducer createProducer(ConnectionFactory fac,
+            Destination dest, int number, byte[] payload) throws JMSException {
         PerfProducer pp = new PerfProducer(fac, dest, payload);
         pp.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
         return pp;

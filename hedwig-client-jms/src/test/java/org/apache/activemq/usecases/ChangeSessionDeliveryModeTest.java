@@ -28,16 +28,13 @@ import javax.jms.Session;
 
 import org.apache.activemq.test.TestSupport;
 
-/**
- * 
- */
 public class ChangeSessionDeliveryModeTest extends TestSupport implements MessageListener {
 
     /**
      * test following condition- which are defined by JMS Spec 1.1:
      * MessageConsumers cannot use a MessageListener and receive() from the same
      * session
-     * 
+     *
      * @throws Exception
      */
     public void testDoChangeSessionDeliveryMode() throws Exception {

@@ -57,7 +57,8 @@ public class BasicJMSTest extends JmsTestBase {
     protected void setUp() throws Exception {
         super.setUp();
         Context messaging = new HedwigInitialContext();
-        topicConnectionFactory = (TopicConnectionFactory) messaging.lookup(HedwigInitialContext.TOPIC_CONNECTION_FACTORY_NAME);
+        topicConnectionFactory = (TopicConnectionFactory) messaging.lookup(
+                HedwigInitialContext.TOPIC_CONNECTION_FACTORY_NAME);
         testTopicName = SessionImpl.generateRandomString();
     }
 
@@ -84,11 +85,14 @@ public class BasicJMSTest extends JmsTestBase {
         TopicSession subscribeTopicSession = connection.createTopicSession(transacted, Session.AUTO_ACKNOWLEDGE);
 
         TopicPublisher publisher = publishTopicSession.createPublisher(publishTopicSession.createTopic(testTopicName));
-        TopicSubscriber subscriber = subscribeTopicSession.createDurableSubscriber(publishTopicSession.createTopic(testTopicName), "test_subscriber");
+        TopicSubscriber subscriber = subscribeTopicSession.createDurableSubscriber(
+                publishTopicSession.createTopic(testTopicName), "test_subscriber");
         //TopicSubscriber subscriber_dup =
-        subscribeTopicSession.createDurableSubscriber(publishTopicSession.createTopic(testTopicName), "test_subscriber");
+        subscribeTopicSession.createDurableSubscriber(
+                publishTopicSession.createTopic(testTopicName), "test_subscriber");
         // TopicSubscriber subscriber1 =
-        subscribeTopicSession.createDurableSubscriber(publishTopicSession.createTopic(testTopicName), "test_subscriber1");
+        subscribeTopicSession.createDurableSubscriber(
+                publishTopicSession.createTopic(testTopicName), "test_subscriber1");
 
         // Start connection ...
         connection.start();
@@ -175,13 +179,15 @@ public class BasicJMSTest extends JmsTestBase {
                     return;
                 }
                 if (!CHAT_MESSAGES[count].equals(text)) {
-                    errorMessage.setValue("Message mismatch. expected : " + CHAT_MESSAGES[count] + ", received : " + text);
+                    errorMessage.setValue("Message mismatch. expected : "
+                                          + CHAT_MESSAGES[count] + ", received : " + text);
                     error.setValue(true);
                     return;
                 }
                 try {
                     if (!ATTRIBUTE_VALUE.equals(textMessage.getStringProperty(ATTRIBUTE_KEY))) {
-                        errorMessage.setValue("Attribute value mismatch. Expected : " + ATTRIBUTE_VALUE + ", found : " + textMessage.getStringProperty(ATTRIBUTE_KEY));
+                        errorMessage.setValue("Attribute value mismatch. Expected : " + ATTRIBUTE_VALUE
+                                              + ", found : " + textMessage.getStringProperty(ATTRIBUTE_KEY));
                         error.setValue(true);
                         return;
                     }
@@ -217,7 +223,8 @@ public class BasicJMSTest extends JmsTestBase {
 
         if (messageCount.getValue() != CHAT_MESSAGES.length) {
             error.setValue(true);
-            errorMessage.setValue("Expected to receive " + CHAT_MESSAGES.length + ", got " + messageCount.getValue() + " messages.");
+            errorMessage.setValue("Expected to receive " + CHAT_MESSAGES.length
+                                  + ", got " + messageCount.getValue() + " messages.");
         }
 
         if (transacted) subSession.commit();
@@ -239,22 +246,28 @@ public class BasicJMSTest extends JmsTestBase {
     private void simpleSelectorImpl(boolean transacted) throws JMSException {
         TopicConnection connection = topicConnectionFactory.createTopicConnection();
 
-        // Creating three sessions : one to subscribe with selector, one to publish and third to validate that the message was/was-not delivered !
+        // Creating three sessions : one to subscribe with selector,
+        // one to publish and third to validate that the message was/was-not delivered !
         TopicSession publishTopicSession = connection.createTopicSession(transacted, Session.AUTO_ACKNOWLEDGE);
         TopicSession subscribeTopicSession = connection.createTopicSession(transacted, Session.AUTO_ACKNOWLEDGE);
-        TopicSession subscribeValidationTopicSession = connection.createTopicSession(transacted, Session.AUTO_ACKNOWLEDGE);
+        TopicSession subscribeValidationTopicSession = connection.createTopicSession(transacted,
+                                                                                     Session.AUTO_ACKNOWLEDGE);
 
 
         TopicPublisher publisher = publishTopicSession.createPublisher(publishTopicSession.createTopic(testTopicName));
 
-        // The first subscriber's subscription should be overridden by the second : hence, we MUST have selector enabled.
-        TopicSubscriber selectorSubscriber = subscribeTopicSession.createDurableSubscriber(publishTopicSession.createTopic(testTopicName), "test_subscriber");
-        TopicSubscriber selectorSubscriber_dup = subscribeTopicSession.createDurableSubscriber(publishTopicSession.createTopic(testTopicName),
+        // The first subscriber's subscription should be overridden by the second
+        // hence, we MUST have selector enabled.
+        TopicSubscriber selectorSubscriber = subscribeTopicSession.createDurableSubscriber(
+                publishTopicSession.createTopic(testTopicName), "test_subscriber");
+        TopicSubscriber selectorSubscriber_dup = subscribeTopicSession.createDurableSubscriber(
+                publishTopicSession.createTopic(testTopicName),
                 "test_subscriber", ATTRIBUTE_KEY + " <> '" + ATTRIBUTE_VALUE + "'", false);
 
         // without selector.
         TopicSubscriber subscriberValidation =
-                subscribeValidationTopicSession.createDurableSubscriber(publishTopicSession.createTopic(testTopicName), "test_subscriber1");
+                subscribeValidationTopicSession.createDurableSubscriber(
+                        publishTopicSession.createTopic(testTopicName), "test_subscriber1");
 
         // Start connection ...
         connection.start();
@@ -274,7 +287,8 @@ public class BasicJMSTest extends JmsTestBase {
             publishTopicSession.commit();
         }
 
-        // subscriberValidation must get the message as soon as it is available, while selectorSubscriber might/might not
+        // subscriberValidation must get the message as soon as it is available,
+        // while selectorSubscriber might/might not
         // (depending on whether Selector works :-) ). So wait on subscriberValidation
         {
             Message receivedMessage = subscriberValidation.receive(200);
@@ -292,11 +306,13 @@ public class BasicJMSTest extends JmsTestBase {
             if (transacted) subscribeValidationTopicSession.commit();
         }
 
-        // Now that subscriberValidation received the message, selectorSubscriber and/or selectorSubscriber_dup must also receive the
+        // Now that subscriberValidation received the message,
+        // selectorSubscriber and/or selectorSubscriber_dup must also receive the
         // message or they will never receive the message (since selector blocked it).
         {
             // Even though selectorSubscriber was subscribed WITHOUT selector, we create selectorSubscriber_dup LATER to
-            // override the subscription policy using the SAME subscription id/topic - so selectorSubscriber_dup config MUST take
+            // override the subscription policy using the SAME subscription id/topic
+            // - so selectorSubscriber_dup config MUST take
             // precedence ...
             Message msg = selectorSubscriber.receive(100);
             Message msg1 = selectorSubscriber_dup.receive(100);

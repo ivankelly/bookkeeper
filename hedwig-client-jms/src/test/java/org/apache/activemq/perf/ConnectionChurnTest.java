@@ -31,9 +31,6 @@ import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 // For now, ignore it ...
 @Ignore
 public class ConnectionChurnTest extends JmsTestBase {

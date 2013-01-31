@@ -23,9 +23,6 @@ import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 
-/**
- * 
- */
 // For now, ignore it ...
 @Ignore
 public class SlowDurableConsumerTopicTest extends SlowConsumerTopicTest {
@@ -33,7 +30,8 @@ public class SlowDurableConsumerTopicTest extends SlowConsumerTopicTest {
     protected PerfConsumer[] slowConsumers;
     protected int numberOfSlowConsumers = 1;
 
-    protected PerfConsumer createSlowConsumer(ConnectionFactory fac, Destination dest, int number) throws JMSException {
+    protected PerfConsumer createSlowConsumer(ConnectionFactory fac,
+                                              Destination dest, int number) throws JMSException {
         return new SlowConsumer(fac, dest, "durableSlowConsumer" + number);
     }
 

@@ -43,7 +43,7 @@ public class JmsConsumerResetActiveListenerTest extends JmsTestBase {
 
     private Connection connection;
     private HedwigConnectionFactoryImpl factory;
-   
+
     protected void setUp() throws Exception {
         super.setUp();
         factory = new HedwigConnectionFactoryImpl();
@@ -57,17 +57,17 @@ public class JmsConsumerResetActiveListenerTest extends JmsTestBase {
         }
         super.tearDown();
     }
-    
+
     /**
      * verify the (undefined by spec) behaviour of setting a listener while receiving a message.
-     * 
+     *
      * @throws Exception
      */
     public void testSetListenerFromListener() throws Exception {
         Session session = connection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
         Destination dest = session.createTopic("Queue-" + getName());
         final MessageConsumer consumer = session.createConsumer(dest);
-       
+
         final CountDownLatch latch = new CountDownLatch(2);
         final AtomicBoolean first = new AtomicBoolean(true);
         final Vector<Object> results = new Vector<Object>();
@@ -89,14 +89,14 @@ public class JmsConsumerResetActiveListenerTest extends JmsTestBase {
         });
 
         connection.start();
-        
+
         MessageProducer producer = session.createProducer(dest);
         producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
         producer.send(session.createTextMessage("First"));
         producer.send(session.createTextMessage("Second"));
-        
+
         assertTrue("we did not timeout", latch.await(5, TimeUnit.SECONDS));
-        
+
         assertEquals("we have a result", 2, results.size());
         Object result = results.get(0);
         assertTrue(result instanceof TextMessage);
@@ -105,7 +105,7 @@ public class JmsConsumerResetActiveListenerTest extends JmsTestBase {
         assertTrue(result instanceof TextMessage);
         assertEquals("result is first", "Second", ((TextMessage)result).getText());
     }
-    
+
     /**
      * and a listener on a new consumer, just in case.
       *
@@ -115,7 +115,7 @@ public class JmsConsumerResetActiveListenerTest extends JmsTestBase {
         final Session session = connection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
         final Destination dest = session.createTopic("Queue-" + getName());
         final MessageConsumer consumer = session.createConsumer(dest);
-       
+
         final CountDownLatch latch = new CountDownLatch(2);
         final AtomicBoolean first = new AtomicBoolean(true);
         final Vector<Object> results = new Vector<Object>();
@@ -138,14 +138,14 @@ public class JmsConsumerResetActiveListenerTest extends JmsTestBase {
         });
 
         connection.start();
-        
+
         MessageProducer producer = session.createProducer(dest);
         producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
         producer.send(session.createTextMessage("First"));
         producer.send(session.createTextMessage("Second"));
-        
+
         assertTrue("we did not timeout", latch.await(5, TimeUnit.SECONDS));
-        
+
         assertEquals("we have a result", 2, results.size());
         Object result = results.get(0);
         assertTrue(result instanceof TextMessage);

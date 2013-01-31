@@ -62,7 +62,7 @@ public class DurableSubProcessTest extends org.apache.activemq.TestSupport  {
     private Server server;
     private HouseKeeper houseKeeper;
 
-    static final Vector<Throwable> exceptions = new Vector<Throwable>(); 
+    static final Vector<Throwable> exceptions = new Vector<Throwable>();
 
     public void testProcess() {
         try {
@@ -133,7 +133,8 @@ public class DurableSubProcessTest extends org.apache.activemq.TestSupport  {
                 for (int i = 0; i < count; i++) {
                     Message message = sess.createMessage();
                     message.setIntProperty("ID", ++messageRover);
-                    String type = clientType != null ? clientType.randomMessageType() : ClientType.randomNonRelevantMessageType();
+                    String type = clientType != null ? clientType.randomMessageType() :
+                        ClientType.randomNonRelevantMessageType();
                     message.setStringProperty("TYPE", type);
 
                     if (CARGO_SIZE > 0)
@@ -325,7 +326,8 @@ public class DurableSubProcessTest extends org.apache.activemq.TestSupport  {
 
         private final ConcurrentLinkedQueue<Message> waitingList = new ConcurrentLinkedQueue<Message>();
 
-        public Client(int id, ClientType clientType, Random lifetime, Random online, Random offline) throws JMSException {
+        public Client(int id, ClientType clientType, Random lifetime, Random online, Random offline)
+                throws JMSException {
             super("Client" + id);
             setDaemon(true);
 
@@ -406,7 +408,8 @@ public class DurableSubProcessTest extends org.apache.activemq.TestSupport  {
                     if (message.propertyExists("COMMIT")) {
                         message.acknowledge();
 
-                        LOG.info("Received Trans[id=" + message.getIntProperty("TRANS") + ", count=" + transCount + "] in " + this + ".");
+                        LOG.info("Received Trans[id=" + message.getIntProperty("TRANS")
+                                 + ", count=" + transCount + "] in " + this + ".");
 
                         inTransaction = false;
                         transCount = 0;
@@ -480,7 +483,8 @@ public class DurableSubProcessTest extends org.apache.activemq.TestSupport  {
 
             if (min > creation) {
                 SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss.SSS");
-                exit("" + this + ".checkDeliveryTime failed. Message time: " + df.format(new Date(creation)) + ", min: " + df.format(new Date(min)) + "\r\n" + message);
+                exit("" + this + ".checkDeliveryTime failed. Message time: " + df.format(new Date(creation))
+                     + ", min: " + df.format(new Date(min)) + "\r\n" + message);
             }
         }
 

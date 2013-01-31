@@ -27,9 +27,6 @@ import javax.jms.TopicConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class JmsTopicSendReceiveTest extends JmsSendReceiveTestSupport {
     private static final Logger LOG = LoggerFactory.getLogger(JmsTopicSendReceiveTest.class);
 
@@ -52,7 +49,8 @@ public class JmsTopicSendReceiveTest extends JmsSendReceiveTestSupport {
         producer = session.createProducer(null);
         producer.setDeliveryMode(deliveryMode);
 
-        LOG.info("Created producer: " + producer + " delivery mode = " + (deliveryMode == DeliveryMode.PERSISTENT ? "PERSISTENT" : "NON_PERSISTENT"));
+        LOG.info("Created producer: " + producer + " delivery mode = "
+                 + (deliveryMode == DeliveryMode.PERSISTENT ? "PERSISTENT" : "NON_PERSISTENT"));
 
         if (topic) {
             consumerDestination = session.createTopic(getConsumerSubject());
@@ -62,8 +60,10 @@ public class JmsTopicSendReceiveTest extends JmsSendReceiveTestSupport {
             producerDestination = session.createTopic(getProducerSubject());
         }
 
-        LOG.info("Created  consumer destination: " + consumerDestination + " of type: " + consumerDestination.getClass());
-        LOG.info("Created  producer destination: " + producerDestination + " of type: " + producerDestination.getClass());
+        LOG.info("Created  consumer destination: " + consumerDestination
+                 + " of type: " + consumerDestination.getClass());
+        LOG.info("Created  producer destination: " + producerDestination
+                 + " of type: " + producerDestination.getClass());
         consumer = createConsumer();
         consumer.setMessageListener(this);
         connection.start();

@@ -28,8 +28,6 @@ import org.slf4j.LoggerFactory;
 /**
  * Enforces a test case to run for only an allotted time to prevent them from
  * hanging and breaking the whole testing.
- * 
- * 
  */
 
 public abstract class AutoFailTestSupport extends JmsTestBase {
@@ -79,7 +77,8 @@ public abstract class AutoFailTestSupport extends JmsTestBase {
                     // Check if the test was able to tear down succesfully,
                     // which usually means, it has finished its run.
                     if (!isTestSuccess.get()) {
-                        LOG.error("Test case has exceeded the maximum allotted time to run of: " + getMaxTestTime() + " ms.");
+                        LOG.error("Test case has exceeded the maximum allotted time to run of: "
+                                  + getMaxTestTime() + " ms.");
                         dumpAllThreads(getName());
                         System.exit(EXIT_ERROR);
                     }
@@ -117,7 +116,7 @@ public abstract class AutoFailTestSupport extends JmsTestBase {
      * Sets the auto fail value. As a rule, this should be used only before any
      * setup methods is called to automatically enable the auto fail thread in
      * the setup method of the test case.
-     * 
+     *
      * @param val
      */
     public void setAutoFail(boolean val) {
@@ -131,7 +130,7 @@ public abstract class AutoFailTestSupport extends JmsTestBase {
     /**
      * The assigned value will only be reflected when the auto fail thread has
      * started its run. Value is in milliseconds.
-     * 
+     *
      * @param val
      */
     public void setMaxTestTime(long val) {
@@ -141,8 +140,7 @@ public abstract class AutoFailTestSupport extends JmsTestBase {
     public long getMaxTestTime() {
         return this.maxTestTime;
     }
-    
-    
+
     public static void dumpAllThreads(String prefix) {
         Map<Thread, StackTraceElement[]> stacks = Thread.getAllStackTraces();
         for (Entry<Thread, StackTraceElement[]> stackEntry : stacks.entrySet()) {

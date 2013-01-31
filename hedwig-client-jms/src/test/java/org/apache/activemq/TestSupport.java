@@ -37,8 +37,6 @@ import org.apache.hedwig.jms.spi.HedwigConnectionImpl;
 
 /**
  * Useful base class for unit test cases
- * 
- * 
  */
 public abstract class TestSupport extends CombinationTestSupport {
 
@@ -141,12 +139,13 @@ public abstract class TestSupport extends CombinationTestSupport {
             recursiveDelete(new File(System.getProperty("derby.system.home")));
         }
     }
-    
+
     /**
      * Test if base directory contains spaces
      */
     protected void assertBaseDirectoryContainsSpaces() {
-    	assertFalse("Base directory cannot contain spaces.", new File(System.getProperty("basedir", ".")).getAbsoluteFile().toString().contains(" "));
+        assertFalse("Base directory cannot contain spaces.",
+                    new File(System.getProperty("basedir", ".")).getAbsoluteFile().toString().contains(" "));
     }
 
 }

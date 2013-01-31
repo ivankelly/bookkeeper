@@ -41,10 +41,6 @@ import org.apache.hedwig.jms.spi.HedwigConnectionFactoryImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author pragmasoft
- * 
- */
 public final class TransactionTest extends JmsTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(TransactionTest.class);

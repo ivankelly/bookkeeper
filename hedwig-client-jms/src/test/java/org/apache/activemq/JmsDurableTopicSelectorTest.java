@@ -18,9 +18,6 @@ package org.apache.activemq;
 
 import javax.jms.Topic;
 
-/**
- * 
- */
 public class JmsDurableTopicSelectorTest extends JmsTopicSelectorTest {
     public void setUp() throws Exception {
         durable = true;

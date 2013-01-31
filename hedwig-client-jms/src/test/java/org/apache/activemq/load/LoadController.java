@@ -23,21 +23,16 @@ import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 
-/**
- * 
- */
 public class LoadController extends LoadClient{
     private int numberOfBatches=1;
     private int batchSize =1000;
     private int count;
     private final CountDownLatch stopped = new CountDownLatch(1);
-     
 
     public LoadController(String name,ConnectionFactory factory) {
        super(name,factory);
     }
 
-       
     public int awaitTestComplete() throws InterruptedException {
         boolean complete = stopped.await(60*5,TimeUnit.SECONDS);
         return count;
@@ -50,7 +45,7 @@ public class LoadController extends LoadClient{
             this.connection.stop();
         }
     }
-    
+
     public void run() {
         try {
             for (int i = 0; i < numberOfBatches; i++) {
@@ -92,14 +87,12 @@ public class LoadController extends LoadClient{
     public void setBatchSize(int batchSize) {
         this.batchSize = batchSize;
     }
-    
+
     protected Destination getSendDestination() {
         return startDestination;
     }
-    
+
     protected Destination getConsumeDestination() {
         return nextDestination;
     }
-    
-    
 }

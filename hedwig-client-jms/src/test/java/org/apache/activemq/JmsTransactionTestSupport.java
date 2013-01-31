@@ -39,9 +39,6 @@ import org.apache.hedwig.jms.spi.HedwigConnectionImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public abstract class JmsTransactionTestSupport extends TestSupport implements MessageListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(JmsTransactionTestSupport.class);
@@ -73,7 +70,7 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see junit.framework.TestCase#setUp()
      */
     protected void setUp() throws Exception {
@@ -108,7 +105,7 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see junit.framework.TestCase#tearDown()
      */
     protected void tearDown() throws Exception {
@@ -126,12 +123,13 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
 
     /**
      * Sends a batch of messages and validates that the messages are received.
-     * 
+     *
      * @throws Exception
      */
     public void testSendReceiveTransactedBatches() throws Exception {
 
-        final int batchSize = ((HedwigConnectionImpl) connection).getHedwigClientConfig().getMaximumOutstandingMessages() - 1;
+        final int batchSize = ((HedwigConnectionImpl) connection).getHedwigClientConfig()
+            .getMaximumOutstandingMessages() - 1;
 
         TextMessage message = session.createTextMessage("Batch Message");
         for (int j = 0; j < batchCount; j++) {
@@ -162,11 +160,12 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
     /**
      * Sends a batch of messages and validates that the rollbacked message was
      * not consumed.
-     * 
+     *
      * @throws Exception
      */
     public void testSendRollback() throws Exception {
-        Message[] outbound = new Message[] {session.createTextMessage("First Message"), session.createTextMessage("Second Message")};
+        Message[] outbound = new Message[] {session.createTextMessage("First Message"),
+                                            session.createTextMessage("Second Message")};
 
         // sends a message
         beginTx();
@@ -241,7 +240,8 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
      * @throws Exception
      */
     public void testSendSessionClose() throws Exception {
-        Message[] outbound = new Message[] {session.createTextMessage("First Message"), session.createTextMessage("Second Message")};
+        Message[] outbound = new Message[] {session.createTextMessage("First Message"),
+                                            session.createTextMessage("Second Message")};
 
         // sends a message
         beginTx();
@@ -283,11 +283,12 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
     /**
      * Sends a batch of messages and validates that the message sent before
      * session close is not consumed.
-     * 
+     *
      * @throws Exception
      */
     public void testSendSessionAndConnectionClose() throws Exception {
-        Message[] outbound = new Message[] {session.createTextMessage("First Message"), session.createTextMessage("Second Message")};
+        Message[] outbound = new Message[] {session.createTextMessage("First Message"),
+                                            session.createTextMessage("Second Message")};
 
         // sends a message
         beginTx();
@@ -331,11 +332,12 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
     /**
      * Sends a batch of messages and validates that the rollbacked message was
      * redelivered.
-     * 
+     *
      * @throws Exception
      */
     public void testReceiveRollback() throws Exception {
-        Message[] outbound = new Message[] {session.createTextMessage("First Message"), session.createTextMessage("Second Message")};
+        Message[] outbound = new Message[] {session.createTextMessage("First Message"),
+                                            session.createTextMessage("Second Message")};
 
         // lets consume any outstanding messages from prev test runs
         beginTx();
@@ -382,11 +384,12 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
     /**
      * Sends a batch of messages and validates that the rollbacked message was
      * redelivered.
-     * 
+     *
      * @throws Exception
      */
     public void testReceiveTwoThenRollback() throws Exception {
-        TextMessage[] outbound = new TextMessage[] {session.createTextMessage("First Message"), session.createTextMessage("Second Message")};
+        TextMessage[] outbound = new TextMessage[] {session.createTextMessage("First Message"),
+                                                    session.createTextMessage("Second Message")};
 
         // lets consume any outstanding messages from prev test runs
         beginTx();
@@ -440,11 +443,13 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
     /**
      * Sends a batch of messages and validates that the rollbacked message was
      * not consumed.
-     * 
+     *
      * @throws Exception
      */
     public void testSendReceiveWithPrefetchOne() throws Exception {
-        Message[] outbound = new Message[] {session.createTextMessage("First Message"), session.createTextMessage("Second Message"), session.createTextMessage("Third Message"),
+        Message[] outbound = new Message[] {session.createTextMessage("First Message"),
+                                            session.createTextMessage("Second Message"),
+                                            session.createTextMessage("Third Message"),
                                             session.createTextMessage("Fourth Message")};
 
         beginTx();
@@ -470,7 +475,7 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
     /**
      * Perform the test that validates if the rollbacked message was redelivered
      * multiple times.
-     * 
+     *
      * @throws Exception
      */
     public void testReceiveTwoThenRollbackManyTimes() throws Exception {
@@ -482,7 +487,7 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
     /**
      * Sends a batch of messages and validates that the rollbacked message was
      * not consumed. This test differs by setting the message prefetch to one.
-     * 
+     *
      * @throws Exception
      */
     public void testSendRollbackWithPrefetchOfOne() throws Exception {
@@ -493,7 +498,7 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
      * Sends a batch of messages and and validates that the rollbacked message
      * was redelivered. This test differs by setting the message prefetch to
      * one.
-     * 
+     *
      * @throws Exception
      */
     public void testReceiveRollbackWithPrefetchOfOne() throws Exception {
@@ -503,11 +508,12 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
     /**
      * Tests if the messages can still be received if the consumer is closed
      * (session is not closed).
-     * 
+     *
      * @throws Exception see http://jira.codehaus.org/browse/AMQ-143
      */
     public void testCloseConsumerBeforeCommit() throws Exception {
-        TextMessage[] outbound = new TextMessage[] {session.createTextMessage("First Message"), session.createTextMessage("Second Message")};
+        TextMessage[] outbound = new TextMessage[] {session.createTextMessage("First Message"),
+                                                    session.createTextMessage("Second Message")};
 
         // lets consume any outstanding messages from prev test runs
         beginTx();
@@ -596,7 +602,7 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
 
     /**
      * Recreates the connection.
-     * 
+     *
      * @throws JMSException
      */
     protected void reconnect() throws Exception {
@@ -613,7 +619,7 @@ public abstract class JmsTransactionTestSupport extends TestSupport implements M
 
     /**
      * Recreates the connection.
-     * 
+     *
      * @throws JMSException
      */
     protected void reconnectSession() throws JMSException {

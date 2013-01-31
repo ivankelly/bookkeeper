@@ -20,9 +20,6 @@ import javax.jms.Topic;
 import org.apache.activemq.test.JmsResourceProvider;
 
 
-/**
- * 
- */
 public class JmsTopicTransactionTest extends JmsTransactionTestSupport {
 
     /**

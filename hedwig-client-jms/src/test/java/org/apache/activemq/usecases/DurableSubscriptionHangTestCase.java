@@ -46,75 +46,74 @@ public class DurableSubscriptionHangTestCase extends JmsTestBase {
     private static final String topicName = "myTopic";
     private static final String durableSubName = "mySub";
 
-	public void testHanging() throws Exception
-	{
-		registerDurableSubscription();
-		produceExpiredAndOneNonExpiredMessages(1000);
-		TimeUnit.SECONDS.sleep(10);		// make sure messages are expired
-    int numMessages = collectMessagesFromDurableSubscriptionForOneMinute();
-    assert 1 == numMessages : "Expected " + 1 + ", received " + numMessages;
-	}
+    public void testHanging() throws Exception
+    {
+        registerDurableSubscription();
+        produceExpiredAndOneNonExpiredMessages(1000);
+        TimeUnit.SECONDS.sleep(10); // make sure messages are expired
+        int numMessages = collectMessagesFromDurableSubscriptionForOneMinute();
+        assert 1 == numMessages : "Expected " + 1 + ", received " + numMessages;
+    }
 
-	private void produceExpiredAndOneNonExpiredMessages(final int messageCount) throws JMSException {
-		HedwigConnectionFactoryImpl connectionFactory = new HedwigConnectionFactoryImpl();
+    private void produceExpiredAndOneNonExpiredMessages(final int messageCount) throws JMSException {
+        HedwigConnectionFactoryImpl connectionFactory = new HedwigConnectionFactoryImpl();
         TopicConnection connection = connectionFactory.createTopicConnection();
         TopicSession session = connection.createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
         Topic topic = session.createTopic(topicName);
         MessageProducer producer = session.createProducer(topic);
         producer.setTimeToLive(TimeUnit.SECONDS.toMillis(1));
-        for(int i=0; i<messageCount; i++)
-        {
-        	sendRandomMessage(session, producer);
+        for(int i=0; i<messageCount; i++) {
+            sendRandomMessage(session, producer);
         }
         producer.setTimeToLive(TimeUnit.DAYS.toMillis(1));
         sendRandomMessage(session, producer);
         connection.close();
         LOG.info("produceExpiredAndOneNonExpiredMessages done");
-	}
+    }
 
-	private void registerDurableSubscription() throws JMSException
-	{
-		HedwigConnectionFactoryImpl connectionFactory = new HedwigConnectionFactoryImpl();
-		TopicConnection connection = connectionFactory.createTopicConnection();
-		connection.setClientID(clientID);
-		TopicSession topicSession = connection.createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
-		Topic topic = topicSession.createTopic(topicName);
-		TopicSubscriber durableSubscriber = topicSession.createDurableSubscriber(topic, durableSubName);
-		connection.start();
-		durableSubscriber.close();
-		connection.close();
-		LOG.info("Durable Sub Registered");
-	}
+    private void registerDurableSubscription() throws JMSException
+    {
+        HedwigConnectionFactoryImpl connectionFactory = new HedwigConnectionFactoryImpl();
+        TopicConnection connection = connectionFactory.createTopicConnection();
+        connection.setClientID(clientID);
+        TopicSession topicSession = connection.createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
+        Topic topic = topicSession.createTopic(topicName);
+        TopicSubscriber durableSubscriber = topicSession.createDurableSubscriber(topic, durableSubName);
+        connection.start();
+        durableSubscriber.close();
+        connection.close();
+        LOG.info("Durable Sub Registered");
+    }
 
-	private int collectMessagesFromDurableSubscriptionForOneMinute() throws Exception
-	{
-		HedwigConnectionFactoryImpl connectionFactory = new HedwigConnectionFactoryImpl();
-		TopicConnection connection = connectionFactory.createTopicConnection();
+    private int collectMessagesFromDurableSubscriptionForOneMinute() throws Exception
+    {
+        HedwigConnectionFactoryImpl connectionFactory = new HedwigConnectionFactoryImpl();
+        TopicConnection connection = connectionFactory.createTopicConnection();
 
-		connection.setClientID(clientID);
-		TopicSession topicSession = connection.createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
-		Topic topic = topicSession.createTopic(topicName);
-		connection.start();
-		TopicSubscriber subscriber = topicSession.createDurableSubscriber(topic, durableSubName);
-		LOG.info("About to receive messages");
-		int retval = 0;
-		while (true){
-			Message message = subscriber.receive(2000);
-			if (null == message) {
-				break;
-			}
-      retval ++;
-		}
-		subscriber.close();
-		connection.close();
-		LOG.info("collectMessagesFromDurableSubscriptionForOneMinute done");
+        connection.setClientID(clientID);
+        TopicSession topicSession = connection.createTopicSession(false, Session.AUTO_ACKNOWLEDGE);
+        Topic topic = topicSession.createTopic(topicName);
+        connection.start();
+        TopicSubscriber subscriber = topicSession.createDurableSubscriber(topic, durableSubName);
+        LOG.info("About to receive messages");
+        int retval = 0;
+        while (true){
+            Message message = subscriber.receive(2000);
+            if (null == message) {
+                break;
+            }
+            retval ++;
+        }
+        subscriber.close();
+        connection.close();
+        LOG.info("collectMessagesFromDurableSubscriptionForOneMinute done");
 
-		return retval;
-	}
+        return retval;
+    }
 
-	private void sendRandomMessage(TopicSession session, MessageProducer producer) throws JMSException {
-		TextMessage textMessage = session.createTextMessage();
-		textMessage.setText(RandomStringUtils.random(500, "abcdefghijklmnopqrstuvwxyz"));
-		producer.send(textMessage);
-	}
+    private void sendRandomMessage(TopicSession session, MessageProducer producer) throws JMSException {
+        TextMessage textMessage = session.createTextMessage();
+        textMessage.setText(RandomStringUtils.random(500, "abcdefghijklmnopqrstuvwxyz"));
+        producer.send(textMessage);
+    }
 }

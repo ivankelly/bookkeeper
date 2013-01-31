@@ -40,12 +40,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Useful base class for unit test cases
- * 
- * 
  */
 public abstract class TestSupport extends JmsTestBase {
     private static final Logger LOG = LoggerFactory.getLogger(TestSupport.class);
-    
+
     protected HedwigConnectionFactoryImpl connectionFactory;
     protected boolean topic = true;
 
@@ -59,7 +57,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Creates an MessageImpl.
-     * 
+     *
      * @return MessageImpl
      */
     protected MessageImpl createMessage() {
@@ -68,7 +66,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Creates a destination.
-     * 
+     *
      * @param subject - topic or queue name.
      * @return Destination - either an Topic or ActiveMQQUeue.
      */
@@ -82,7 +80,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Tests if firstSet and secondSet are equal.
-     * 
+     *
      * @param messsage - string to be displayed when the assertion fails.
      * @param firstSet[] - set of messages to be compared with its counterpart
      *                in the secondset.
@@ -96,14 +94,15 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Tests if firstSet and secondSet are equal.
-     * 
+     *
      * @param messsage - string to be displayed when the assertion fails.
      * @param firstSet[] - set of messages to be compared with its counterpart
      *                in the secondset.
      * @param secondSet[] - set of messages to be compared with its counterpart
      *                in the firstset.
      */
-    protected void assertTextMessagesEqual(String messsage, Message[] firstSet, Message[] secondSet) throws JMSException {
+    protected void assertTextMessagesEqual(String messsage, Message[] firstSet,
+                                           Message[] secondSet) throws JMSException {
         assertEquals("Message count does not match: " + messsage, firstSet.length, secondSet.length);
 
         for (int i = 0; i < secondSet.length; i++) {
@@ -115,7 +114,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Tests if m1 and m2 are equal.
-     * 
+     *
      * @param m1 - message to be compared with m2.
      * @param m2 - message to be compared with m1.
      * @throws JMSException
@@ -126,7 +125,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Tests if m1 and m2 are equal.
-     * 
+     *
      * @param message - string to be displayed when the assertion fails.
      * @param m1 - message to be compared with m2.
      * @param m2 - message to be compared with m1.
@@ -143,7 +142,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Tests if m1 and m2 are equal.
-     * 
+     *
      * @param m1 - message to be compared with m2.
      * @param m2 - message to be compared with m1.
      * @throws JMSException
@@ -154,7 +153,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Tests if m1 and m2 are equal.
-     * 
+     *
      * @param message - error message.
      * @param m1 - message to be compared with m2.
      * @param m2 -- message to be compared with m1.
@@ -174,17 +173,18 @@ public abstract class TestSupport extends JmsTestBase {
             assertEquals(message, m1, m2);
         }
     }
-    
+
     /**
      * Test if base directory contains spaces
      */
     protected void assertBaseDirectoryContainsSpaces() {
-    	assertFalse("Base directory cannot contain spaces.", new File(System.getProperty("basedir", ".")).getAbsoluteFile().toString().contains(" "));
+        assertFalse("Base directory cannot contain spaces.",
+                    new File(System.getProperty("basedir", ".")).getAbsoluteFile().toString().contains(" "));
     }
 
     /**
      * Creates an HedwigConnectionFactoryImpl.
-     * 
+     *
      * @return HedwigConnectionFactoryImpl
      * @throws Exception
      */
@@ -194,7 +194,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Factory method to create a new connection.
-     * 
+     *
      * @return connection
      * @throws Exception
      */
@@ -204,7 +204,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Creates an ActiveMQ connection factory.
-     * 
+     *
      * @return connectionFactory
      * @throws Exception
      */
@@ -219,7 +219,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Returns the consumer subject.
-     * 
+     *
      * @return String
      */
     protected String getConsumerSubject() {
@@ -228,7 +228,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Returns the producer subject.
-     * 
+     *
      * @return String
      */
     protected String getProducerSubject() {
@@ -237,7 +237,7 @@ public abstract class TestSupport extends JmsTestBase {
 
     /**
      * Returns the subject.
-     * 
+     *
      * @return String
      */
     protected String getSubject() {

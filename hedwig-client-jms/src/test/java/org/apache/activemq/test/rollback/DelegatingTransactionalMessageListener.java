@@ -35,7 +35,8 @@ public class DelegatingTransactionalMessageListener implements MessageListener {
     private int ackMode = Session.AUTO_ACKNOWLEDGE;
     private Session session;
 
-    public DelegatingTransactionalMessageListener(MessageListener underlyingListener, Connection connection, Destination destination) {
+    public DelegatingTransactionalMessageListener(MessageListener underlyingListener,
+                                                  Connection connection, Destination destination) {
         this.underlyingListener = underlyingListener;
 
         try {

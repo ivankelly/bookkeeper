@@ -24,9 +24,6 @@ import javax.jms.MessageListener;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
-/**
- * 
- */
 public class JmsClientAckListenerTest extends TestSupport implements MessageListener {
 
     private Connection connection;
@@ -50,7 +47,7 @@ public class JmsClientAckListenerTest extends TestSupport implements MessageList
 
     /**
      * Tests if acknowleged messages are being consumed.
-     * 
+     *
      * @throws javax.jms.JMSException
      */
     public void testAckedMessageAreConsumed() throws Exception {
@@ -82,7 +79,7 @@ public class JmsClientAckListenerTest extends TestSupport implements MessageList
     /**
      * Tests if unacknowleged messages are being redelivered when the consumer
      * connects again.
-     * 
+     *
      * @throws javax.jms.JMSException
      */
     public void testUnAckedMessageAreNotConsumedOnSessionClose() throws Exception {

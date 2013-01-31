@@ -30,9 +30,6 @@ import org.apache.hedwig.jms.spi.HedwigConnectionImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- */
 public class JmsTopicRedeliverTest extends TestSupport {
 
     private static final Logger LOG = LoggerFactory.getLogger(JmsTopicRedeliverTest.class);
@@ -80,8 +77,10 @@ public class JmsTopicRedeliverTest extends TestSupport {
             producerDestination = session.createTopic(getProducerSubject());
         }
 
-        LOG.info("Created  consumer destination: " + consumerDestination + " of type: " + consumerDestination.getClass());
-        LOG.info("Created  producer destination: " + producerDestination + " of type: " + producerDestination.getClass());
+        LOG.info("Created  consumer destination: "
+                 + consumerDestination + " of type: " + consumerDestination.getClass());
+        LOG.info("Created  producer destination: "
+                 + producerDestination + " of type: " + producerDestination.getClass());
         consumer = createConsumer();
         connection.start();
 
@@ -97,7 +96,7 @@ public class JmsTopicRedeliverTest extends TestSupport {
 
     /**
      * Returns the consumer subject.
-     * 
+     *
      * @return String - consumer subject
      * @see org.apache.activemq.test.TestSupport#getConsumerSubject()
      */
@@ -107,7 +106,7 @@ public class JmsTopicRedeliverTest extends TestSupport {
 
     /**
      * Returns the producer subject.
-     * 
+     *
      * @return String - producer subject
      * @see org.apache.activemq.test.TestSupport#getProducerSubject()
      */
@@ -117,7 +116,7 @@ public class JmsTopicRedeliverTest extends TestSupport {
 
     /**
      * Sends and consumes the messages.
-     * 
+     *
      * @throws Exception
      */
     public void testRecover() throws Exception {
@@ -136,7 +135,8 @@ public class JmsTopicRedeliverTest extends TestSupport {
         assertEquals(((TextMessage)unackMessage).getText(), text);
         assertFalse(unackMessage.getJMSRedelivered());
 
-        // We DO NOT support session recovery - to unblock this test, I am stopp'ing and start'ing connection : not the same, but ...
+        // We DO NOT support session recovery
+        // - to unblock this test, I am stopp'ing and start'ing connection : not the same, but ...
         // receive then acknowledge
         // consumeSession.recover();
         connection.close();
@@ -153,7 +153,8 @@ public class JmsTopicRedeliverTest extends TestSupport {
         // assertTrue(ackMessage.getJMSRedelivered());
         assertEquals(unackId, ackId);
 
-        // We DO NOT support session recovery - to unblock this test, I am stopp'ing and start'ing connection : not the same, but ...
+        // We DO NOT support session recovery
+        // - to unblock this test, I am stopp'ing and start'ing connection : not the same, but ...
         // consumeSession.recover();
         connection.close();
         connection = createConnection();

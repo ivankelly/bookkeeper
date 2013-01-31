@@ -47,7 +47,8 @@ public class JMSUsecaseTest extends JmsTestSupport {
     }
 
     public void initCombosForTestSendReceive() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 
@@ -67,7 +68,8 @@ public class JMSUsecaseTest extends JmsTestSupport {
     }
 
     public void initCombosForTestSendReceiveTransacted() {
-        addCombinationValues("deliveryMode", new Object[] {Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
+        addCombinationValues("deliveryMode", new Object[] {
+                Integer.valueOf(DeliveryMode.NON_PERSISTENT), Integer.valueOf(DeliveryMode.PERSISTENT)});
         addCombinationValues("destinationType", new Object[] {MessagingSessionFacade.DestinationType.TOPIC});
     }
 

@@ -30,10 +30,6 @@ import org.apache.activemq.test.TestSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author Paul Smith
- * 
- */
 public class SubscribeClosePublishThenConsumeTest extends TestSupport {
     private static final Logger LOG = LoggerFactory.getLogger(SubscribeClosePublishThenConsumeTest.class);
 
