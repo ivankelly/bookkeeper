@@ -21,6 +21,7 @@ import java.io.File;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.configuration.ConfigurationException;
 
 /**
  * Configuration manages server-side settings
@@ -65,6 +66,11 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String DISK_CHECK_INTERVAL = "diskCheckInterval";
     protected final static String AUDITOR_PERIODIC_CHECK_INTERVAL = "auditorPeriodicCheckInterval";
     protected final static String AUTO_RECOVERY_DAEMON_ENABLED = "autoRecoveryDaemonEnabled";
+
+    protected final static String SKIP_LIST_USAGE_ENABLED = "skipListUsageEnabled";
+    protected final static String SKIP_LIST_SIZE_LIMIT = "skipListSizeLimit";
+    protected final static String SKIP_LIST_CHUNK_SIZE_ENTRY = "skipListArenaChunkSize";
+    protected final static String SKIP_LIST_MAX_ALLOC_ENTRY = "skipListArenaMaxAllocSize";
 
     /**
      * Construct a default configuration object
@@ -131,7 +137,7 @@ public class ServerConfiguration extends AbstractConfiguration {
      * @return flush interval
      */
     public int getFlushInterval() {
-        return this.getInt(FLUSH_INTERVAL, 100);
+        return this.getInt(FLUSH_INTERVAL, 1000);
     }
 
     /**
@@ -688,5 +694,63 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public boolean isAutoRecoveryDaemonEnabled() {
         return getBoolean(AUTO_RECOVERY_DAEMON_ENABLED, false);
+    }
+
+    /**
+     * Set skip list usage enabled or not
+     *
+     * @param enabled
+     */
+    public ServerConfiguration setSkipListUsageEnabled(boolean enabled) {
+        this.setProperty(SKIP_LIST_USAGE_ENABLED, enabled);
+        return this;
+    }
+
+    /**
+     * Check if skip list usage enabled (default true)
+     *
+     * @return
+     */
+    public boolean getSkipListUsageEnabled() {
+        return this.getBoolean(SKIP_LIST_USAGE_ENABLED, true);
+    }
+
+    /**
+     * Get skip list data size limitation (default 16MB)
+     *
+     * @return skip list data size limitation
+     */
+    public long getSkipListSizeLimit() {
+        return this.getLong(SKIP_LIST_SIZE_LIMIT, 16 * 1024 * 1024L);
+    }
+
+    /**
+     * Get the number of bytes we should use as chunk allocation for the {@link
+     * org.apache.bookkeeper.bookie.SkipListArena}
+     * Default is 2 MB
+     * @return
+     */
+    public int getSkipListArenaChunkSize() {
+        return getInt(SKIP_LIST_CHUNK_SIZE_ENTRY, 2096 * 1024);
+    }
+
+    /**
+     * Get the max size we should delegate memory allocation to VM for the {@link
+     * org.apache.bookkeeper.bookie.SkipListArena}
+     * Default is 128 KB
+     * @return
+     */
+    public int getSkipListArenaMaxAllocSize() {
+        return getInt(SKIP_LIST_MAX_ALLOC_ENTRY, 128 * 1024);
+    }
+
+    /**
+     * Validate the configuration.
+     * @throws ConfigurationException
+     */
+    public void validate() throws ConfigurationException {
+        if (getSkipListArenaChunkSize() < getSkipListArenaMaxAllocSize()) {
+            throw new ConfigurationException("Arena max allocation size should be smaller than the chunk size.");
+        }
     }
 }

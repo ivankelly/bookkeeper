@@ -271,6 +271,7 @@ public class LedgerCacheTest extends TestCase {
         // Add entries
         ledgerStorage.addEntry(generateEntry(1, 1));
         ledgerStorage.addEntry(generateEntry(1, 2));
+        ledgerStorage.prepare(true);
         ledgerStorage.flush();
 
         ledgerStorage.addEntry(generateEntry(1, 3));
@@ -279,6 +280,7 @@ public class LedgerCacheTest extends TestCase {
                 newFileInfo.getLf().getParentFile().getParentFile().getParentFile());
         File before = newFileInfo.getLf();
         // flush after disk is added as failed.
+        ledgerStorage.prepare(true);
         ledgerStorage.flush();
         File after = newFileInfo.getLf();
 

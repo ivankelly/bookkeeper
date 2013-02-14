@@ -20,4 +20,8 @@
     <!-- generated code, we can't be held responsible for findbugs in it //-->
     <Class name="~org\.apache\.bookkeeper\.proto\.DataFormats.*" />
   </Match>
+  <Match>
+    <!-- Cache entry uses byte[] from memory arena //-->
+    <Class name="org.apache.bookkeeper.bookie.EntryKeyValue" />
+  </Match>
 </FindBugsFilter>

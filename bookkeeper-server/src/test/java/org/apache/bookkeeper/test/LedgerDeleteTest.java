@@ -51,6 +51,7 @@ public class LedgerDeleteTest extends MultiLedgerManagerTestCase {
     @Override
     public void setUp() throws Exception {
         // Set up the configuration properties needed.
+        baseConf.setSkipListUsageEnabled(false);
         baseConf.setEntryLogSizeLimit(2 * 1024 * 1024L);
         baseConf.setGcWaitTime(1000);
         super.setUp();

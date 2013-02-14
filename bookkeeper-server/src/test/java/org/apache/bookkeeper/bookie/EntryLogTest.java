@@ -68,7 +68,8 @@ public class EntryLogTest extends TestCase {
         // now lets truncate the file to corrupt the last entry, which simulates a partial write
         File f = new File(curDir, "0.log");
         RandomAccessFile raf = new RandomAccessFile(f, "rw");
-        raf.setLength(raf.length()-10);
+        long lenNew = raf.length() - 10;
+        raf.setLength(lenNew);
         raf.close();
         // now see which ledgers are in the log
         logger = new EntryLogger(conf, bookie.getLedgerDirsManager());
@@ -211,12 +212,9 @@ public class EntryLogTest extends TestCase {
         bookie.getLedgerDirsManager().addToFilledDirs(entryLogger.currentDir);
         ledgerStorage.addEntry(generateEntry(3, 1));
         // Verify written entries
-        Assert.assertArrayEquals(generateEntry(1, 1).array(), ledgerStorage
-                .getEntry(1, 1).array());
-        Assert.assertArrayEquals(generateEntry(2, 1).array(), ledgerStorage
-                .getEntry(2, 1).array());
-        Assert.assertArrayEquals(generateEntry(3, 1).array(), ledgerStorage
-                .getEntry(3, 1).array());
+        Assert.assertTrue(0 == generateEntry(1, 1).compareTo(ledgerStorage.getEntry(1, 1)));
+        Assert.assertTrue(0 == generateEntry(2, 1).compareTo(ledgerStorage.getEntry(2, 1)));
+        Assert.assertTrue(0 == generateEntry(3, 1).compareTo(ledgerStorage.getEntry(3, 1)));
     }
 
     @After

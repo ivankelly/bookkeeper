@@ -34,10 +34,13 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.bookkeeper.meta.LedgerManager;
@@ -115,7 +118,7 @@ public class Bookie extends Thread {
     BookieBean jmxBookieBean;
     BKMBeanInfo jmxLedgerStorageBean;
 
-    Map<Long, byte[]> masterKeyCache = Collections.synchronizedMap(new HashMap<Long, byte[]>());
+    ConcurrentMap<Long, byte[]> masterKeyCache = new ConcurrentHashMap<Long, byte[]>();
 
     final private String zkBookieRegPath;
 
@@ -260,12 +263,22 @@ public class Bookie extends Thread {
      * number of old journal files which may be used for manual recovery in critical disaster.
      * </p>
      */
-    class SyncThread extends Thread {
+    class SyncThread extends Thread implements CacheCallback {
         volatile boolean running = true;
         // flag to ensure sync thread will not be interrupted during flush
         final AtomicBoolean flushing = new AtomicBoolean(false);
         // make flush interval as a parameter
         final int flushInterval;
+
+        LinkedBlockingQueue<Boolean> syncRequests = new LinkedBlockingQueue<Boolean>();
+
+        @Override
+        public void onSizeLimitReached() throws IOException {
+            if (running) {
+                syncRequests.offer(Boolean.TRUE);
+            }
+        }
+
         public SyncThread(ServerConfiguration conf) {
             super("SyncThread");
             flushInterval = conf.getFlushInterval();
@@ -302,7 +315,7 @@ public class Bookie extends Thread {
                 while (running) {
                     synchronized (this) {
                         try {
-                            wait(flushInterval);
+                            syncRequests.poll(flushInterval, TimeUnit.MILLISECONDS);
                             if (!ledgerStorage.isFlushRequired()) {
                                 continue;
                             }
@@ -346,7 +359,9 @@ public class Bookie extends Thread {
                     if (!flushFailed) {
                         try {
                             journal.rollLog();
-                            journal.gcJournals();
+                            if (running) {
+                                journal.gcJournals();
+                            }
                         } catch (NoWritableLedgerDirException e) {
                             flushing.set(false);
                             transitionToReadOnlyMode();
@@ -365,7 +380,10 @@ public class Bookie extends Thread {
         // shutdown sync thread
         void shutdown() throws InterruptedException {
             running = false;
-            if (flushing.compareAndSet(false, true)) {
+            if (ledgerStorage.isFlushRequired()) {
+                // Offer queue item to wake up Sync thread
+                syncRequests.offer(Boolean.FALSE);
+            } else if (flushing.compareAndSet(false, true)) {
                 // if setting flushing flag succeed, means syncThread is not flushing now
                 // it is safe to interrupt itself now 
                 this.interrupt();
@@ -531,9 +549,13 @@ public class Bookie extends Thread {
         LOG.info("instantiate ledger manager {}", ledgerManagerFactory.getClass().getName());
         ledgerManager = ledgerManagerFactory.newLedgerManager();
         syncThread = new SyncThread(conf);
-        ledgerStorage = new InterleavedLedgerStorage(conf, ledgerManager,
-                                                     ledgerDirsManager,
-                                                     new BookieSafeEntryAdder());
+        // Check the type of storage.
+        if (conf.getSkipListUsageEnabled()) {
+            ledgerStorage = new SkipListLedgerStorage(conf, ledgerManager, ledgerDirsManager, new BookieSafeEntryAdder(), syncThread);
+        } else {
+            ledgerStorage = new InterleavedLedgerStorage(conf, ledgerManager, ledgerDirsManager, new BookieSafeEntryAdder());
+        }
+
         handles = new HandleFactoryImpl(ledgerStorage);
         // instantiate the journal
         journal = new Journal(conf, ledgerDirsManager);
@@ -597,6 +619,9 @@ public class Bookie extends Thread {
                 }
             }
         });
+
+        // Flush skip list
+        ledgerStorage.prepare(true);
     }
 
     synchronized public void start() {
@@ -942,16 +967,25 @@ public class Bookie extends Thread {
                 // Shutdown the ZK client
                 if(zk != null) zk.close();
 
-                //Shutdown disk checker
-                ledgerDirsManager.shutdown();
+                // Flush cache
+                try {
+                    ledgerStorage.prepare(true);
+                } catch (IOException e) {
+                    LOG.error("Error while flushing cache", e);
+                }
+
+                // Shutdown Sync thread
+                syncThread.shutdown();
 
                 // Shutdown journal
                 journal.shutdown();
                 this.join();
-                syncThread.shutdown();
 
                 // Shutdown the EntryLogger which has the GarbageCollector Thread running
                 ledgerStorage.shutdown();
+
+				//Shutdown disk checker
+                ledgerDirsManager.shutdown();
 
                 // close Ledger Manager
                 try {
@@ -989,8 +1023,9 @@ public class Bookie extends Thread {
             bb.put(masterKey);
             bb.flip();
 
-            journal.logAddEntry(bb, new NopWriteCallback(), null);
-            masterKeyCache.put(ledgerId, masterKey);
+            if (null == masterKeyCache.putIfAbsent(ledgerId, masterKey)) {
+                journal.logAddEntry(bb, new NopWriteCallback(), null);
+            }
         }
         return l;
     }
@@ -1012,7 +1047,7 @@ public class Bookie extends Thread {
         long entryId = handle.addEntry(entry);
 
         entry.rewind();
-        LOG.trace("Adding {}@{}", entryId, ledgerId);
+            LOG.trace("Adding {}@{}", entryId, ledgerId);
         journal.logAddEntry(entry, cb, ctx);
     }
 
@@ -1089,7 +1124,7 @@ public class Bookie extends Thread {
     public ByteBuffer readEntry(long ledgerId, long entryId)
             throws IOException, NoLedgerException {
         LedgerDescriptor handle = handles.getReadOnlyHandle(ledgerId);
-        LOG.trace("Reading {}@{}", entryId, ledgerId);
+            LOG.trace("Reading {}@{}", entryId, ledgerId);
         return handle.readEntry(entryId);
     }
 

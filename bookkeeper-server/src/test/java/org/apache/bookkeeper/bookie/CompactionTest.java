@@ -43,6 +43,7 @@ public class CompactionTest extends BookKeeperClusterTestCase {
     static Logger LOG = LoggerFactory.getLogger(CompactionTest.class);
     DigestType digestType;
 
+    static int ENTRY_OVERHEAD_SIZE = 44; // Metadata + CRC + Length
     static int ENTRY_SIZE = 1024;
     static int NUM_BOOKIES = 1;
 
@@ -69,7 +70,7 @@ public class CompactionTest extends BookKeeperClusterTestCase {
 
         // a dummy message
         StringBuilder msgSB = new StringBuilder();
-        for (int i = 0; i < ENTRY_SIZE; i++) {
+        for (int i = 0; i < ENTRY_SIZE - ENTRY_OVERHEAD_SIZE; i++) {
             msgSB.append("a");
         }
         msg = msgSB.toString();
@@ -80,6 +81,8 @@ public class CompactionTest extends BookKeeperClusterTestCase {
     public void setUp() throws Exception {
         // Set up the configuration properties needed.
         baseConf.setEntryLogSizeLimit(numEntries * ENTRY_SIZE);
+        // Disable skip list for compaction
+        baseConf.setSkipListUsageEnabled(false);
         baseConf.setGcWaitTime(gcWaitTime);
         baseConf.setMinorCompactionThreshold(minorCompactionThreshold);
         baseConf.setMajorCompactionThreshold(majorCompactionThreshold);
@@ -155,7 +158,7 @@ public class CompactionTest extends BookKeeperClusterTestCase {
 
         // entry logs ([0,1].log) should not be compacted.
         for (File ledgerDirectory : tmpDirs) {
-            assertTrue("Not Found entry log file ([0,1].log that should have been compacted in ledgerDirectory: "
+            assertTrue("Not Found entry log file ([0,1].log that should not have been compacted in ledgerDirectory: "
                             + ledgerDirectory, TestUtils.hasLogFiles(ledgerDirectory, false, 0, 1));
         }
     }
@@ -185,7 +188,7 @@ public class CompactionTest extends BookKeeperClusterTestCase {
 
         // entry logs ([0,1,2].log) should be compacted.
         for (File ledgerDirectory : tmpDirs) {
-            assertFalse("Found entry log file ([0,1,2].log that should have not been compacted in ledgerDirectory: " 
+            assertFalse("Found entry log file ([0,1,2].log that should have been been compacted in ledgerDirectory: "
                             + ledgerDirectory, TestUtils.hasLogFiles(ledgerDirectory, true, 0, 1, 2));
         }
 

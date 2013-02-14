@@ -146,7 +146,7 @@ class PendingAddOp implements WriteCallback {
             lh.handleUnrecoverableErrorDuringAdd(rc);
             return;
         default:
-            LOG.warn("Write did not succeed: " + ledgerId + ", " + entryId);
+            LOG.warn("Failed to write entry " + ledgerId + ", " + entryId + ": " + BKException.getMessage(rc));
             lh.handleBookieFailure(addr, bookieIndex);
             return;
         }

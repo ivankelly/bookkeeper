@@ -63,7 +63,7 @@ class InterleavedLedgerStorage implements LedgerStorage {
         activeLedgers = new SnapshotMap<Long, Boolean>();
         entryLogger = new EntryLogger(conf, ledgerDirsManager);
         ledgerCache = new LedgerCacheImpl(conf, activeLedgers, ledgerDirsManager);
-        gcThread = new GarbageCollectorThread(conf, ledgerCache, entryLogger,
+        gcThread = new GarbageCollectorThread(conf, ledgerCache, entryLogger, this,
                 activeLedgers, safeEntryAdder, ledgerManager);
     }
 
@@ -111,30 +111,15 @@ class InterleavedLedgerStorage implements LedgerStorage {
     }
 
     @Override
-    synchronized public long addEntry(ByteBuffer entry) throws IOException {
+    public long addEntry(ByteBuffer entry) throws IOException {
         long ledgerId = entry.getLong();
         long entryId = entry.getLong();
         entry.rewind();
-        
-        /*
-         * Log the entry
-         */
-        long pos = entryLogger.addEntry(ledgerId, entry);
-        
-        
-        /*
-         * Set offset of entry id to be the current ledger position
-         */
-        ledgerCache.putEntryOffset(ledgerId, entryId, pos);
-
-        somethingWritten = true;
-
+        processEntry(ledgerId, entryId, entry);
         return entryId;
     }
 
-    @Override
-    public ByteBuffer getEntry(long ledgerId, long entryId) throws IOException {
-        long offset;
+    protected ByteBuffer getEntryImpl(long ledgerId, long entryId) throws IOException {
         /*
          * If entryId is BookieProtocol.LAST_ADD_CONFIRMED, then return the last written.
          */
@@ -142,10 +127,11 @@ class InterleavedLedgerStorage implements LedgerStorage {
             entryId = ledgerCache.getLastEntry(ledgerId);
         }
 
-        offset = ledgerCache.getEntryOffset(ledgerId, entryId);
+        long offset = ledgerCache.getEntryOffset(ledgerId, entryId);
         if (offset == 0) {
-            throw new Bookie.NoEntryException(ledgerId, entryId);
+            return null;
         }
+
         return ByteBuffer.wrap(entryLogger.readEntry(ledgerId, entryId, offset));
     }
 
@@ -155,16 +141,19 @@ class InterleavedLedgerStorage implements LedgerStorage {
     };
 
     @Override
-    public void flush() throws IOException {
-
-        if (!somethingWritten) {
-            return;
+    public ByteBuffer getEntry(long ledgerId, long entryId) throws IOException {
+        ByteBuffer buffToRet = getEntryImpl(ledgerId, entryId);
+        if (null == buffToRet) {
+            throw new Bookie.NoEntryException(ledgerId, entryId);
         }
-        somethingWritten = false;
+        return buffToRet;
+    }
+
+    synchronized private void flushOptional(boolean force) throws IOException {
         boolean flushFailed = false;
 
         try {
-            ledgerCache.flushLedger(true);
+            ledgerCache.flushLedger(force);
         } catch (IOException ioe) {
             LOG.error("Exception flushing Ledger cache", ioe);
             flushFailed = true;
@@ -182,7 +171,35 @@ class InterleavedLedgerStorage implements LedgerStorage {
     }
 
     @Override
+    synchronized public void prepare(boolean force) throws IOException {
+        // No-op
+    }
+
+    @Override
+    synchronized public void flush() throws IOException {
+        if (!somethingWritten) {
+            return;
+        }
+        somethingWritten = false;
+        flushOptional(true);
+    }
+
+    @Override
     public BKMBeanInfo getJMXBean() {
         return ledgerCache.getJMXBean();
+    }
+
+    synchronized protected void processEntry(long ledgerId, long entryId, ByteBuffer entry)
+            throws IOException {
+        /*
+         * Log the entry
+         */
+        long pos = entryLogger.addEntry(ledgerId, entry);
+
+        /*
+         * Set offset of entry id to be the current ledger position
+         */
+        ledgerCache.putEntryOffset(ledgerId, entryId, pos);
+        somethingWritten = true;
     }
 }
