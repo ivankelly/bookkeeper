@@ -23,8 +23,12 @@ package org.apache.bookkeeper.bookie;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.nio.ByteBuffer;
+import java.net.InetSocketAddress;
 
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.bookie.Bookie.NoLedgerException;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
@@ -319,11 +323,17 @@ public class LedgerCacheTest extends TestCase {
 
         Bookie b = new Bookie(conf);
         b.start();
+        final CountDownLatch latch = new CountDownLatch(numLedgers);
+        WriteCallback cb = new WriteCallback() {
+                public void writeComplete(int rc, long l, long e, InetSocketAddress addr, Object ctx) {
+                    latch.countDown();
+                }
+            };
         for (int i = 1; i <= numLedgers; i++) {
             ByteBuffer packet = generateEntry(i, 1);
-            b.addEntry(packet, new Bookie.NopWriteCallback(), null, "passwd".getBytes());
+            b.addEntry(packet, cb, null, "passwd".getBytes());
         }
-
+        assertTrue("All adds should have completed", latch.await(10, TimeUnit.SECONDS));
         conf = new ServerConfiguration()
             .setZkServers(null)
             .setJournalDirName(journalDir.getPath())

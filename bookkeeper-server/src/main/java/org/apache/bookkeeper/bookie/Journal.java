@@ -258,7 +258,7 @@ class Journal extends Thread {
     private LastLogMark lastLogMark = new LastLogMark(0, 0);
 
     // journal entry queue to commit
-    LinkedBlockingQueue<QueueEntry> queue = new LinkedBlockingQueue<QueueEntry>();
+    final LinkedBlockingQueue<QueueEntry> queue;
 
     volatile boolean running = true;
     private LedgerDirsManager ledgerDirsManager;
@@ -270,7 +270,7 @@ class Journal extends Thread {
         this.journalDirectory = Bookie.getCurrentDirectory(conf.getJournalDir());
         this.maxJournalSize = conf.getMaxJournalSize() * MB;
         this.maxBackupJournals = conf.getMaxBackupJournals();
-
+        queue = new LinkedBlockingQueue<QueueEntry>(conf.getMaximumJournalQueueLength());
         // read last log mark
         lastLogMark.readLog();
         LOG.debug("Last Log Mark : {}", lastLogMark);
@@ -444,7 +444,13 @@ class Journal extends Thread {
         long ledgerId = entry.getLong();
         long entryId = entry.getLong();
         entry.rewind();
-        queue.add(new QueueEntry(entry, ledgerId, entryId, cb, ctx));
+        try {
+            queue.put(new QueueEntry(entry, ledgerId, entryId, cb, ctx));
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            cb.writeComplete(BookieException.Code.IllegalOpException, ledgerId,
+                             entryId, null, ctx);
+        }
     }
 
     /**

@@ -65,6 +65,7 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String DISK_CHECK_INTERVAL = "diskCheckInterval";
     protected final static String AUDITOR_PERIODIC_CHECK_INTERVAL = "auditorPeriodicCheckInterval";
     protected final static String AUTO_RECOVERY_DAEMON_ENABLED = "autoRecoveryDaemonEnabled";
+    protected final static String MAX_JOURNAL_QUEUE_LENGTH = "maxJournalQueueLength";
 
     /**
      * Construct a default configuration object
@@ -691,5 +692,25 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public boolean isAutoRecoveryDaemonEnabled() {
         return getBoolean(AUTO_RECOVERY_DAEMON_ENABLED, false);
+    }
+
+    /**
+     * The maximum length of the journal queue. This is effectively the maximum number
+     * of requests that can be serviced at a time. Anything above this will be queued,
+     * possibly causing a timeout on the client side.
+     *
+     * @param len the maximum length of the journal queue.
+     */
+    public ServerConfiguration setMaximumJournalQueueLength(int len) {
+        setProperty(MAX_JOURNAL_QUEUE_LENGTH, len);
+        return this;
+    }
+
+    /**
+     * Return the maximum length of the journal queue. By default this is 200000.
+     * @return the maximum journal queue length
+     */
+    public int getMaximumJournalQueueLength() {
+        return getInteger(MAX_JOURNAL_QUEUE_LENGTH, 200000);
     }
 }

@@ -1006,15 +1006,27 @@ public class Bookie extends Thread {
     /**
      * Add an entry to a ledger as specified by handle. 
      */
-    private void addEntryInternal(LedgerDescriptor handle, ByteBuffer entry, WriteCallback cb, Object ctx)
+    private void addEntryInternal(final LedgerDescriptor handle, final ByteBuffer entry,
+                                  final WriteCallback cb, final Object ctx)
             throws IOException, BookieException {
-        long ledgerId = handle.getLedgerId();
-        entry.rewind();
-        long entryId = handle.addEntry(entry);
+        WriteCallback journalCb = new WriteCallback() {
+                public void writeComplete(int rc, long ledgerId, long entryId,
+                                          InetSocketAddress addr, Object ctx2) {
+                    try {
+                        LOG.trace("Adding {}@{}", entryId, ledgerId);
+                        entry.rewind();
+                        handle.addEntry(entry);
 
+                        cb.writeComplete(rc, ledgerId, entryId, addr, ctx);
+                    } catch (IOException ioe) {
+                        LOG.error("Error writing to ledger storage "
+                                  + ledgerId + " entry " + entryId, ioe);
+                        transitionToReadOnlyMode();
+                    }
+                }
+            };
         entry.rewind();
-        LOG.trace("Adding {}@{}", entryId, ledgerId);
-        journal.logAddEntry(entry, cb, ctx);
+        journal.logAddEntry(entry, journalCb, ctx);
     }
 
     /**

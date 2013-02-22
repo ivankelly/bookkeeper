@@ -120,6 +120,7 @@ public class SlowBookieTest extends BookKeeperClusterTestCase {
         sleepBookie(getBookie(0), b0latch);
         Thread.sleep(10000);
         b0latch.countDown();
+        Thread.sleep(5000); // give it some time to finish the delayed requests
         finished.set(true);
         t.join();
 
@@ -183,6 +184,7 @@ public class SlowBookieTest extends BookKeeperClusterTestCase {
         b0latch.countDown();
         b1latch.countDown();
         finished.set(true);
+        Thread.sleep(5000); // give it some time to finish the delayed requests
         t.join();
 
         assertFalse(failTest.get());
