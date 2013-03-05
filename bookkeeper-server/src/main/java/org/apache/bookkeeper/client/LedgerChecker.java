@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.Map;
 
 import org.apache.bookkeeper.proto.BookieClient;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 
@@ -96,18 +97,20 @@ public class LedgerChecker {
             cb.operationComplete(BKException.Code.OK, fragment);
             return;
         }
+        ReadRequest.Builder builder = ReadRequest.newBuilder()
+            .setLedgerId(fragment.getLedgerId());
         if (firstStored == lastStored) {
             ReadManyEntriesCallback manycb = new ReadManyEntriesCallback(1,
                     fragment, cb);
-            bookieClient.readEntry(fragment.getAddress(), fragment
-                    .getLedgerId(), firstStored, manycb, null);
+            bookieClient.readEntry(fragment.getAddress(),
+                                   builder.setEntryId(firstStored).build(), manycb, null);
         } else {
             ReadManyEntriesCallback manycb = new ReadManyEntriesCallback(2,
                     fragment, cb);
-            bookieClient.readEntry(fragment.getAddress(), fragment
-                    .getLedgerId(), firstStored, manycb, null);
-            bookieClient.readEntry(fragment.getAddress(), fragment
-                    .getLedgerId(), lastStored, manycb, null);
+            bookieClient.readEntry(fragment.getAddress(),
+                                   builder.setEntryId(firstStored).build(), manycb, null);
+            bookieClient.readEntry(fragment.getAddress(),
+                                   builder.setEntryId(lastStored).build(), manycb, null);
         }
     }
 
@@ -234,11 +237,12 @@ public class LedgerChecker {
                                                       checkFragments(fragments, cb);
                                                   }
                                               });
+                ReadRequest readReq = ReadRequest.newBuilder()
+                    .setLedgerId(lh.getId()).setEntryId(entryToRead).build();
 
                 for (int bi : lh.getDistributionSchedule().getWriteSet(entryToRead)) {
                     InetSocketAddress addr = curEnsemble.get(bi);
-                    bookieClient.readEntry(addr, lh.getId(),
-                                           entryToRead, eecb, null);
+                    bookieClient.readEntry(addr, readReq, eecb, null);
                 }
                 return;
             } else {

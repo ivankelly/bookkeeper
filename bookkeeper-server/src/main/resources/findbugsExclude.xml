@@ -17,7 +17,10 @@
 //-->
 <FindBugsFilter>
   <Match>
-    <!-- generated code, we can't be held responsible for findbugs in it //-->
-    <Class name="~org\.apache\.bookkeeper\.proto\.DataFormats.*" />
+    <Or>
+      <!-- generated code, we can't be held responsible for findbugs in it //-->
+      <Class name="~org\.apache\.bookkeeper\.proto\.DataFormats.*" />
+      <Class name="~org\.apache\.bookkeeper\.proto\.BookkeeperProtocol.*" />
+    </Or>
   </Match>
 </FindBugsFilter>

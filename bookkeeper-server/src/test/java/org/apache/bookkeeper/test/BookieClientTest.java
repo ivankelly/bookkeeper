@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.concurrent.Executors;
 
+import com.google.protobuf.ByteString;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
@@ -40,6 +41,9 @@ import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest;
+
 import org.apache.bookkeeper.util.OrderedSafeExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,100 +137,111 @@ public class BookieClientTest extends TestCase {
         ResultStruct arc = new ResultStruct();
 
         BookieClient bc = new BookieClient(new ClientConfiguration(), channelFactory, executor);
-        ChannelBuffer bb;
+        ByteBuffer bb;
+        AddRequest.Builder addReqBuilder = AddRequest.newBuilder()
+            .setMasterKey(ByteString.copyFrom(passwd)).setLedgerId(1L);
+        ReadRequest.Builder readReqBuilder = ReadRequest.newBuilder()
+            .setLedgerId(1L);
+
         bb = createByteBuffer(1, 1, 1);
-        bc.addEntry(addr, 1, passwd, 1, bb, wrcb, arc, BookieProtocol.FLAG_NONE);
+        bc.addEntry(addr, addReqBuilder.setEntryId(1)
+                    .setData(ByteString.copyFrom(bb)).build(), wrcb, arc);
         synchronized (arc) {
             arc.wait(1000);
-            bc.readEntry(addr, 1, 1, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(1).build(), recb, arc);
             arc.wait(1000);
             assertEquals(0, arc.rc);
             assertEquals(1, arc.entry.getInt());
         }
         bb = createByteBuffer(2, 1, 2);
-        bc.addEntry(addr, 1, passwd, 2, bb, wrcb, null, BookieProtocol.FLAG_NONE);
+        bc.addEntry(addr, addReqBuilder.setEntryId(2)
+                    .setData(ByteString.copyFrom(bb)).build(), wrcb, null);
         bb = createByteBuffer(3, 1, 3);
-        bc.addEntry(addr, 1, passwd, 3, bb, wrcb, null, BookieProtocol.FLAG_NONE);
+        bc.addEntry(addr, addReqBuilder.setEntryId(3)
+                    .setData(ByteString.copyFrom(bb)).build(), wrcb, null);
         bb = createByteBuffer(5, 1, 5);
-        bc.addEntry(addr, 1, passwd, 5, bb, wrcb, null, BookieProtocol.FLAG_NONE);
+        bc.addEntry(addr, addReqBuilder.setEntryId(5)
+                    .setData(ByteString.copyFrom(bb)).build(), wrcb, null);
         bb = createByteBuffer(7, 1, 7);
-        bc.addEntry(addr, 1, passwd, 7, bb, wrcb, null, BookieProtocol.FLAG_NONE);
+        bc.addEntry(addr, addReqBuilder.setEntryId(7)
+                    .setData(ByteString.copyFrom(bb)).build(), wrcb, null);
         synchronized (notifyObject) {
             bb = createByteBuffer(11, 1, 11);
-            bc.addEntry(addr, 1, passwd, 11, bb, wrcb, notifyObject, BookieProtocol.FLAG_NONE);
+            bc.addEntry(addr, addReqBuilder.setEntryId(11)
+                    .setData(ByteString.copyFrom(bb)).build(), wrcb, notifyObject);
             notifyObject.wait();
         }
         synchronized (arc) {
-            bc.readEntry(addr, 1, 6, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(6).build(), recb, arc);
             arc.wait(1000);
             assertEquals(BKException.Code.NoSuchEntryException, arc.rc);
         }
         synchronized (arc) {
-            bc.readEntry(addr, 1, 7, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(7).build(), recb, arc);
             arc.wait(1000);
             assertEquals(0, arc.rc);
             assertEquals(7, arc.entry.getInt());
         }
         synchronized (arc) {
-            bc.readEntry(addr, 1, 1, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(1).build(), recb, arc);
             arc.wait(1000);
             assertEquals(0, arc.rc);
             assertEquals(1, arc.entry.getInt());
         }
         synchronized (arc) {
-            bc.readEntry(addr, 1, 2, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(2).build(), recb, arc);
             arc.wait(1000);
             assertEquals(0, arc.rc);
             assertEquals(2, arc.entry.getInt());
         }
         synchronized (arc) {
-            bc.readEntry(addr, 1, 3, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(3).build(), recb, arc);
             arc.wait(1000);
             assertEquals(0, arc.rc);
             assertEquals(3, arc.entry.getInt());
         }
         synchronized (arc) {
-            bc.readEntry(addr, 1, 4, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(4).build(), recb, arc);
             arc.wait(1000);
             assertEquals(BKException.Code.NoSuchEntryException, arc.rc);
         }
         synchronized (arc) {
-            bc.readEntry(addr, 1, 11, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(11).build(), recb, arc);
             arc.wait(1000);
             assertEquals(0, arc.rc);
             assertEquals(11, arc.entry.getInt());
         }
         synchronized (arc) {
-            bc.readEntry(addr, 1, 5, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(5).build(), recb, arc);
             arc.wait(1000);
             assertEquals(0, arc.rc);
             assertEquals(5, arc.entry.getInt());
         }
         synchronized (arc) {
-            bc.readEntry(addr, 1, 10, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(10).build(), recb, arc);
             arc.wait(1000);
             assertEquals(BKException.Code.NoSuchEntryException, arc.rc);
         }
         synchronized (arc) {
-            bc.readEntry(addr, 1, 12, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(12).build(), recb, arc);
             arc.wait(1000);
             assertEquals(BKException.Code.NoSuchEntryException, arc.rc);
         }
         synchronized (arc) {
-            bc.readEntry(addr, 1, 13, recb, arc);
+            bc.readEntry(addr, readReqBuilder.setEntryId(13).build(), recb, arc);
             arc.wait(1000);
             assertEquals(BKException.Code.NoSuchEntryException, arc.rc);
         }
     }
 
-    private ChannelBuffer createByteBuffer(int i, long lid, long eid) {
+    private ByteBuffer createByteBuffer(int i, long lid, long eid) {
         ByteBuffer bb;
         bb = ByteBuffer.allocate(4 + 16);
         bb.putLong(lid);
         bb.putLong(eid);
         bb.putInt(i);
         bb.flip();
-        return ChannelBuffers.wrappedBuffer(bb);
+        return bb;
     }
 
     @Test(timeout=60000)
@@ -235,7 +250,10 @@ public class BookieClientTest extends TestCase {
         InetSocketAddress addr = new InetSocketAddress("127.0.0.1", port);
         BookieClient bc = new BookieClient(new ClientConfiguration(), channelFactory, executor);
         synchronized (arc) {
-            bc.readEntry(addr, 2, 13, recb, arc);
+            ReadRequest.Builder readReqBuilder = ReadRequest.newBuilder()
+                .setLedgerId(2L).setEntryId(13L);
+
+            bc.readEntry(addr, readReqBuilder.build(), recb, arc);
             arc.wait(1000);
             assertEquals(BKException.Code.NoSuchEntryException, arc.rc);
         }

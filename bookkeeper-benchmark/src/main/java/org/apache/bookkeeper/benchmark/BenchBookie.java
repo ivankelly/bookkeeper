@@ -26,6 +26,8 @@ import java.io.IOException;
 
 import org.apache.zookeeper.KeeperException;
 
+import com.google.protobuf.ByteString;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest;
 import org.apache.bookkeeper.proto.BookieClient;
 import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
@@ -34,8 +36,7 @@ import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.ClientConfiguration;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
+import java.nio.ByteBuffer;
 import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
@@ -155,15 +156,20 @@ public class BenchBookie {
         int warmUpCount = 999;
 
         long ledger = getValidLedgerId(servers);
+
+        AddRequest.Builder builder = AddRequest.newBuilder()
+            .setLedgerId(ledger).setMasterKey(ByteString.copyFrom(new byte[20]));
+        byte[] data = new byte[size];
         for(long entry = 0; entry < warmUpCount; entry++) {
-            ChannelBuffer toSend = ChannelBuffers.buffer(size);
-            toSend.resetReaderIndex();
-            toSend.resetWriterIndex();
-            toSend.writeLong(ledger);
-            toSend.writeLong(entry);
-            toSend.writerIndex(toSend.capacity());
-            bc.addEntry(new InetSocketAddress(addr, port), ledger, new byte[20],
-                        entry, toSend, tc, null, BookieProtocol.FLAG_NONE);
+            ByteBuffer toSend = ByteBuffer.allocate(size + 16);
+            toSend.putLong(ledger);
+            toSend.putLong(entry);
+            toSend.put(data);
+            toSend.flip();
+            builder.setData(ByteString.copyFrom(data));
+            bc.addEntry(new InetSocketAddress(addr, port),
+                        builder.setEntryId(entry).build(),
+                        tc, null);
         }
         LOG.info("Waiting for warmup");
         tc.waitFor(warmUpCount);
@@ -173,15 +179,16 @@ public class BenchBookie {
         int entryCount = 5000;
         long startTime = System.nanoTime();
         for(long entry = 0; entry < entryCount; entry++) {
-            ChannelBuffer toSend = ChannelBuffers.buffer(size);
-            toSend.resetReaderIndex();
-            toSend.resetWriterIndex();
-            toSend.writeLong(ledger);
-            toSend.writeLong(entry);
-            toSend.writerIndex(toSend.capacity());
-            lc.resetComplete();
-            bc.addEntry(new InetSocketAddress(addr, port), ledger, new byte[20],
-                        entry, toSend, lc, null, BookieProtocol.FLAG_NONE);
+            ByteBuffer toSend = ByteBuffer.allocate(size + 16);
+            toSend.putLong(ledger);
+            toSend.putLong(entry);
+            toSend.put(data);
+            toSend.flip();
+            builder.setData(ByteString.copyFrom(data));
+
+            bc.addEntry(new InetSocketAddress(addr, port),
+                        builder.setEntryId(entry).build(),
+                        lc, null);
             lc.waitForComplete();
         }
         long endTime = System.nanoTime();
@@ -194,14 +201,16 @@ public class BenchBookie {
         startTime = System.currentTimeMillis();
         tc = new ThroughputCallback();
         for(long entry = 0; entry < entryCount; entry++) {
-            ChannelBuffer toSend = ChannelBuffers.buffer(size);
-            toSend.resetReaderIndex();
-            toSend.resetWriterIndex();
-            toSend.writeLong(ledger);
-            toSend.writeLong(entry);
-            toSend.writerIndex(toSend.capacity());
-            bc.addEntry(new InetSocketAddress(addr, port), ledger, new byte[20],
-                        entry, toSend, tc, null, BookieProtocol.FLAG_NONE);
+            ByteBuffer toSend = ByteBuffer.allocate(size + 16);
+            toSend.putLong(ledger);
+            toSend.putLong(entry);
+            toSend.put(data);
+            toSend.flip();
+            builder.setData(ByteString.copyFrom(data));
+
+            bc.addEntry(new InetSocketAddress(addr, port),
+                        builder.setEntryId(entry).build(),
+                        tc, null);
         }
         tc.waitFor(entryCount);
         endTime = System.currentTimeMillis();

@@ -23,25 +23,51 @@ package org.apache.bookkeeper.proto;
 import java.nio.ByteBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 
+import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
+import org.apache.bookkeeper.proto.BookieProtocol.VersionedResponse;
+import org.apache.bookkeeper.proto.BookieProtocol.VersionedRequest;
+
+import com.google.protobuf.ByteString;
+
 class ResponseBuilder {
-    static BookieProtocol.Response buildErrorResponse(int errorCode, BookieProtocol.Request r) {
-        if (r.getOpCode() == BookieProtocol.ADDENTRY) {
-            return new BookieProtocol.AddResponse(r.getProtocolVersion(), errorCode,
-                                                  r.getLedgerId(), r.getEntryId());
+    static VersionedResponse buildErrorResponse(int errorCode, VersionedRequest r) {
+        Response.Builder builder = Response.newBuilder();
+        builder.setErrorCode(errorCode);
+        if (r.getRequest().hasAddRequest()) {
+            builder.setAddResponse(AddResponse.newBuilder()
+                    .setLedgerId(r.getRequest().getAddRequest().getLedgerId())
+                    .setEntryId(r.getRequest().getAddRequest().getEntryId())
+                    .build());
         } else {
-            assert(r.getOpCode() == BookieProtocol.READENTRY);
-            return new BookieProtocol.ReadResponse(r.getProtocolVersion(), errorCode,
-                                                   r.getLedgerId(), r.getEntryId());
+            builder.setReadResponse(ReadResponse.newBuilder()
+                    .setLedgerId(r.getRequest().getReadRequest().getLedgerId())
+                    .setEntryId(r.getRequest().getReadRequest().getEntryId())
+                    .build());
         }
+        return new VersionedResponse(r.getProtocolVersion(), builder.build());
     }
 
-    static BookieProtocol.Response buildAddResponse(BookieProtocol.Request r) {
-        return new BookieProtocol.AddResponse(r.getProtocolVersion(), BookieProtocol.EOK, r.getLedgerId(),
-                                              r.getEntryId());
+    static VersionedResponse buildAddResponse(VersionedRequest r) {
+        Response.Builder builder = Response.newBuilder();
+        builder.setErrorCode(BookieProtocol.EOK);
+        builder.setAddResponse(AddResponse.newBuilder()
+                .setLedgerId(r.getRequest().getAddRequest().getLedgerId())
+                .setEntryId(r.getRequest().getAddRequest().getEntryId())
+                .build());
+        return new VersionedResponse(r.getProtocolVersion(), builder.build());
     }
 
-    static BookieProtocol.Response buildReadResponse(ByteBuffer data, BookieProtocol.Request r) {
-        return new BookieProtocol.ReadResponse(r.getProtocolVersion(), BookieProtocol.EOK,
-                r.getLedgerId(), r.getEntryId(), ChannelBuffers.wrappedBuffer(data));
+    static VersionedResponse buildReadResponse(VersionedRequest r, ByteBuffer data) {
+        Response.Builder builder = Response.newBuilder();
+        builder.setErrorCode(BookieProtocol.EOK);
+        builder.setReadResponse(ReadResponse.newBuilder()
+                .setLedgerId(r.getRequest().getReadRequest().getLedgerId())
+                .setEntryId(r.getRequest().getReadRequest().getEntryId())
+                .setData(ByteString.copyFrom(data))
+                .build());
+        return new VersionedResponse(r.getProtocolVersion(), builder.build());
     }
 }

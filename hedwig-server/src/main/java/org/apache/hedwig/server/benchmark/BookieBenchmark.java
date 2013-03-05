@@ -21,16 +21,16 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
+import com.google.protobuf.ByteString;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.proto.BookieClient;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.OrderedSafeExecutor;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
@@ -71,20 +71,21 @@ public class BookieBenchmark extends AbstractBenchmark {
 
         byte[] passwd = new byte[20];
         int size = Integer.getInteger("size", 1024);
-        byte[] data = new byte[size];
 
+        long ledgerId = 1000;
+        AddRequest.Builder builder = AddRequest.newBuilder()
+            .setLedgerId(ledgerId).setMasterKey(ByteString.copyFrom(passwd));
         for (int i=0; i<numOps; i++) {
             outstanding.acquire();
 
-            ByteBuffer buffer = ByteBuffer.allocate(44);
-            long ledgerId = 1000;
+            ByteBuffer buffer = ByteBuffer.allocate(44 + size);
             buffer.putLong(ledgerId);
             buffer.putLong(i);
             buffer.putLong(0);
             buffer.put(passwd);
             buffer.rewind();
-            ChannelBuffer toSend = ChannelBuffers.wrappedBuffer(ChannelBuffers.wrappedBuffer(buffer.slice()), ChannelBuffers.wrappedBuffer(data));
-            bkc.addEntry(addr, ledgerId, passwd, i, toSend, callback, MathUtils.now(), 0);
+            builder.setData(ByteString.copyFrom(buffer)).setEntryId(i);
+            bkc.addEntry(addr, builder.build(), callback, MathUtils.now());
         }
 
     }

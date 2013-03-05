@@ -45,6 +45,8 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.client.AsyncCallback.RecoverCallback;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.junit.After;
@@ -478,9 +480,13 @@ public class BookieRecoveryTest extends MultiLedgerManagerMultiDigestTestCase {
             int numRequests = e.getValue().size()*((int)(endEntryId-startEntryId));
 
             ReplicationVerificationCallback cb = new ReplicationVerificationCallback(numRequests);
+            ReadRequest.Builder readReqBuilder = ReadRequest.newBuilder()
+                .setLedgerId(lh.getId());
+
             for (long i = startEntryId; i < endEntryId; i++) {
                 for (InetSocketAddress addr : e.getValue()) {
-                    bkc.bookieClient.readEntry(addr, lh.getId(), i, cb, addr);
+                    bkc.bookieClient.readEntry(addr, readReqBuilder.setEntryId(i).build(),
+                                               cb, addr);
                 }
             }
 
