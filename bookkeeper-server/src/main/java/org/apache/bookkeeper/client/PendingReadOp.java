@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
 import org.apache.bookkeeper.client.BKException.BKDigestMatchException;
+import org.apache.bookkeeper.proto.DataFormats.ReadRequest;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -310,7 +311,10 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
     void sendReadTo(InetSocketAddress to, LedgerEntryRequest entry) throws InterruptedException {
         lh.throttler.acquire();
 
-        lh.bk.bookieClient.readEntry(to, lh.ledgerId, entry.entryId, 
+        ReadRequest readReq = ReadRequest.newBuilder()
+            .setLedgerId(lh.getId()).setEntryId(entry.entryId).build();
+
+        lh.bk.bookieClient.readEntry(to, readReq,
                                      this, new ReadContext(to, entry));
     }
 

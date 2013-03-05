@@ -29,6 +29,8 @@ import org.apache.bookkeeper.proto.BookieProtocol.PacketHeader;
 import org.jboss.netty.handler.codec.oneone.OneToOneEncoder;
 import org.jboss.netty.handler.codec.oneone.OneToOneDecoder;
 
+import com.google.protobuf.ByteString;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,32 +45,53 @@ public class BookieProtoEncoding {
                 return msg;
             }
             BookieProtocol.Request r = (BookieProtocol.Request)msg;
-            if (r instanceof BookieProtocol.AddRequest) {
-                BookieProtocol.AddRequest ar = (BookieProtocol.AddRequest)r;
+            if (r.getHeader().hasAddRequest()) {
+                assert(r.hasData());
+
+                DataFormats.AddRequest add = r.getHeader().getAddRequest();
                 int totalHeaderSize = 4 // for the header
                     + BookieProtocol.MASTER_KEY_LENGTH; // for the master key
                 ChannelBuffer buf = channel.getConfig().getBufferFactory().getBuffer(totalHeaderSize);
-                buf.writeInt(new PacketHeader(r.getProtocolVersion(), r.getOpCode(), r.getFlags()).toInt());
-                buf.writeBytes(r.getMasterKey(), 0, BookieProtocol.MASTER_KEY_LENGTH);
-                return ChannelBuffers.wrappedBuffer(buf, ar.getData());
-            } else {
-                assert(r instanceof BookieProtocol.ReadRequest);
+                short flags = BookieProtocol.FLAG_NONE;
+                if (add.getIsRecoveryAdd()) {
+                    flags |= BookieProtocol.FLAG_RECOVERY_ADD;
+                }
+                buf.writeByte(r.getProtocolVersion());
+                buf.writeBytes(new PacketHeader(BookieProtocol.ADDENTRY, flags)
+                        .getBytes(r.getProtocolVersion()));
+                buf.writeBytes(add.getMasterKey().toByteArray(), 0,
+                               BookieProtocol.MASTER_KEY_LENGTH);
+
+                return ChannelBuffers.wrappedBuffer(buf, r.getData());
+            } else if (r.getHeader().hasReadRequest()) {
                 int totalHeaderSize = 4 // for request type
                     + 8 // for ledgerId
                     + 8; // for entryId
-                if (r.hasMasterKey()) {
+                DataFormats.ReadRequest read = r.getHeader().getReadRequest();
+                if (read.hasMasterKey()) {
                     totalHeaderSize += BookieProtocol.MASTER_KEY_LENGTH;
                 }
 
                 ChannelBuffer buf = channel.getConfig().getBufferFactory().getBuffer(totalHeaderSize);
-                buf.writeInt(new PacketHeader(r.getProtocolVersion(), r.getOpCode(), r.getFlags()).toInt());
-                buf.writeLong(r.getLedgerId());
-                buf.writeLong(r.getEntryId());
-                if (r.hasMasterKey()) {
-                    buf.writeBytes(r.getMasterKey(), 0, BookieProtocol.MASTER_KEY_LENGTH);
+                short flags = BookieProtocol.FLAG_NONE;
+                if (read.getIsFencingRequest()) {
+                    flags |= BookieProtocol.FLAG_DO_FENCING;
+                }
+                buf.writeByte(r.getProtocolVersion());
+                buf.writeBytes(new PacketHeader(BookieProtocol.READENTRY, flags)
+                        .getBytes(r.getProtocolVersion()));
+                buf.writeLong(read.getLedgerId());
+                buf.writeLong(read.getEntryId());
+                if (read.hasMasterKey()) {
+                    buf.writeBytes(read.getMasterKey().toByteArray(), 0,
+                                   BookieProtocol.MASTER_KEY_LENGTH);
                 }
 
                 return buf;
+            } else {
+                LOG.warn("Unknown message format {}", r);
+                assert (false);
+                return msg;
             }
         }
     }
@@ -81,8 +104,10 @@ public class BookieProtoEncoding {
                 return msg;
             }
             ChannelBuffer packet = (ChannelBuffer)msg;
-
-            PacketHeader h = PacketHeader.fromInt(packet.readInt());
+            byte version = packet.readByte();
+            byte[] headerBytes = new byte[3];
+            packet.readBytes(headerBytes, 0, 3);
+            PacketHeader h = PacketHeader.fromBytes(version, headerBytes);
 
             // packet format is different between ADDENTRY and READENTRY
             long ledgerId = -1;
@@ -92,6 +117,7 @@ public class BookieProtoEncoding {
 
             ServerStats.getInstance().incrementPacketsReceived();
 
+            DataFormats.RequestHeader.Builder builder = DataFormats.RequestHeader.newBuilder();
             switch (h.getOpCode()) {
             case BookieProtocol.ADDENTRY:
                 // first read master key
@@ -99,23 +125,28 @@ public class BookieProtoEncoding {
                 packet.readBytes(masterKey, 0, BookieProtocol.MASTER_KEY_LENGTH);
 
                 ChannelBuffer bb = packet.duplicate();
-
-                ledgerId = bb.readLong();
-                entryId = bb.readLong();
-                return new BookieProtocol.AddRequest(h.getVersion(), ledgerId, entryId,
-                        flags, masterKey, packet.slice());
+                DataFormats.AddRequest.Builder addRequest = DataFormats.AddRequest.newBuilder()
+                    .setLedgerId(bb.readLong()).setEntryId(bb.readLong())
+                    .setMasterKey(ByteString.copyFrom(masterKey));
+                if ((flags & BookieProtocol.FLAG_RECOVERY_ADD) == BookieProtocol.FLAG_RECOVERY_ADD) {
+                    addRequest.setIsRecoveryAdd(true);
+                }
+                builder.setAddRequest(addRequest.build());
+                return new BookieProtocol.Request(version, builder.build(), packet.slice());
             case BookieProtocol.READENTRY:
-                ledgerId = packet.readLong();
-                entryId = packet.readLong();
+                DataFormats.ReadRequest.Builder readRequest
+                    = DataFormats.ReadRequest.newBuilder()
+                    .setLedgerId(packet.readLong()).setEntryId(packet.readLong());
 
                 if ((flags & BookieProtocol.FLAG_DO_FENCING) == BookieProtocol.FLAG_DO_FENCING
-                    && h.getVersion() >= 2) {
+                    && version >= 2) {
                     masterKey = new byte[BookieProtocol.MASTER_KEY_LENGTH];
                     packet.readBytes(masterKey, 0, BookieProtocol.MASTER_KEY_LENGTH);
-                    return new BookieProtocol.ReadRequest(h.getVersion(), ledgerId, entryId, flags, masterKey);
-                } else {
-                    return new BookieProtocol.ReadRequest(h.getVersion(), ledgerId, entryId, flags);
+                    readRequest.setMasterKey(ByteString.copyFrom(masterKey))
+                        .setIsFencingRequest(true);
                 }
+                builder.setReadRequest(readRequest.build());
+                return new BookieProtocol.Request(version, builder.build());
             }
             return msg;
         }
@@ -131,22 +162,33 @@ public class BookieProtoEncoding {
             BookieProtocol.Response r = (BookieProtocol.Response)msg;
             ChannelBuffer buf = ctx.getChannel().getConfig().getBufferFactory()
                 .getBuffer(24);
-            buf.writeInt(new PacketHeader(r.getProtocolVersion(),
-                                          r.getOpCode(), (short)0).toInt());
-            buf.writeInt(r.getErrorCode());
-            buf.writeLong(r.getLedgerId());
-            buf.writeLong(r.getEntryId());
+            buf.writeByte(r.getProtocolVersion());
+            byte opCode = 0;
+            if (r.getHeader().hasReadResponse()) {
+                opCode = BookieProtocol.READENTRY;
+            } else {
+                assert (r.getHeader().hasAddResponse());
+                opCode = BookieProtocol.ADDENTRY;
+            }
+
+            buf.writeBytes(new PacketHeader(opCode, (short)0).getBytes(r.getProtocolVersion()));
+            buf.writeInt(r.getHeader().getErrorCode());
 
             ServerStats.getInstance().incrementPacketsSent();
-            if (msg instanceof BookieProtocol.ReadResponse) {
-                BookieProtocol.ReadResponse rr = (BookieProtocol.ReadResponse)r;
-                if (rr.hasData()) {
+            if (r.getHeader().hasReadResponse()) {
+                buf.writeLong(r.getHeader().getReadResponse().getLedgerId());
+                buf.writeLong(r.getHeader().getReadResponse().getEntryId());
+
+                if (r.hasData()) {
                     return ChannelBuffers.wrappedBuffer(buf,
-                            ChannelBuffers.wrappedBuffer(rr.getData()));
+                                                        ChannelBuffers.wrappedBuffer(r.getData()));
                 } else {
                     return buf;
                 }
-            } else if (msg instanceof BookieProtocol.AddResponse) {
+            } else if (r.getHeader().hasAddResponse()) {
+                buf.writeLong(r.getHeader().getAddResponse().getLedgerId());
+                buf.writeLong(r.getHeader().getAddResponse().getEntryId());
+
                 return buf;
             } else {
                 LOG.error("Cannot encode unknown response type {}", msg.getClass().getName());
@@ -164,29 +206,33 @@ public class BookieProtoEncoding {
             }
 
             final ChannelBuffer buffer = (ChannelBuffer)msg;
-            final int rc;
-            final long ledgerId, entryId;
-            final PacketHeader header;
 
-            header = PacketHeader.fromInt(buffer.readInt());
-            rc = buffer.readInt();
-            ledgerId = buffer.readLong();
-            entryId = buffer.readLong();
+            byte version = buffer.readByte();
+            byte[] headerBytes = new byte[3];
+            buffer.readBytes(headerBytes, 0, 3);
+            PacketHeader h = PacketHeader.fromBytes(version, headerBytes);
+            DataFormats.ResponseHeader.Builder builder = DataFormats.ResponseHeader.newBuilder();
+            int rc = buffer.readInt();
+            builder.setErrorCode(rc);
 
-            switch (header.getOpCode()) {
+            switch (h.getOpCode()) {
             case BookieProtocol.ADDENTRY:
-                return new BookieProtocol.AddResponse(header.getVersion(), rc, ledgerId, entryId);
+                builder.setAddResponse(DataFormats.AddResponse.newBuilder()
+                                       .setLedgerId(buffer.readLong())
+                                       .setEntryId(buffer.readLong()).build());
+                return new BookieProtocol.Response(version, builder.build());
             case BookieProtocol.READENTRY:
+                builder.setReadResponse(DataFormats.ReadResponse.newBuilder()
+                                        .setLedgerId(buffer.readLong())
+                                        .setEntryId(buffer.readLong()).build());
                 if (rc == BookieProtocol.EOK) {
-                    return new BookieProtocol.ReadResponse(header.getVersion(), rc,
-                                                           ledgerId, entryId, buffer.slice());
+                    return new BookieProtocol.Response(version, builder.build(), buffer.slice());
                 } else {
-                    return new BookieProtocol.ReadResponse(header.getVersion(), rc,
-                                                           ledgerId, entryId);
+                    return new BookieProtocol.Response(version, builder.build());
                 }
             default:
                 LOG.error("Unexpected response of type {} received from {}",
-                          header.getOpCode(), channel.getRemoteAddress());
+                          h.getOpCode(), channel.getRemoteAddress());
                 return msg;
             }
         }

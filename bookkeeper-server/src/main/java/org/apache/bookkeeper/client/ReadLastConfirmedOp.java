@@ -21,6 +21,9 @@ import org.apache.bookkeeper.client.BKException.BKDigestMatchException;
 import org.apache.bookkeeper.client.DigestManager.RecoveryData;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.proto.BookieProtocol;
+import org.apache.bookkeeper.proto.DataFormats.ReadRequest;
+import com.google.protobuf.ByteString;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -55,21 +58,23 @@ class ReadLastConfirmedOp implements ReadEntryCallback {
     }
 
     public void initiate() {
+        ReadRequest readReq = ReadRequest.newBuilder()
+            .setLedgerId(lh.getId()).setEntryId(BookieProtocol.LAST_ADD_CONFIRMED).build();
+
         for (int i = 0; i < lh.metadata.currentEnsemble.size(); i++) {
             lh.bk.bookieClient.readEntry(lh.metadata.currentEnsemble.get(i),
-                                         lh.ledgerId,
-                                         BookieProtocol.LAST_ADD_CONFIRMED,
-                                         this, i);
+                                         readReq, this, i);
         }
     }
 
     public void initiateWithFencing() {
+        ReadRequest readReq = ReadRequest.newBuilder()
+            .setIsFencingRequest(true).setMasterKey(ByteString.copyFrom(lh.getLedgerKey()))
+            .setLedgerId(lh.getId()).setEntryId(BookieProtocol.LAST_ADD_CONFIRMED).build();
+
         for (int i = 0; i < lh.metadata.currentEnsemble.size(); i++) {
-            lh.bk.bookieClient.readEntryAndFenceLedger(lh.metadata.currentEnsemble.get(i),
-                                                       lh.ledgerId,
-                                                       lh.ledgerKey,
-                                                       BookieProtocol.LAST_ADD_CONFIRMED,
-                                                       this, i);
+            lh.bk.bookieClient.readEntry(lh.metadata.currentEnsemble.get(i),
+                                         readReq, this, i);
         }
     }
 

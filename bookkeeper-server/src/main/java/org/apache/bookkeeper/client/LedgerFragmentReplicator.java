@@ -28,6 +28,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import com.google.protobuf.ByteString;
+import org.apache.bookkeeper.proto.DataFormats.AddRequest;
+
 import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
 import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
@@ -264,8 +267,11 @@ public class LedgerFragmentReplicator {
                         .computeDigestAndPackageForSending(entryId,
                                 lh.getLastAddConfirmed(), entry.getLength(),
                                 data, 0, data.length);
-                bkc.getBookieClient().addEntry(newBookie, lh.getId(),
-                        lh.getLedgerKey(), entryId, toSend,
+                AddRequest.Builder addRequestBuilder = AddRequest.newBuilder()
+                    .setLedgerId(lh.ledgerId).setMasterKey(ByteString.copyFrom(lh.ledgerKey))
+                    .setEntryId(entryId).setIsRecoveryAdd(true);
+
+                bkc.getBookieClient().addEntry(newBookie, addRequestBuilder.build(), toSend,
                         new WriteCallback() {
                             @Override
                             public void writeComplete(int rc, long ledgerId,
@@ -293,7 +299,7 @@ public class LedgerFragmentReplicator {
                                 ledgerFragmentEntryMcb.processResult(rc, null,
                                         null);
                             }
-                        }, null, BookieProtocol.FLAG_RECOVERY_ADD);
+                        }, null);
             }
         }, null);
     }

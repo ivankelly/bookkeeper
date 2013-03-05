@@ -216,22 +216,16 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
     /**
      * This method should be called only after connection has been checked for
      * {@link #connectIfNeededAndDoOp(GenericCallback)}
-     *
-     * @param ledgerId
-     * @param masterKey
-     * @param entryId
-     * @param lastConfirmed
-     * @param macCode
-     * @param data
-     * @param cb
-     * @param ctx
      */
-    void addEntry(final long ledgerId, byte[] masterKey, final long entryId, ChannelBuffer toSend, WriteCallback cb,
-                  Object ctx, final int options) {
-        BookieProtocol.AddRequest r = new BookieProtocol.AddRequest(BookieProtocol.CURRENT_PROTOCOL_VERSION,
-                ledgerId, entryId, (short)options, masterKey, toSend);
+    void addEntry(final DataFormats.AddRequest addRequest, ChannelBuffer toSend,
+                  WriteCallback cb, Object ctx) {
+        DataFormats.RequestHeader.Builder builder = DataFormats.RequestHeader.newBuilder();
+        builder.setAddRequest(addRequest);
+
+        BookieProtocol.Request r = new BookieProtocol.Request(BookieProtocol.CURRENT_PROTOCOL_VERSION, builder.build(), toSend);
         final int entrySize = toSend.readableBytes();
-        final CompletionKey completionKey = new CompletionKey(ledgerId, entryId);
+        final CompletionKey completionKey = new CompletionKey(addRequest.getLedgerId(),
+                                                              addRequest.getEntryId());
         addCompletions.put(completionKey, new AddCompletion(cb, entrySize, ctx));
         try {
             ChannelFuture future = channel.write(r);
@@ -239,11 +233,8 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if (future.isSuccess()) {
-                        if (LOG.isDebugEnabled()) {
-                            LOG.debug("Successfully wrote request for adding entry: " + entryId + " ledger-id: " + ledgerId
-                                                            + " bookie: " + channel.getRemoteAddress() + " entry length: " + entrySize);
-                        }
-                        // totalBytesOutstanding.addAndGet(entrySize);
+                        LOG.debug("Successfully wrote request for adding entry: {}  bookie: {} entry length: {}",
+                                  new Object[] { addRequest, channel.getRemoteAddress(), entrySize });
                     } else {
                         errorOutAddKey(completionKey);
                     }
@@ -255,44 +246,14 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
         }
     }
 
-    public void readEntryAndFenceLedger(final long ledgerId, byte[] masterKey,
-                                        final long entryId,
-                                        ReadEntryCallback cb, Object ctx) {
-        final CompletionKey key = new CompletionKey(ledgerId, entryId);
+    public void readEntry(final DataFormats.ReadRequest readRequest, ReadEntryCallback cb, Object ctx) {
+        final CompletionKey key = new CompletionKey(readRequest.getLedgerId(),
+                                                    readRequest.getEntryId());
         readCompletions.put(key, new ReadCompletion(cb, ctx));
 
-        final BookieProtocol.ReadRequest r = new BookieProtocol.ReadRequest(
-                BookieProtocol.CURRENT_PROTOCOL_VERSION, ledgerId, entryId,
-                BookieProtocol.FLAG_DO_FENCING, masterKey);
-
-        try {
-            ChannelFuture future = channel.write(r);
-            future.addListener(new ChannelFutureListener() {
-                    @Override
-                    public void operationComplete(ChannelFuture future) throws Exception {
-                        if (future.isSuccess()) {
-                            if (LOG.isDebugEnabled()) {
-                                LOG.debug("Successfully wrote request {} to {}",
-                                          r, channel.getRemoteAddress());
-                            }
-                        } else {
-                            errorOutReadKey(key);
-                        }
-                    }
-                });
-        } catch(Throwable e) {
-            LOG.warn("Read entry operation " + r + " failed", e);
-            errorOutReadKey(key);
-        }
-    }
-
-    public void readEntry(final long ledgerId, final long entryId, ReadEntryCallback cb, Object ctx) {
-        final CompletionKey key = new CompletionKey(ledgerId, entryId);
-        readCompletions.put(key, new ReadCompletion(cb, ctx));
-
-        final BookieProtocol.ReadRequest r = new BookieProtocol.ReadRequest(
-                BookieProtocol.CURRENT_PROTOCOL_VERSION, ledgerId, entryId,
-                BookieProtocol.FLAG_NONE);
+        final BookieProtocol.Request r = new BookieProtocol.Request(
+                BookieProtocol.CURRENT_PROTOCOL_VERSION,
+                DataFormats.RequestHeader.newBuilder().setReadRequest(readRequest).build());
 
         try{
             ChannelFuture future = channel.write(r);
@@ -508,27 +469,27 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
             return;
         }
         final BookieProtocol.Response r = (BookieProtocol.Response)e.getMessage();
-
-        executor.submitOrdered(r.getLedgerId(), new SafeRunnable() {
+        long ledgerId = 0L;
+        if (r.getHeader().hasAddResponse()) {
+            ledgerId = r.getHeader().getAddResponse().getLedgerId();
+        } else if (r.getHeader().hasReadResponse()) {
+            ledgerId = r.getHeader().getReadResponse().getLedgerId();
+        }
+        executor.submitOrdered(ledgerId, new SafeRunnable() {
             @Override
             public void safeRun() {
-                switch (r.getOpCode()) {
-                case BookieProtocol.ADDENTRY:
-                    BookieProtocol.AddResponse a = (BookieProtocol.AddResponse)r;
-                    handleAddResponse(a);
-                    break;
-                case BookieProtocol.READENTRY:
-                    BookieProtocol.ReadResponse rr = (BookieProtocol.ReadResponse)r;
-                    handleReadResponse(rr);
-                    break;
-                default:
+                if (r.getHeader().hasAddResponse()) {
+                    handleAddResponse(r);
+                } else if (r.getHeader().hasReadResponse()) {
+                    handleReadResponse(r);
+                } else {
                     LOG.error("Unexpected response, type: {}", r);
                 }
             }
         });
     }
 
-    void handleAddResponse(BookieProtocol.AddResponse a) {
+    void handleAddResponse(BookieProtocol.Response a) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Got response for add request from bookie: {} for ledger: {}", addr, a);
         }
@@ -537,7 +498,7 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
         // layers expect. This is UGLY, there should just be one set of
         // error codes.
         int rc = BKException.Code.WriteException;
-        switch (a.getErrorCode()) {
+        switch (a.getHeader().getErrorCode()) {
         case BookieProtocol.EOK:
             rc = BKException.Code.OK;
             break;
@@ -560,27 +521,30 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
         }
 
         AddCompletion ac;
-        ac = addCompletions.remove(new CompletionKey(a.getLedgerId(),
-                                                     a.getEntryId()));
+        ac = addCompletions.remove(
+                new CompletionKey(a.getHeader().getAddResponse().getLedgerId(),
+                                  a.getHeader().getAddResponse().getEntryId()));
         if (ac == null) {
             LOG.error("Unexpected add response from bookie {} for {}", addr, a);
             return;
         }
 
-        ac.cb.writeComplete(rc, a.getLedgerId(), a.getEntryId(), addr, ac.ctx);
+        ac.cb.writeComplete(rc, a.getHeader().getAddResponse().getLedgerId(),
+                            a.getHeader().getAddResponse().getEntryId(),
+                            addr, ac.ctx);
     }
 
-    void handleReadResponse(BookieProtocol.ReadResponse rr) {
+    void handleReadResponse(BookieProtocol.Response r) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Got response for read request {} entry length: {}",
-                      rr, rr.getData().readableBytes());
+                      r, r.hasData() ? r.getData().readableBytes() : 0);
         }
 
         // convert to BKException code because thats what the uppper
         // layers expect. This is UGLY, there should just be one set of
         // error codes.
         int rc = BKException.Code.ReadException;
-        switch (rr.getErrorCode()) {
+        switch (r.getHeader().getErrorCode()) {
         case BookieProtocol.EOK:
             rc = BKException.Code.OK;
             break;
@@ -595,12 +559,13 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
             rc = BKException.Code.UnauthorizedAccessException;
             break;
         default:
-            LOG.error("Read error for {}", rr);
+            LOG.error("Read error for {}", r);
             rc = BKException.Code.ReadException;
             break;
         }
 
-        CompletionKey key = new CompletionKey(rr.getLedgerId(), rr.getEntryId());
+        CompletionKey key = new CompletionKey(r.getHeader().getReadResponse().getLedgerId(),
+                                              r.getHeader().getReadResponse().getEntryId());
         ReadCompletion readCompletion = readCompletions.remove(key);
 
         if (readCompletion == null) {
@@ -610,17 +575,19 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
              * different entry id.
              */
             
-            readCompletion = readCompletions.remove(new CompletionKey(rr.getLedgerId(),
-                                                                      BookieProtocol.LAST_ADD_CONFIRMED));
+            readCompletion = readCompletions.remove(
+                    new CompletionKey(r.getHeader().getReadResponse().getLedgerId(),
+                                      BookieProtocol.LAST_ADD_CONFIRMED));
         }
 
         if (readCompletion == null) {
-            LOG.error("Unexpected read response received from bookie: {} for {}", addr, rr);
+            LOG.error("Unexpected read response received from bookie: {} for {}", addr, r);
             return;
         }
 
-        readCompletion.cb.readEntryComplete(rc, rr.getLedgerId(), rr.getEntryId(),
-                                            rr.getData(), readCompletion.ctx);
+        readCompletion.cb.readEntryComplete(rc, r.getHeader().getReadResponse().getLedgerId(),
+                                            r.getHeader().getReadResponse().getEntryId(),
+                                            r.getData(), readCompletion.ctx);
     }
 
     /**
