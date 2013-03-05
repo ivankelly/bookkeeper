@@ -26,6 +26,8 @@ import java.io.IOException;
 
 import org.apache.zookeeper.KeeperException;
 
+import com.google.protobuf.ByteString;
+import org.apache.bookkeeper.proto.DataFormats.AddRequest;
 import org.apache.bookkeeper.proto.BookieClient;
 import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
@@ -155,6 +157,10 @@ public class BenchBookie {
         int warmUpCount = 999;
 
         long ledger = getValidLedgerId(servers);
+
+        AddRequest.Builder builder = AddRequest.newBuilder()
+            .setLedgerId(ledger).setMasterKey(ByteString.copyFrom(new byte[20]));
+
         for(long entry = 0; entry < warmUpCount; entry++) {
             ChannelBuffer toSend = ChannelBuffers.buffer(size);
             toSend.resetReaderIndex();
@@ -162,8 +168,9 @@ public class BenchBookie {
             toSend.writeLong(ledger);
             toSend.writeLong(entry);
             toSend.writerIndex(toSend.capacity());
-            bc.addEntry(new InetSocketAddress(addr, port), ledger, new byte[20],
-                        entry, toSend, tc, null, BookieProtocol.FLAG_NONE);
+            bc.addEntry(new InetSocketAddress(addr, port),
+                        builder.setEntryId(entry).build(),
+                        toSend, tc, null);
         }
         LOG.info("Waiting for warmup");
         tc.waitFor(warmUpCount);
@@ -180,8 +187,9 @@ public class BenchBookie {
             toSend.writeLong(entry);
             toSend.writerIndex(toSend.capacity());
             lc.resetComplete();
-            bc.addEntry(new InetSocketAddress(addr, port), ledger, new byte[20],
-                        entry, toSend, lc, null, BookieProtocol.FLAG_NONE);
+            bc.addEntry(new InetSocketAddress(addr, port),
+                        builder.setEntryId(entry).build(),
+                        toSend, lc, null);
             lc.waitForComplete();
         }
         long endTime = System.nanoTime();
@@ -200,8 +208,9 @@ public class BenchBookie {
             toSend.writeLong(ledger);
             toSend.writeLong(entry);
             toSend.writerIndex(toSend.capacity());
-            bc.addEntry(new InetSocketAddress(addr, port), ledger, new byte[20],
-                        entry, toSend, tc, null, BookieProtocol.FLAG_NONE);
+            bc.addEntry(new InetSocketAddress(addr, port),
+                        builder.setEntryId(entry).build(),
+                        toSend, tc, null);
         }
         tc.waitFor(entryCount);
         endTime = System.currentTimeMillis();

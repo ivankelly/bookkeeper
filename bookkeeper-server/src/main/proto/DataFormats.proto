@@ -82,3 +82,39 @@ message LockDataFormat {
 message AuditorVoteFormat {
     optional string bookieId = 1;
 }
+
+message RequestHeader {
+    optional ReadRequest readRequest = 2;
+    optional AddRequest addRequest = 3;
+}
+
+message ReadRequest {
+    optional int64 ledgerId = 1;
+    optional int64 entryId = 2;
+    optional bytes masterKey = 3;
+    optional bool isFencingRequest = 4 [default=false];
+}
+
+message AddRequest {
+    optional int64 ledgerId = 1;
+    optional int64 entryId = 2;
+    optional bytes masterKey = 3;
+    optional bool isRecoveryAdd = 4 [default=false];
+}
+
+message ResponseHeader {
+    optional int32 errorCode = 1;
+    optional AddResponse addResponse = 2;
+    optional ReadResponse readResponse = 3;
+}
+
+message AddResponse {
+    optional int64 ledgerId = 1;
+    optional int64 entryId = 2;
+}
+
+message ReadResponse {
+    optional int64 ledgerId = 1;
+    optional int64 entryId = 2;
+}
+

@@ -20,8 +20,10 @@ package org.apache.bookkeeper.client;
 import java.util.HashSet;
 import java.util.Set;
 import java.net.InetSocketAddress;
+import com.google.protobuf.ByteString;
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
+import org.apache.bookkeeper.proto.DataFormats.AddRequest;
 import org.apache.bookkeeper.proto.BookieProtocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +51,7 @@ class PendingAddOp implements WriteCallback {
     boolean completed = false;
 
     LedgerHandle lh;
-    boolean isRecoveryAdd = false;
+    AddRequest.Builder addRequestBuilder;
 
     PendingAddOp(LedgerHandle lh, AddCallback cb, Object ctx) {
         this.lh = lh;
@@ -58,6 +60,8 @@ class PendingAddOp implements WriteCallback {
         this.entryId = LedgerHandle.INVALID_ENTRY_ID;
         
         ackSet = lh.distributionSchedule.getAckSet();
+        addRequestBuilder = AddRequest.newBuilder().setLedgerId(lh.ledgerId)
+            .setMasterKey(ByteString.copyFrom(lh.ledgerKey));
     }
 
     /**
@@ -65,20 +69,19 @@ class PendingAddOp implements WriteCallback {
      * @see LedgerHandle#asyncRecoveryAddEntry
      */
     PendingAddOp enableRecoveryAdd() {
-        isRecoveryAdd = true;
+        addRequestBuilder.setIsRecoveryAdd(true);
         return this;
     }
 
     void setEntryId(long entryId) {
         this.entryId = entryId;
+        addRequestBuilder.setEntryId(entryId);
         writeSet = new HashSet<Integer>(lh.distributionSchedule.getWriteSet(entryId));
     }
 
     void sendWriteRequest(int bookieIndex) {
-        int flags = isRecoveryAdd ? BookieProtocol.FLAG_RECOVERY_ADD : BookieProtocol.FLAG_NONE;
-
-        lh.bk.bookieClient.addEntry(lh.metadata.currentEnsemble.get(bookieIndex), lh.ledgerId, lh.ledgerKey, entryId, toSend,
-                this, bookieIndex, flags);
+        lh.bk.bookieClient.addEntry(lh.metadata.currentEnsemble.get(bookieIndex),
+                                    addRequestBuilder.build(), toSend, this, bookieIndex);
     }
 
     void unsetSuccessAndSendWriteRequest(int bookieIndex) {

@@ -24,6 +24,8 @@ package org.apache.bookkeeper.proto;
 import org.jboss.netty.buffer.ChannelBuffer;
 import java.nio.ByteBuffer;
 
+import org.apache.bookkeeper.proto.DataFormats.RequestHeader;
+import org.apache.bookkeeper.proto.DataFormats.ResponseHeader;
 /**
  * The packets of the Bookie protocol all have a 4-byte integer indicating the
  * type of request or response at the very beginning of the packet followed by a
@@ -68,41 +70,32 @@ public interface BookieProtocol {
      * first int. This handles that case also. 
      */
     static class PacketHeader {
-        final byte version;
         final byte opCode;
         final short flags;
 
-        public PacketHeader(byte version, byte opCode, short flags) {
-            this.version = version;
+        public PacketHeader(byte opCode, short flags) {
             this.opCode = opCode;
             this.flags = flags;
         }
         
-        int toInt() {
+        byte[] getBytes(byte version) {
             if (version == 0) {
-                return (int)opCode;
+                return new byte[] {0,0,opCode};
             } else {
-                return ((version & 0xFF) << 24) 
-                    | ((opCode & 0xFF) << 16)
-                    | (flags & 0xFFFF);
+                return new byte[] {opCode, (byte)(flags >> 8 & 0xFF), (byte)(flags & 0xFF)};
             }
         }
 
-        static PacketHeader fromInt(int i) {
-            byte version = (byte)(i >> 24); 
+        static PacketHeader fromBytes(byte version, byte[] bytes) {
             byte opCode = 0;
             short flags = 0;
             if (version == 0) {
-                opCode = (byte)i;
+                opCode = bytes[2];
             } else {
-                opCode = (byte)((i >> 16) & 0xFF);
-                flags = (short)(i & 0xFFFF);
+                opCode = bytes[0];
+                flags = (short)((bytes[1] << 8) | (bytes[2] & 0xFF));
             }
-            return new PacketHeader(version, opCode, flags);
-        }
-
-        byte getVersion() {
-            return version;
+            return new PacketHeader(opCode, flags);
         }
 
         byte getOpCode() {
@@ -178,71 +171,30 @@ public interface BookieProtocol {
     public static final short FLAG_RECOVERY_ADD = 0x0002;
 
     static class Request {
-
         final byte protocolVersion;
-        final byte opCode;
-        final long ledgerId;
-        final long entryId;
-        final short flags;
-        final byte[] masterKey;
+        final RequestHeader header;
+        final ChannelBuffer data;
 
-        protected Request(byte protocolVersion, byte opCode, long ledgerId,
-                          long entryId, short flags) {
-            this(protocolVersion, opCode, ledgerId, entryId, flags, null);
+        Request(byte protocolVersion, RequestHeader header, ChannelBuffer data) {
+            this.protocolVersion = protocolVersion;
+            this.header = header;
+            this.data = data;
         }
 
-        protected Request(byte protocolVersion, byte opCode, long ledgerId,
-                          long entryId, short flags, byte[] masterKey) {
-            this.protocolVersion = protocolVersion;
-            this.opCode = opCode;
-            this.ledgerId = ledgerId;
-            this.entryId = entryId;
-            this.flags = flags;
-            this.masterKey = masterKey;
+        Request(byte protocolVersion, RequestHeader header) {
+            this(protocolVersion, header, null);
         }
 
         byte getProtocolVersion() {
             return protocolVersion;
         }
 
-        byte getOpCode() {
-            return opCode;
+        RequestHeader getHeader() {
+            return header;
         }
 
-        long getLedgerId() {
-            return ledgerId;
-        }
-
-        long getEntryId() {
-            return entryId;
-        }
-
-        short getFlags() {
-            return flags;
-        }
-
-        boolean hasMasterKey() {
-            return masterKey != null;
-        }
-
-        byte[] getMasterKey() {
-            assert hasMasterKey();
-            return masterKey;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("Op(%d)[Ledger:%d,Entry:%d]", opCode, ledgerId, entryId);
-        }
-    }
-
-    static class AddRequest extends Request {
-        final ChannelBuffer data;
-
-        AddRequest(byte protocolVersion, long ledgerId, long entryId,
-                   short flags, byte[] masterKey, ChannelBuffer data) {
-            super(protocolVersion, ADDENTRY, ledgerId, entryId, flags, masterKey);
-            this.data = data;
+        boolean hasData() {
+            return data != null;
         }
 
         ChannelBuffer getData() {
@@ -253,80 +205,32 @@ public interface BookieProtocol {
             return data.toByteBuffer().slice();
         }
 
-        boolean isRecoveryAdd() {
-            return (flags & FLAG_RECOVERY_ADD) == FLAG_RECOVERY_ADD;
-        }
-    }
-
-    static class ReadRequest extends Request {
-        ReadRequest(byte protocolVersion, long ledgerId, long entryId, short flags) {
-            super(protocolVersion, READENTRY, ledgerId, entryId, flags);
-        }
-
-        ReadRequest(byte protocolVersion, long ledgerId, long entryId,
-                    short flags, byte[] masterKey) {
-            super(protocolVersion, READENTRY, ledgerId, entryId, flags, masterKey);
-        }
-
-        boolean isFencingRequest() {
-            return (flags & FLAG_DO_FENCING) == FLAG_DO_FENCING;
+        public String toString() {
+            return header.toString();
         }
     }
 
     static class Response {
         final byte protocolVersion;
-        final byte opCode;
-        final int errorCode;
-        final long ledgerId;
-        final long entryId;
+        final ResponseHeader header;
+        final ChannelBuffer data;
 
-        protected Response(byte protocolVersion, byte opCode,
-                           int errorCode, long ledgerId, long entryId) {
+        Response(byte protocolVersion, ResponseHeader header, ChannelBuffer data) {
             this.protocolVersion = protocolVersion;
-            this.opCode = opCode;
-            this.errorCode = errorCode;
-            this.ledgerId = ledgerId;
-            this.entryId = entryId;
+            this.header = header;
+            this.data = data;
+        }
+
+        Response(byte protocolVersion, ResponseHeader header) {
+            this(protocolVersion, header, null);
         }
 
         byte getProtocolVersion() {
             return protocolVersion;
         }
 
-        byte getOpCode() {
-            return opCode;
-        }
-
-        long getLedgerId() {
-            return ledgerId;
-        }
-
-        long getEntryId() {
-            return entryId;
-        }
-
-        int getErrorCode() {
-            return errorCode;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("Op(%d)[Ledger:%d,Entry:%d,errorCode=%d]",
-                                 opCode, ledgerId, entryId, errorCode);
-        }
-    }
-
-    static class ReadResponse extends Response {
-        final ChannelBuffer data;
-
-        ReadResponse(byte protocolVersion, int errorCode, long ledgerId, long entryId) {
-            super(protocolVersion, READENTRY, errorCode, ledgerId, entryId);
-            this.data = null;
-        }
-
-        ReadResponse(byte protocolVersion, int errorCode, long ledgerId, long entryId, ChannelBuffer data) {
-            super(protocolVersion, READENTRY, errorCode, ledgerId, entryId);
-            this.data = data;
+        ResponseHeader getHeader() {
+            return header;
         }
 
         boolean hasData() {
@@ -336,11 +240,13 @@ public interface BookieProtocol {
         ChannelBuffer getData() {
             return data;
         }
-    }
 
-    static class AddResponse extends Response {
-        AddResponse(byte protocolVersion, int errorCode, long ledgerId, long entryId) {
-            super(protocolVersion, ADDENTRY, errorCode, ledgerId, entryId);
+        ByteBuffer getDataAsByteBuffer() {
+            return data.toByteBuffer().slice();
+        }
+
+        public String toString() {
+            return header.toString();
         }
     }
 }

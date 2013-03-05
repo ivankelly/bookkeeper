@@ -94,43 +94,39 @@ class BookieRequestHandler extends SimpleChannelHandler
             ctx.sendUpstream(e);
             return;
         }
-        BookieProtocol.Request r = (BookieProtocol.Request)e.getMessage();
+        BookieProtocol.Request req = (BookieProtocol.Request)e.getMessage();
 
         Channel c = ctx.getChannel();
 
-        if (r.getProtocolVersion() < BookieProtocol.LOWEST_COMPAT_PROTOCOL_VERSION
-            || r.getProtocolVersion() > BookieProtocol.CURRENT_PROTOCOL_VERSION) {
+        if (req.getProtocolVersion() < BookieProtocol.LOWEST_COMPAT_PROTOCOL_VERSION
+            || req.getProtocolVersion() > BookieProtocol.CURRENT_PROTOCOL_VERSION) {
             LOG.error("Invalid protocol version, expected something between "
                       + BookieProtocol.LOWEST_COMPAT_PROTOCOL_VERSION
                       + " & " + BookieProtocol.CURRENT_PROTOCOL_VERSION
-                      + ". got " + r.getProtocolVersion());
-            c.write(ResponseBuilder.buildErrorResponse(BookieProtocol.EBADVERSION, r));
+                      + ". got " + req.getProtocolVersion());
+            c.write(ResponseBuilder.buildErrorResponse(BookieProtocol.EBADVERSION, req));
             return;
         }
 
-        switch (r.getOpCode()) {
-        case BookieProtocol.ADDENTRY:
-            handleAdd(r, c);
-            break;
-        case BookieProtocol.READENTRY:
-            handleRead(r, c);
-            break;
-        default:
-            LOG.error("Unknown op type {}, sending error", r.getOpCode());
-            c.write(ResponseBuilder.buildErrorResponse(BookieProtocol.EBADREQ, r));
+        if (req.getHeader().hasAddRequest()) {
+            handleAdd(req, c);
+        } else if (req.getHeader().hasReadRequest()) {
+            handleRead(req, c);
+        } else {
+            LOG.error("Unknown op type {}, sending error", req.getHeader());
+            c.write(ResponseBuilder.buildErrorResponse(BookieProtocol.EBADREQ, req));
             if (statsEnabled) {
                 bkStats.getOpStats(BKStats.STATS_UNKNOWN).incrementFailedOps();
             }
-            break;
         }
     }
 
     class AddCtx {
         final Channel c;
-        final BookieProtocol.AddRequest r;
+        final BookieProtocol.Request r;
         final long startTime;
 
-        AddCtx(Channel c, BookieProtocol.AddRequest r) {
+        AddCtx(Channel c, BookieProtocol.Request r) {
             this.c = c;
             this.r = r;
 
@@ -142,14 +138,14 @@ class BookieRequestHandler extends SimpleChannelHandler
         }
     }
 
-    private void handleAdd(BookieProtocol.Request r, Channel c) {
-        assert (r instanceof BookieProtocol.AddRequest);
-        BookieProtocol.AddRequest add = (BookieProtocol.AddRequest)r;
+    private void handleAdd(BookieProtocol.Request req, Channel c) {
+        assert (req.getHeader().hasAddRequest());
+        DataFormats.AddRequest add = req.getHeader().getAddRequest();
 
         if (bookie.isReadOnly()) {
             LOG.warn("BookieServer is running as readonly mode,"
                      + " so rejecting the request from the client!");
-            c.write(ResponseBuilder.buildErrorResponse(BookieProtocol.EREADONLY, add));
+            c.write(ResponseBuilder.buildErrorResponse(BookieProtocol.EREADONLY, req));
             if (statsEnabled) {
                 bkStats.getOpStats(BKStats.STATS_ADD).incrementFailedOps();
             }
@@ -158,12 +154,12 @@ class BookieRequestHandler extends SimpleChannelHandler
 
         int rc = BookieProtocol.EOK;
         try {
-            if (add.isRecoveryAdd()) {
-                bookie.recoveryAddEntry(add.getDataAsByteBuffer(), this, new AddCtx(c, add),
-                                        add.getMasterKey());
+            if (add.getIsRecoveryAdd()) {
+                bookie.recoveryAddEntry(req.getDataAsByteBuffer(), this, new AddCtx(c, req),
+                                        add.getMasterKey().toByteArray());
             } else {
-                bookie.addEntry(add.getDataAsByteBuffer(),
-                                this, new AddCtx(c, add), add.getMasterKey());
+                bookie.addEntry(req.getDataAsByteBuffer(),
+                                this, new AddCtx(c, req), add.getMasterKey().toByteArray());
             }
         } catch (IOException e) {
             LOG.error("Error writing " + add, e);
@@ -176,7 +172,7 @@ class BookieRequestHandler extends SimpleChannelHandler
             rc = BookieProtocol.EUA;
         }
         if (rc != BookieProtocol.EOK) {
-            c.write(ResponseBuilder.buildErrorResponse(rc, add));
+            c.write(ResponseBuilder.buildErrorResponse(rc, req));
             if (statsEnabled) {
                 bkStats.getOpStats(BKStats.STATS_ADD).incrementFailedOps();
             }
@@ -202,11 +198,11 @@ class BookieRequestHandler extends SimpleChannelHandler
         }
     }
 
-    private void handleRead(BookieProtocol.Request r, Channel c) {
-        assert (r instanceof BookieProtocol.ReadRequest);
-        BookieProtocol.ReadRequest read = (BookieProtocol.ReadRequest)r;
+    private void handleRead(BookieProtocol.Request req, Channel c) {
+        assert (req.getHeader().hasReadRequest());
+        DataFormats.ReadRequest read = req.getHeader().getReadRequest();
 
-        LOG.debug("Received new read request: {}", r);
+        LOG.debug("Received new read request: {}", read);
         int errorCode = BookieProtocol.EIO;
         long startTime = 0;
         if (statsEnabled) {
@@ -215,11 +211,12 @@ class BookieRequestHandler extends SimpleChannelHandler
         ByteBuffer data = null;
         try {
             Future<Boolean> fenceResult = null;
-            if (read.isFencingRequest()) {
-                LOG.warn("Ledger " + r.getLedgerId() + " fenced by " + c.getRemoteAddress());
+            if (read.getIsFencingRequest()) {
+                LOG.warn("Ledger " + read.getLedgerId() + " fenced by " + c.getRemoteAddress());
 
                 if (read.hasMasterKey()) {
-                    fenceResult = bookie.fenceLedger(read.getLedgerId(), read.getMasterKey());
+                    fenceResult = bookie.fenceLedger(read.getLedgerId(),
+                                                     read.getMasterKey().toByteArray());
                 } else {
                     LOG.error("Password not provided, Not safe to fence {}", read.getLedgerId());
                     if (statsEnabled) {
@@ -228,7 +225,7 @@ class BookieRequestHandler extends SimpleChannelHandler
                     throw BookieException.create(BookieException.Code.UnauthorizedAccessException);
                 }
             }
-            data = bookie.readEntry(r.getLedgerId(), r.getEntryId());
+            data = bookie.readEntry(read.getLedgerId(), read.getEntryId());
             LOG.debug("##### Read entry ##### {}", data.remaining());
             if (null != fenceResult) {
                 // TODO:
@@ -285,20 +282,20 @@ class BookieRequestHandler extends SimpleChannelHandler
         }
 
         LOG.trace("Read entry rc = {} for {}",
-                  new Object[] { errorCode, read});
+                  new Object[] { errorCode, read });
         if (errorCode == BookieProtocol.EOK) {
             assert data != null;
 
-            c.write(ResponseBuilder.buildReadResponse(data, read));
+            c.write(ResponseBuilder.buildReadResponse(data, req));
             if (statsEnabled) {
                 long elapsedTime = MathUtils.now() - startTime;
                 bkStats.getOpStats(BKStats.STATS_READ).updateLatency(elapsedTime);
             }
         } else {
-            c.write(ResponseBuilder.buildErrorResponse(errorCode, read));
-           if (statsEnabled) {
-               bkStats.getOpStats(BKStats.STATS_READ).incrementFailedOps();
-           }
+            c.write(ResponseBuilder.buildErrorResponse(errorCode, req));
+            if (statsEnabled) {
+                bkStats.getOpStats(BKStats.STATS_READ).incrementFailedOps();
+            }
         }
     }
 }

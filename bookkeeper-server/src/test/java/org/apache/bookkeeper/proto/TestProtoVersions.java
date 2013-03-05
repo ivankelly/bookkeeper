@@ -25,6 +25,8 @@ import org.apache.bookkeeper.util.OrderedSafeExecutor;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
+import org.apache.bookkeeper.proto.DataFormats;
+
 import org.jboss.netty.buffer.ChannelBuffer;
 
 import org.apache.bookkeeper.client.BKException;
@@ -83,7 +85,10 @@ public class TestProtoVersions {
         bc.readCompletions.put(bc.newCompletionKey(1, 1),
                                new PerChannelBookieClient.ReadCompletion(cb, this));
         
-        BookieProtocol.ReadRequest req = new BookieProtocol.ReadRequest(version, 1L, 1L, (short)0);
+        DataFormats.RequestHeader header = DataFormats.RequestHeader.newBuilder()
+            .setReadRequest(DataFormats.ReadRequest.newBuilder()
+                            .setLedgerId(1L).setEntryId(1L).build()).build();
+        BookieProtocol.Request req = new BookieProtocol.Request(version, header);
         
         bc.channel.write(req).awaitUninterruptibly();
         readLatch.await(5, TimeUnit.SECONDS);
