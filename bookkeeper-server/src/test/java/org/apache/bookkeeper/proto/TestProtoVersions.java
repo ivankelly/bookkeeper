@@ -102,6 +102,6 @@ public class TestProtoVersions {
         testVersion((byte)(BookieProtocol.LOWEST_COMPAT_PROTOCOL_VERSION-1), BKException.Code.ProtocolVersionException);
         testVersion(BookieProtocol.LOWEST_COMPAT_PROTOCOL_VERSION, BKException.Code.NoSuchEntryException);
         testVersion(BookieProtocol.CURRENT_PROTOCOL_VERSION, BKException.Code.NoSuchEntryException);
-        testVersion((byte)(BookieProtocol.CURRENT_PROTOCOL_VERSION+1), BKException.Code.ProtocolVersionException);
+        testVersion((byte)(BookieProtocol.CURRENT_PROTOCOL_VERSION+1), BKException.Code.NoSuchEntryException);
     }
 }

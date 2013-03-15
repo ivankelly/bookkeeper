@@ -98,17 +98,23 @@ class BookieRequestHandler extends SimpleChannelHandler
 
         Channel c = ctx.getChannel();
 
-        if (req.getProtocolVersion() < BookieProtocol.LOWEST_COMPAT_PROTOCOL_VERSION
-            || req.getProtocolVersion() > BookieProtocol.CURRENT_PROTOCOL_VERSION) {
-            LOG.error("Invalid protocol version, expected something between "
+        if (req.getProtocolVersion() < BookieProtocol.LOWEST_COMPAT_PROTOCOL_VERSION) {
+            LOG.error("Invalid protocol version, Expected something greater than "
                       + BookieProtocol.LOWEST_COMPAT_PROTOCOL_VERSION
-                      + " & " + BookieProtocol.CURRENT_PROTOCOL_VERSION
-                      + ". got " + req.getProtocolVersion());
-            c.write(ResponseBuilder.buildErrorResponse(BookieProtocol.EBADVERSION, req));
+                      + ". Got " + req.getProtocolVersion());
+            c.write(ResponseBuilder.buildErrorResponse(BookieProtocol.LOWEST_COMPAT_PROTOCOL_VERSION,
+                                                       BookieProtocol.EBADVERSION, req));
             return;
         }
 
-        if (req.getHeader().hasAddRequest()) {
+        if (req.getHeader().hasHandshakeRequest()) {
+            DataFormats.HandshakeResponse handshakeResponse = DataFormats.HandshakeResponse.newBuilder()
+                .setLowestCompatProtocolVersion(BookieProtocol.LOWEST_COMPAT_PROTOCOL_VERSION)
+                .setCurrentProtocolVersion(BookieProtocol.CURRENT_PROTOCOL_VERSION).build();
+            DataFormats.ResponseHeader h = DataFormats.ResponseHeader.newBuilder()
+                .setHandshakeResponse(handshakeResponse).build();
+            c.write(new BookieProtocol.Response(req.getProtocolVersion(), h));
+        } else if (req.getHeader().hasAddRequest()) {
             handleAdd(req, c);
         } else if (req.getHeader().hasReadRequest()) {
             handleRead(req, c);

@@ -42,7 +42,12 @@ public interface BookieProtocol {
     /**
      * Current version of the protocol, which client will use. 
      */
-    public static final byte CURRENT_PROTOCOL_VERSION = 2;
+    public static final byte CURRENT_PROTOCOL_VERSION = 3;
+
+    /**
+     * First version of the protocol which uses protobufs.
+     */
+    public static final byte FIRST_PROTOBUF_PROTOCOL_VERSION = 3;
 
     /**
      * Entry Entry ID. To be used when no valid entry id can be assigned.
@@ -61,69 +66,6 @@ public interface BookieProtocol {
      * of whether Mac is being used for the digest or not
      */
     public static final int MASTER_KEY_LENGTH = 20;
-
-    /** 
-     * The first int of a packet is the header.
-     * It contains the version, opCode and flags.
-     * The initial versions of BK didn't have this structure
-     * and just had an int representing the opCode as the 
-     * first int. This handles that case also. 
-     */
-    static class PacketHeader {
-        final byte opCode;
-        final short flags;
-
-        public PacketHeader(byte opCode, short flags) {
-            this.opCode = opCode;
-            this.flags = flags;
-        }
-        
-        byte[] getBytes(byte version) {
-            if (version == 0) {
-                return new byte[] {0,0,opCode};
-            } else {
-                return new byte[] {opCode, (byte)(flags >> 8 & 0xFF), (byte)(flags & 0xFF)};
-            }
-        }
-
-        static PacketHeader fromBytes(byte version, byte[] bytes) {
-            byte opCode = 0;
-            short flags = 0;
-            if (version == 0) {
-                opCode = bytes[2];
-            } else {
-                opCode = bytes[0];
-                flags = (short)((bytes[1] << 8) | (bytes[2] & 0xFF));
-            }
-            return new PacketHeader(opCode, flags);
-        }
-
-        byte getOpCode() {
-            return opCode;
-        }
-
-        short getFlags() {
-            return flags;
-        }
-    }
-
-    /**
-     * The Add entry request payload will be a ledger entry exactly as it should
-     * be logged. The response payload will be a 4-byte integer that has the
-     * error code followed by the 8-byte ledger number and 8-byte entry number
-     * of the entry written.
-     */
-    public static final byte ADDENTRY = 1;
-    /**
-     * The Read entry request payload will be the ledger number and entry number
-     * to read. (The ledger number is an 8-byte integer and the entry number is
-     * a 8-byte integer.) The response payload will be a 4-byte integer
-     * representing an error code and a ledger entry if the error code is EOK,
-     * otherwise it will be the 8-byte ledger number and the 4-byte entry number
-     * requested. (Note that the first sixteen bytes of the entry happen to be
-     * the ledger number and entry number as well.)
-     */
-    public static final byte READENTRY = 2;
 
     /**
      * The error code that indicates success
@@ -165,10 +107,6 @@ public interface BookieProtocol {
      * The server is running as read-only mode
      */
     public static final int EREADONLY = 105;
-
-    public static final short FLAG_NONE = 0x0;
-    public static final short FLAG_DO_FENCING = 0x0001;
-    public static final short FLAG_RECOVERY_ADD = 0x0002;
 
     static class Request {
         final byte protocolVersion;

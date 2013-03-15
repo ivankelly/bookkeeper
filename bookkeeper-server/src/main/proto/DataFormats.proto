@@ -84,8 +84,9 @@ message AuditorVoteFormat {
 }
 
 message RequestHeader {
-    optional ReadRequest readRequest = 2;
-    optional AddRequest addRequest = 3;
+    optional ReadRequest readRequest = 1;
+    optional AddRequest addRequest = 2;
+    optional HandshakeRequest handshakeRequest = 3;
 }
 
 message ReadRequest {
@@ -106,6 +107,7 @@ message ResponseHeader {
     optional int32 errorCode = 1;
     optional AddResponse addResponse = 2;
     optional ReadResponse readResponse = 3;
+    optional HandshakeResponse handshakeResponse = 4;
 }
 
 message AddResponse {
@@ -118,3 +120,13 @@ message ReadResponse {
     optional int64 entryId = 2;
 }
 
+message HandshakeRequest {
+    // Pre 4.3 versions expect to read the header and
+    // then 2 longs
+    optional bytes backwardCompatBuffer = 1;
+}
+
+message HandshakeResponse {
+    optional int32 lowestCompatProtocolVersion = 1;
+    optional int32 currentProtocolVersion = 2;
+}

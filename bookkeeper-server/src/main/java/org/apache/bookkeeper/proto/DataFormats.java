@@ -3952,15 +3952,20 @@ public final class DataFormats {
   public interface RequestHeaderOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
     
-    // optional .ReadRequest readRequest = 2;
+    // optional .ReadRequest readRequest = 1;
     boolean hasReadRequest();
     org.apache.bookkeeper.proto.DataFormats.ReadRequest getReadRequest();
     org.apache.bookkeeper.proto.DataFormats.ReadRequestOrBuilder getReadRequestOrBuilder();
     
-    // optional .AddRequest addRequest = 3;
+    // optional .AddRequest addRequest = 2;
     boolean hasAddRequest();
     org.apache.bookkeeper.proto.DataFormats.AddRequest getAddRequest();
     org.apache.bookkeeper.proto.DataFormats.AddRequestOrBuilder getAddRequestOrBuilder();
+    
+    // optional .HandshakeRequest handshakeRequest = 3;
+    boolean hasHandshakeRequest();
+    org.apache.bookkeeper.proto.DataFormats.HandshakeRequest getHandshakeRequest();
+    org.apache.bookkeeper.proto.DataFormats.HandshakeRequestOrBuilder getHandshakeRequestOrBuilder();
   }
   public static final class RequestHeader extends
       com.google.protobuf.GeneratedMessage
@@ -3991,8 +3996,8 @@ public final class DataFormats {
     }
     
     private int bitField0_;
-    // optional .ReadRequest readRequest = 2;
-    public static final int READREQUEST_FIELD_NUMBER = 2;
+    // optional .ReadRequest readRequest = 1;
+    public static final int READREQUEST_FIELD_NUMBER = 1;
     private org.apache.bookkeeper.proto.DataFormats.ReadRequest readRequest_;
     public boolean hasReadRequest() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
@@ -4004,8 +4009,8 @@ public final class DataFormats {
       return readRequest_;
     }
     
-    // optional .AddRequest addRequest = 3;
-    public static final int ADDREQUEST_FIELD_NUMBER = 3;
+    // optional .AddRequest addRequest = 2;
+    public static final int ADDREQUEST_FIELD_NUMBER = 2;
     private org.apache.bookkeeper.proto.DataFormats.AddRequest addRequest_;
     public boolean hasAddRequest() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
@@ -4017,9 +4022,23 @@ public final class DataFormats {
       return addRequest_;
     }
     
+    // optional .HandshakeRequest handshakeRequest = 3;
+    public static final int HANDSHAKEREQUEST_FIELD_NUMBER = 3;
+    private org.apache.bookkeeper.proto.DataFormats.HandshakeRequest handshakeRequest_;
+    public boolean hasHandshakeRequest() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    public org.apache.bookkeeper.proto.DataFormats.HandshakeRequest getHandshakeRequest() {
+      return handshakeRequest_;
+    }
+    public org.apache.bookkeeper.proto.DataFormats.HandshakeRequestOrBuilder getHandshakeRequestOrBuilder() {
+      return handshakeRequest_;
+    }
+    
     private void initFields() {
       readRequest_ = org.apache.bookkeeper.proto.DataFormats.ReadRequest.getDefaultInstance();
       addRequest_ = org.apache.bookkeeper.proto.DataFormats.AddRequest.getDefaultInstance();
+      handshakeRequest_ = org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -4034,10 +4053,13 @@ public final class DataFormats {
                         throws java.io.IOException {
       getSerializedSize();
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeMessage(2, readRequest_);
+        output.writeMessage(1, readRequest_);
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeMessage(3, addRequest_);
+        output.writeMessage(2, addRequest_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeMessage(3, handshakeRequest_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -4050,11 +4072,15 @@ public final class DataFormats {
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(2, readRequest_);
+          .computeMessageSize(1, readRequest_);
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(3, addRequest_);
+          .computeMessageSize(2, addRequest_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(3, handshakeRequest_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -4174,6 +4200,7 @@ public final class DataFormats {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getReadRequestFieldBuilder();
           getAddRequestFieldBuilder();
+          getHandshakeRequestFieldBuilder();
         }
       }
       private static Builder create() {
@@ -4194,6 +4221,12 @@ public final class DataFormats {
           addRequestBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000002);
+        if (handshakeRequestBuilder_ == null) {
+          handshakeRequest_ = org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.getDefaultInstance();
+        } else {
+          handshakeRequestBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
       
@@ -4248,6 +4281,14 @@ public final class DataFormats {
         } else {
           result.addRequest_ = addRequestBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        if (handshakeRequestBuilder_ == null) {
+          result.handshakeRequest_ = handshakeRequest_;
+        } else {
+          result.handshakeRequest_ = handshakeRequestBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -4269,6 +4310,9 @@ public final class DataFormats {
         }
         if (other.hasAddRequest()) {
           mergeAddRequest(other.getAddRequest());
+        }
+        if (other.hasHandshakeRequest()) {
+          mergeHandshakeRequest(other.getHandshakeRequest());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -4301,7 +4345,7 @@ public final class DataFormats {
               }
               break;
             }
-            case 18: {
+            case 10: {
               org.apache.bookkeeper.proto.DataFormats.ReadRequest.Builder subBuilder = org.apache.bookkeeper.proto.DataFormats.ReadRequest.newBuilder();
               if (hasReadRequest()) {
                 subBuilder.mergeFrom(getReadRequest());
@@ -4310,7 +4354,7 @@ public final class DataFormats {
               setReadRequest(subBuilder.buildPartial());
               break;
             }
-            case 26: {
+            case 18: {
               org.apache.bookkeeper.proto.DataFormats.AddRequest.Builder subBuilder = org.apache.bookkeeper.proto.DataFormats.AddRequest.newBuilder();
               if (hasAddRequest()) {
                 subBuilder.mergeFrom(getAddRequest());
@@ -4319,13 +4363,22 @@ public final class DataFormats {
               setAddRequest(subBuilder.buildPartial());
               break;
             }
+            case 26: {
+              org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.Builder subBuilder = org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.newBuilder();
+              if (hasHandshakeRequest()) {
+                subBuilder.mergeFrom(getHandshakeRequest());
+              }
+              input.readMessage(subBuilder, extensionRegistry);
+              setHandshakeRequest(subBuilder.buildPartial());
+              break;
+            }
           }
         }
       }
       
       private int bitField0_;
       
-      // optional .ReadRequest readRequest = 2;
+      // optional .ReadRequest readRequest = 1;
       private org.apache.bookkeeper.proto.DataFormats.ReadRequest readRequest_ = org.apache.bookkeeper.proto.DataFormats.ReadRequest.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.DataFormats.ReadRequest, org.apache.bookkeeper.proto.DataFormats.ReadRequest.Builder, org.apache.bookkeeper.proto.DataFormats.ReadRequestOrBuilder> readRequestBuilder_;
@@ -4415,7 +4468,7 @@ public final class DataFormats {
         return readRequestBuilder_;
       }
       
-      // optional .AddRequest addRequest = 3;
+      // optional .AddRequest addRequest = 2;
       private org.apache.bookkeeper.proto.DataFormats.AddRequest addRequest_ = org.apache.bookkeeper.proto.DataFormats.AddRequest.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.DataFormats.AddRequest, org.apache.bookkeeper.proto.DataFormats.AddRequest.Builder, org.apache.bookkeeper.proto.DataFormats.AddRequestOrBuilder> addRequestBuilder_;
@@ -4503,6 +4556,96 @@ public final class DataFormats {
           addRequest_ = null;
         }
         return addRequestBuilder_;
+      }
+      
+      // optional .HandshakeRequest handshakeRequest = 3;
+      private org.apache.bookkeeper.proto.DataFormats.HandshakeRequest handshakeRequest_ = org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.HandshakeRequest, org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.Builder, org.apache.bookkeeper.proto.DataFormats.HandshakeRequestOrBuilder> handshakeRequestBuilder_;
+      public boolean hasHandshakeRequest() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeRequest getHandshakeRequest() {
+        if (handshakeRequestBuilder_ == null) {
+          return handshakeRequest_;
+        } else {
+          return handshakeRequestBuilder_.getMessage();
+        }
+      }
+      public Builder setHandshakeRequest(org.apache.bookkeeper.proto.DataFormats.HandshakeRequest value) {
+        if (handshakeRequestBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          handshakeRequest_ = value;
+          onChanged();
+        } else {
+          handshakeRequestBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      public Builder setHandshakeRequest(
+          org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.Builder builderForValue) {
+        if (handshakeRequestBuilder_ == null) {
+          handshakeRequest_ = builderForValue.build();
+          onChanged();
+        } else {
+          handshakeRequestBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      public Builder mergeHandshakeRequest(org.apache.bookkeeper.proto.DataFormats.HandshakeRequest value) {
+        if (handshakeRequestBuilder_ == null) {
+          if (((bitField0_ & 0x00000004) == 0x00000004) &&
+              handshakeRequest_ != org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.getDefaultInstance()) {
+            handshakeRequest_ =
+              org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.newBuilder(handshakeRequest_).mergeFrom(value).buildPartial();
+          } else {
+            handshakeRequest_ = value;
+          }
+          onChanged();
+        } else {
+          handshakeRequestBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      public Builder clearHandshakeRequest() {
+        if (handshakeRequestBuilder_ == null) {
+          handshakeRequest_ = org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.getDefaultInstance();
+          onChanged();
+        } else {
+          handshakeRequestBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
+        return this;
+      }
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.Builder getHandshakeRequestBuilder() {
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return getHandshakeRequestFieldBuilder().getBuilder();
+      }
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeRequestOrBuilder getHandshakeRequestOrBuilder() {
+        if (handshakeRequestBuilder_ != null) {
+          return handshakeRequestBuilder_.getMessageOrBuilder();
+        } else {
+          return handshakeRequest_;
+        }
+      }
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.HandshakeRequest, org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.Builder, org.apache.bookkeeper.proto.DataFormats.HandshakeRequestOrBuilder> 
+          getHandshakeRequestFieldBuilder() {
+        if (handshakeRequestBuilder_ == null) {
+          handshakeRequestBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.bookkeeper.proto.DataFormats.HandshakeRequest, org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.Builder, org.apache.bookkeeper.proto.DataFormats.HandshakeRequestOrBuilder>(
+                  handshakeRequest_,
+                  getParentForChildren(),
+                  isClean());
+          handshakeRequest_ = null;
+        }
+        return handshakeRequestBuilder_;
       }
       
       // @@protoc_insertion_point(builder_scope:RequestHeader)
@@ -5556,6 +5699,11 @@ public final class DataFormats {
     boolean hasReadResponse();
     org.apache.bookkeeper.proto.DataFormats.ReadResponse getReadResponse();
     org.apache.bookkeeper.proto.DataFormats.ReadResponseOrBuilder getReadResponseOrBuilder();
+    
+    // optional .HandshakeResponse handshakeResponse = 4;
+    boolean hasHandshakeResponse();
+    org.apache.bookkeeper.proto.DataFormats.HandshakeResponse getHandshakeResponse();
+    org.apache.bookkeeper.proto.DataFormats.HandshakeResponseOrBuilder getHandshakeResponseOrBuilder();
   }
   public static final class ResponseHeader extends
       com.google.protobuf.GeneratedMessage
@@ -5622,10 +5770,24 @@ public final class DataFormats {
       return readResponse_;
     }
     
+    // optional .HandshakeResponse handshakeResponse = 4;
+    public static final int HANDSHAKERESPONSE_FIELD_NUMBER = 4;
+    private org.apache.bookkeeper.proto.DataFormats.HandshakeResponse handshakeResponse_;
+    public boolean hasHandshakeResponse() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    public org.apache.bookkeeper.proto.DataFormats.HandshakeResponse getHandshakeResponse() {
+      return handshakeResponse_;
+    }
+    public org.apache.bookkeeper.proto.DataFormats.HandshakeResponseOrBuilder getHandshakeResponseOrBuilder() {
+      return handshakeResponse_;
+    }
+    
     private void initFields() {
       errorCode_ = 0;
       addResponse_ = org.apache.bookkeeper.proto.DataFormats.AddResponse.getDefaultInstance();
       readResponse_ = org.apache.bookkeeper.proto.DataFormats.ReadResponse.getDefaultInstance();
+      handshakeResponse_ = org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -5648,6 +5810,9 @@ public final class DataFormats {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         output.writeMessage(3, readResponse_);
       }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeMessage(4, handshakeResponse_);
+      }
       getUnknownFields().writeTo(output);
     }
     
@@ -5668,6 +5833,10 @@ public final class DataFormats {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(3, readResponse_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(4, handshakeResponse_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -5787,6 +5956,7 @@ public final class DataFormats {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getAddResponseFieldBuilder();
           getReadResponseFieldBuilder();
+          getHandshakeResponseFieldBuilder();
         }
       }
       private static Builder create() {
@@ -5809,6 +5979,12 @@ public final class DataFormats {
           readResponseBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000004);
+        if (handshakeResponseBuilder_ == null) {
+          handshakeResponse_ = org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.getDefaultInstance();
+        } else {
+          handshakeResponseBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
       
@@ -5867,6 +6043,14 @@ public final class DataFormats {
         } else {
           result.readResponse_ = readResponseBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        if (handshakeResponseBuilder_ == null) {
+          result.handshakeResponse_ = handshakeResponse_;
+        } else {
+          result.handshakeResponse_ = handshakeResponseBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -5891,6 +6075,9 @@ public final class DataFormats {
         }
         if (other.hasReadResponse()) {
           mergeReadResponse(other.getReadResponse());
+        }
+        if (other.hasHandshakeResponse()) {
+          mergeHandshakeResponse(other.getHandshakeResponse());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -5944,6 +6131,15 @@ public final class DataFormats {
               }
               input.readMessage(subBuilder, extensionRegistry);
               setReadResponse(subBuilder.buildPartial());
+              break;
+            }
+            case 34: {
+              org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.Builder subBuilder = org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.newBuilder();
+              if (hasHandshakeResponse()) {
+                subBuilder.mergeFrom(getHandshakeResponse());
+              }
+              input.readMessage(subBuilder, extensionRegistry);
+              setHandshakeResponse(subBuilder.buildPartial());
               break;
             }
           }
@@ -6151,6 +6347,96 @@ public final class DataFormats {
           readResponse_ = null;
         }
         return readResponseBuilder_;
+      }
+      
+      // optional .HandshakeResponse handshakeResponse = 4;
+      private org.apache.bookkeeper.proto.DataFormats.HandshakeResponse handshakeResponse_ = org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.HandshakeResponse, org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.Builder, org.apache.bookkeeper.proto.DataFormats.HandshakeResponseOrBuilder> handshakeResponseBuilder_;
+      public boolean hasHandshakeResponse() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeResponse getHandshakeResponse() {
+        if (handshakeResponseBuilder_ == null) {
+          return handshakeResponse_;
+        } else {
+          return handshakeResponseBuilder_.getMessage();
+        }
+      }
+      public Builder setHandshakeResponse(org.apache.bookkeeper.proto.DataFormats.HandshakeResponse value) {
+        if (handshakeResponseBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          handshakeResponse_ = value;
+          onChanged();
+        } else {
+          handshakeResponseBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder setHandshakeResponse(
+          org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.Builder builderForValue) {
+        if (handshakeResponseBuilder_ == null) {
+          handshakeResponse_ = builderForValue.build();
+          onChanged();
+        } else {
+          handshakeResponseBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder mergeHandshakeResponse(org.apache.bookkeeper.proto.DataFormats.HandshakeResponse value) {
+        if (handshakeResponseBuilder_ == null) {
+          if (((bitField0_ & 0x00000008) == 0x00000008) &&
+              handshakeResponse_ != org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.getDefaultInstance()) {
+            handshakeResponse_ =
+              org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.newBuilder(handshakeResponse_).mergeFrom(value).buildPartial();
+          } else {
+            handshakeResponse_ = value;
+          }
+          onChanged();
+        } else {
+          handshakeResponseBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder clearHandshakeResponse() {
+        if (handshakeResponseBuilder_ == null) {
+          handshakeResponse_ = org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.getDefaultInstance();
+          onChanged();
+        } else {
+          handshakeResponseBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000008);
+        return this;
+      }
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.Builder getHandshakeResponseBuilder() {
+        bitField0_ |= 0x00000008;
+        onChanged();
+        return getHandshakeResponseFieldBuilder().getBuilder();
+      }
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeResponseOrBuilder getHandshakeResponseOrBuilder() {
+        if (handshakeResponseBuilder_ != null) {
+          return handshakeResponseBuilder_.getMessageOrBuilder();
+        } else {
+          return handshakeResponse_;
+        }
+      }
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.HandshakeResponse, org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.Builder, org.apache.bookkeeper.proto.DataFormats.HandshakeResponseOrBuilder> 
+          getHandshakeResponseFieldBuilder() {
+        if (handshakeResponseBuilder_ == null) {
+          handshakeResponseBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.bookkeeper.proto.DataFormats.HandshakeResponse, org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.Builder, org.apache.bookkeeper.proto.DataFormats.HandshakeResponseOrBuilder>(
+                  handshakeResponse_,
+                  getParentForChildren(),
+                  isClean());
+          handshakeResponse_ = null;
+        }
+        return handshakeResponseBuilder_;
       }
       
       // @@protoc_insertion_point(builder_scope:ResponseHeader)
@@ -6954,6 +7240,742 @@ public final class DataFormats {
     // @@protoc_insertion_point(class_scope:ReadResponse)
   }
   
+  public interface HandshakeRequestOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+    
+    // optional bytes backwardCompatBuffer = 1;
+    boolean hasBackwardCompatBuffer();
+    com.google.protobuf.ByteString getBackwardCompatBuffer();
+  }
+  public static final class HandshakeRequest extends
+      com.google.protobuf.GeneratedMessage
+      implements HandshakeRequestOrBuilder {
+    // Use HandshakeRequest.newBuilder() to construct.
+    private HandshakeRequest(Builder builder) {
+      super(builder);
+    }
+    private HandshakeRequest(boolean noInit) {}
+    
+    private static final HandshakeRequest defaultInstance;
+    public static HandshakeRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+    
+    public HandshakeRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_HandshakeRequest_descriptor;
+    }
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_HandshakeRequest_fieldAccessorTable;
+    }
+    
+    private int bitField0_;
+    // optional bytes backwardCompatBuffer = 1;
+    public static final int BACKWARDCOMPATBUFFER_FIELD_NUMBER = 1;
+    private com.google.protobuf.ByteString backwardCompatBuffer_;
+    public boolean hasBackwardCompatBuffer() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    public com.google.protobuf.ByteString getBackwardCompatBuffer() {
+      return backwardCompatBuffer_;
+    }
+    
+    private void initFields() {
+      backwardCompatBuffer_ = com.google.protobuf.ByteString.EMPTY;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+      
+      memoizedIsInitialized = 1;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBytes(1, backwardCompatBuffer_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(1, backwardCompatBuffer_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+    
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.proto.DataFormats.HandshakeRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.bookkeeper.proto.DataFormats.HandshakeRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_HandshakeRequest_descriptor;
+      }
+      
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_HandshakeRequest_fieldAccessorTable;
+      }
+      
+      // Construct using org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+      
+      private Builder(BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+      
+      public Builder clear() {
+        super.clear();
+        backwardCompatBuffer_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.getDescriptor();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeRequest getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.getDefaultInstance();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeRequest build() {
+        org.apache.bookkeeper.proto.DataFormats.HandshakeRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+      
+      private org.apache.bookkeeper.proto.DataFormats.HandshakeRequest buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        org.apache.bookkeeper.proto.DataFormats.HandshakeRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeRequest buildPartial() {
+        org.apache.bookkeeper.proto.DataFormats.HandshakeRequest result = new org.apache.bookkeeper.proto.DataFormats.HandshakeRequest(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.backwardCompatBuffer_ = backwardCompatBuffer_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.proto.DataFormats.HandshakeRequest) {
+          return mergeFrom((org.apache.bookkeeper.proto.DataFormats.HandshakeRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(org.apache.bookkeeper.proto.DataFormats.HandshakeRequest other) {
+        if (other == org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.getDefaultInstance()) return this;
+        if (other.hasBackwardCompatBuffer()) {
+          setBackwardCompatBuffer(other.getBackwardCompatBuffer());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public final boolean isInitialized() {
+        return true;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
+              }
+              break;
+            }
+            case 10: {
+              bitField0_ |= 0x00000001;
+              backwardCompatBuffer_ = input.readBytes();
+              break;
+            }
+          }
+        }
+      }
+      
+      private int bitField0_;
+      
+      // optional bytes backwardCompatBuffer = 1;
+      private com.google.protobuf.ByteString backwardCompatBuffer_ = com.google.protobuf.ByteString.EMPTY;
+      public boolean hasBackwardCompatBuffer() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      public com.google.protobuf.ByteString getBackwardCompatBuffer() {
+        return backwardCompatBuffer_;
+      }
+      public Builder setBackwardCompatBuffer(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
+        backwardCompatBuffer_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearBackwardCompatBuffer() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        backwardCompatBuffer_ = getDefaultInstance().getBackwardCompatBuffer();
+        onChanged();
+        return this;
+      }
+      
+      // @@protoc_insertion_point(builder_scope:HandshakeRequest)
+    }
+    
+    static {
+      defaultInstance = new HandshakeRequest(true);
+      defaultInstance.initFields();
+    }
+    
+    // @@protoc_insertion_point(class_scope:HandshakeRequest)
+  }
+  
+  public interface HandshakeResponseOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+    
+    // optional int32 lowestCompatProtocolVersion = 1;
+    boolean hasLowestCompatProtocolVersion();
+    int getLowestCompatProtocolVersion();
+    
+    // optional int32 currentProtocolVersion = 2;
+    boolean hasCurrentProtocolVersion();
+    int getCurrentProtocolVersion();
+  }
+  public static final class HandshakeResponse extends
+      com.google.protobuf.GeneratedMessage
+      implements HandshakeResponseOrBuilder {
+    // Use HandshakeResponse.newBuilder() to construct.
+    private HandshakeResponse(Builder builder) {
+      super(builder);
+    }
+    private HandshakeResponse(boolean noInit) {}
+    
+    private static final HandshakeResponse defaultInstance;
+    public static HandshakeResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+    
+    public HandshakeResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_HandshakeResponse_descriptor;
+    }
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_HandshakeResponse_fieldAccessorTable;
+    }
+    
+    private int bitField0_;
+    // optional int32 lowestCompatProtocolVersion = 1;
+    public static final int LOWESTCOMPATPROTOCOLVERSION_FIELD_NUMBER = 1;
+    private int lowestCompatProtocolVersion_;
+    public boolean hasLowestCompatProtocolVersion() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    public int getLowestCompatProtocolVersion() {
+      return lowestCompatProtocolVersion_;
+    }
+    
+    // optional int32 currentProtocolVersion = 2;
+    public static final int CURRENTPROTOCOLVERSION_FIELD_NUMBER = 2;
+    private int currentProtocolVersion_;
+    public boolean hasCurrentProtocolVersion() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    public int getCurrentProtocolVersion() {
+      return currentProtocolVersion_;
+    }
+    
+    private void initFields() {
+      lowestCompatProtocolVersion_ = 0;
+      currentProtocolVersion_ = 0;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+      
+      memoizedIsInitialized = 1;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeInt32(1, lowestCompatProtocolVersion_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeInt32(2, currentProtocolVersion_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt32Size(1, lowestCompatProtocolVersion_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt32Size(2, currentProtocolVersion_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+    
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.HandshakeResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.proto.DataFormats.HandshakeResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.bookkeeper.proto.DataFormats.HandshakeResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_HandshakeResponse_descriptor;
+      }
+      
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_HandshakeResponse_fieldAccessorTable;
+      }
+      
+      // Construct using org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+      
+      private Builder(BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+      
+      public Builder clear() {
+        super.clear();
+        lowestCompatProtocolVersion_ = 0;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        currentProtocolVersion_ = 0;
+        bitField0_ = (bitField0_ & ~0x00000002);
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.getDescriptor();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeResponse getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.getDefaultInstance();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeResponse build() {
+        org.apache.bookkeeper.proto.DataFormats.HandshakeResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+      
+      private org.apache.bookkeeper.proto.DataFormats.HandshakeResponse buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        org.apache.bookkeeper.proto.DataFormats.HandshakeResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.HandshakeResponse buildPartial() {
+        org.apache.bookkeeper.proto.DataFormats.HandshakeResponse result = new org.apache.bookkeeper.proto.DataFormats.HandshakeResponse(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.lowestCompatProtocolVersion_ = lowestCompatProtocolVersion_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.currentProtocolVersion_ = currentProtocolVersion_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.proto.DataFormats.HandshakeResponse) {
+          return mergeFrom((org.apache.bookkeeper.proto.DataFormats.HandshakeResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(org.apache.bookkeeper.proto.DataFormats.HandshakeResponse other) {
+        if (other == org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.getDefaultInstance()) return this;
+        if (other.hasLowestCompatProtocolVersion()) {
+          setLowestCompatProtocolVersion(other.getLowestCompatProtocolVersion());
+        }
+        if (other.hasCurrentProtocolVersion()) {
+          setCurrentProtocolVersion(other.getCurrentProtocolVersion());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public final boolean isInitialized() {
+        return true;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              lowestCompatProtocolVersion_ = input.readInt32();
+              break;
+            }
+            case 16: {
+              bitField0_ |= 0x00000002;
+              currentProtocolVersion_ = input.readInt32();
+              break;
+            }
+          }
+        }
+      }
+      
+      private int bitField0_;
+      
+      // optional int32 lowestCompatProtocolVersion = 1;
+      private int lowestCompatProtocolVersion_ ;
+      public boolean hasLowestCompatProtocolVersion() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      public int getLowestCompatProtocolVersion() {
+        return lowestCompatProtocolVersion_;
+      }
+      public Builder setLowestCompatProtocolVersion(int value) {
+        bitField0_ |= 0x00000001;
+        lowestCompatProtocolVersion_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearLowestCompatProtocolVersion() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        lowestCompatProtocolVersion_ = 0;
+        onChanged();
+        return this;
+      }
+      
+      // optional int32 currentProtocolVersion = 2;
+      private int currentProtocolVersion_ ;
+      public boolean hasCurrentProtocolVersion() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      public int getCurrentProtocolVersion() {
+        return currentProtocolVersion_;
+      }
+      public Builder setCurrentProtocolVersion(int value) {
+        bitField0_ |= 0x00000002;
+        currentProtocolVersion_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearCurrentProtocolVersion() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        currentProtocolVersion_ = 0;
+        onChanged();
+        return this;
+      }
+      
+      // @@protoc_insertion_point(builder_scope:HandshakeResponse)
+    }
+    
+    static {
+      defaultInstance = new HandshakeResponse(true);
+      defaultInstance.initFields();
+    }
+    
+    // @@protoc_insertion_point(class_scope:HandshakeResponse)
+  }
+  
   private static com.google.protobuf.Descriptors.Descriptor
     internal_static_LedgerMetadataFormat_descriptor;
   private static
@@ -7019,6 +8041,16 @@ public final class DataFormats {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_ReadResponse_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_HandshakeRequest_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_HandshakeRequest_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_HandshakeResponse_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_HandshakeResponse_fieldAccessorTable;
   
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -7046,21 +8078,26 @@ public final class DataFormats {
       "t\022\022\n\nbookieHost\030\001 \002(\t\022\022\n\njournalDir\030\002 \002(" +
       "\t\022\022\n\nledgerDirs\030\003 \002(\t\022\022\n\ninstanceId\030\004 \001(" +
       "\t\"\"\n\016LockDataFormat\022\020\n\010bookieId\030\001 \001(\t\"%\n" +
-      "\021AuditorVoteFormat\022\020\n\010bookieId\030\001 \001(\t\"S\n\r" +
-      "RequestHeader\022!\n\013readRequest\030\002 \001(\0132\014.Rea",
-      "dRequest\022\037\n\naddRequest\030\003 \001(\0132\013.AddReques" +
-      "t\"d\n\013ReadRequest\022\020\n\010ledgerId\030\001 \001(\003\022\017\n\007en" +
-      "tryId\030\002 \001(\003\022\021\n\tmasterKey\030\003 \001(\014\022\037\n\020isFenc" +
-      "ingRequest\030\004 \001(\010:\005false\"`\n\nAddRequest\022\020\n" +
-      "\010ledgerId\030\001 \001(\003\022\017\n\007entryId\030\002 \001(\003\022\021\n\tmast" +
-      "erKey\030\003 \001(\014\022\034\n\risRecoveryAdd\030\004 \001(\010:\005fals" +
-      "e\"k\n\016ResponseHeader\022\021\n\terrorCode\030\001 \001(\005\022!" +
-      "\n\013addResponse\030\002 \001(\0132\014.AddResponse\022#\n\014rea" +
-      "dResponse\030\003 \001(\0132\r.ReadResponse\"0\n\013AddRes" +
-      "ponse\022\020\n\010ledgerId\030\001 \001(\003\022\017\n\007entryId\030\002 \001(\003",
-      "\"1\n\014ReadResponse\022\020\n\010ledgerId\030\001 \001(\003\022\017\n\007en" +
-      "tryId\030\002 \001(\003B\037\n\033org.apache.bookkeeper.pro" +
-      "toH\001"
+      "\021AuditorVoteFormat\022\020\n\010bookieId\030\001 \001(\t\"\200\001\n" +
+      "\rRequestHeader\022!\n\013readRequest\030\001 \001(\0132\014.Re",
+      "adRequest\022\037\n\naddRequest\030\002 \001(\0132\013.AddReque" +
+      "st\022+\n\020handshakeRequest\030\003 \001(\0132\021.Handshake" +
+      "Request\"d\n\013ReadRequest\022\020\n\010ledgerId\030\001 \001(\003" +
+      "\022\017\n\007entryId\030\002 \001(\003\022\021\n\tmasterKey\030\003 \001(\014\022\037\n\020" +
+      "isFencingRequest\030\004 \001(\010:\005false\"`\n\nAddRequ" +
+      "est\022\020\n\010ledgerId\030\001 \001(\003\022\017\n\007entryId\030\002 \001(\003\022\021" +
+      "\n\tmasterKey\030\003 \001(\014\022\034\n\risRecoveryAdd\030\004 \001(\010" +
+      ":\005false\"\232\001\n\016ResponseHeader\022\021\n\terrorCode\030" +
+      "\001 \001(\005\022!\n\013addResponse\030\002 \001(\0132\014.AddResponse" +
+      "\022#\n\014readResponse\030\003 \001(\0132\r.ReadResponse\022-\n",
+      "\021handshakeResponse\030\004 \001(\0132\022.HandshakeResp" +
+      "onse\"0\n\013AddResponse\022\020\n\010ledgerId\030\001 \001(\003\022\017\n" +
+      "\007entryId\030\002 \001(\003\"1\n\014ReadResponse\022\020\n\010ledger" +
+      "Id\030\001 \001(\003\022\017\n\007entryId\030\002 \001(\003\"0\n\020HandshakeRe" +
+      "quest\022\034\n\024backwardCompatBuffer\030\001 \001(\014\"X\n\021H" +
+      "andshakeResponse\022#\n\033lowestCompatProtocol" +
+      "Version\030\001 \001(\005\022\036\n\026currentProtocolVersion\030" +
+      "\002 \001(\005B\037\n\033org.apache.bookkeeper.protoH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -7128,7 +8165,7 @@ public final class DataFormats {
           internal_static_RequestHeader_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RequestHeader_descriptor,
-              new java.lang.String[] { "ReadRequest", "AddRequest", },
+              new java.lang.String[] { "ReadRequest", "AddRequest", "HandshakeRequest", },
               org.apache.bookkeeper.proto.DataFormats.RequestHeader.class,
               org.apache.bookkeeper.proto.DataFormats.RequestHeader.Builder.class);
           internal_static_ReadRequest_descriptor =
@@ -7152,7 +8189,7 @@ public final class DataFormats {
           internal_static_ResponseHeader_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ResponseHeader_descriptor,
-              new java.lang.String[] { "ErrorCode", "AddResponse", "ReadResponse", },
+              new java.lang.String[] { "ErrorCode", "AddResponse", "ReadResponse", "HandshakeResponse", },
               org.apache.bookkeeper.proto.DataFormats.ResponseHeader.class,
               org.apache.bookkeeper.proto.DataFormats.ResponseHeader.Builder.class);
           internal_static_AddResponse_descriptor =
@@ -7171,6 +8208,22 @@ public final class DataFormats {
               new java.lang.String[] { "LedgerId", "EntryId", },
               org.apache.bookkeeper.proto.DataFormats.ReadResponse.class,
               org.apache.bookkeeper.proto.DataFormats.ReadResponse.Builder.class);
+          internal_static_HandshakeRequest_descriptor =
+            getDescriptor().getMessageTypes().get(12);
+          internal_static_HandshakeRequest_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_HandshakeRequest_descriptor,
+              new java.lang.String[] { "BackwardCompatBuffer", },
+              org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.class,
+              org.apache.bookkeeper.proto.DataFormats.HandshakeRequest.Builder.class);
+          internal_static_HandshakeResponse_descriptor =
+            getDescriptor().getMessageTypes().get(13);
+          internal_static_HandshakeResponse_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_HandshakeResponse_descriptor,
+              new java.lang.String[] { "LowestCompatProtocolVersion", "CurrentProtocolVersion", },
+              org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.class,
+              org.apache.bookkeeper.proto.DataFormats.HandshakeResponse.Builder.class);
           return null;
         }
       };

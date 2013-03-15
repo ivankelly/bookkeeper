@@ -25,6 +25,10 @@ import org.jboss.netty.buffer.ChannelBuffers;
 
 class ResponseBuilder {
     static BookieProtocol.Response buildErrorResponse(int errorCode, BookieProtocol.Request r) {
+        return buildErrorResponse(r.getProtocolVersion(), errorCode, r);
+    }
+
+    static BookieProtocol.Response buildErrorResponse(byte protocolVersion, int errorCode, BookieProtocol.Request r) {
         DataFormats.ResponseHeader.Builder builder = DataFormats.ResponseHeader.newBuilder();
         builder.setErrorCode(errorCode);
         if (r.getHeader().hasAddRequest()) {
@@ -39,7 +43,7 @@ class ResponseBuilder {
                                     .setEntryId(r.getHeader().getReadRequest().getEntryId())
                                     .build());
         }
-        return new BookieProtocol.Response(r.getProtocolVersion(), builder.build());
+        return new BookieProtocol.Response(protocolVersion, builder.build());
     }
 
     static BookieProtocol.Response buildAddResponse(BookieProtocol.Request r) {
