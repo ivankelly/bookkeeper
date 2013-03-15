@@ -3952,12 +3952,12 @@ public final class DataFormats {
   public interface RequestHeaderOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
     
-    // optional .ReadRequest readRequest = 2;
+    // optional .ReadRequest readRequest = 1;
     boolean hasReadRequest();
     org.apache.bookkeeper.proto.DataFormats.ReadRequest getReadRequest();
     org.apache.bookkeeper.proto.DataFormats.ReadRequestOrBuilder getReadRequestOrBuilder();
     
-    // optional .AddRequest addRequest = 3;
+    // optional .AddRequest addRequest = 2;
     boolean hasAddRequest();
     org.apache.bookkeeper.proto.DataFormats.AddRequest getAddRequest();
     org.apache.bookkeeper.proto.DataFormats.AddRequestOrBuilder getAddRequestOrBuilder();
@@ -3991,8 +3991,8 @@ public final class DataFormats {
     }
     
     private int bitField0_;
-    // optional .ReadRequest readRequest = 2;
-    public static final int READREQUEST_FIELD_NUMBER = 2;
+    // optional .ReadRequest readRequest = 1;
+    public static final int READREQUEST_FIELD_NUMBER = 1;
     private org.apache.bookkeeper.proto.DataFormats.ReadRequest readRequest_;
     public boolean hasReadRequest() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
@@ -4004,8 +4004,8 @@ public final class DataFormats {
       return readRequest_;
     }
     
-    // optional .AddRequest addRequest = 3;
-    public static final int ADDREQUEST_FIELD_NUMBER = 3;
+    // optional .AddRequest addRequest = 2;
+    public static final int ADDREQUEST_FIELD_NUMBER = 2;
     private org.apache.bookkeeper.proto.DataFormats.AddRequest addRequest_;
     public boolean hasAddRequest() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
@@ -4034,10 +4034,10 @@ public final class DataFormats {
                         throws java.io.IOException {
       getSerializedSize();
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeMessage(2, readRequest_);
+        output.writeMessage(1, readRequest_);
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeMessage(3, addRequest_);
+        output.writeMessage(2, addRequest_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -4050,11 +4050,11 @@ public final class DataFormats {
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(2, readRequest_);
+          .computeMessageSize(1, readRequest_);
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(3, addRequest_);
+          .computeMessageSize(2, addRequest_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -4301,7 +4301,7 @@ public final class DataFormats {
               }
               break;
             }
-            case 18: {
+            case 10: {
               org.apache.bookkeeper.proto.DataFormats.ReadRequest.Builder subBuilder = org.apache.bookkeeper.proto.DataFormats.ReadRequest.newBuilder();
               if (hasReadRequest()) {
                 subBuilder.mergeFrom(getReadRequest());
@@ -4310,7 +4310,7 @@ public final class DataFormats {
               setReadRequest(subBuilder.buildPartial());
               break;
             }
-            case 26: {
+            case 18: {
               org.apache.bookkeeper.proto.DataFormats.AddRequest.Builder subBuilder = org.apache.bookkeeper.proto.DataFormats.AddRequest.newBuilder();
               if (hasAddRequest()) {
                 subBuilder.mergeFrom(getAddRequest());
@@ -4325,7 +4325,7 @@ public final class DataFormats {
       
       private int bitField0_;
       
-      // optional .ReadRequest readRequest = 2;
+      // optional .ReadRequest readRequest = 1;
       private org.apache.bookkeeper.proto.DataFormats.ReadRequest readRequest_ = org.apache.bookkeeper.proto.DataFormats.ReadRequest.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.DataFormats.ReadRequest, org.apache.bookkeeper.proto.DataFormats.ReadRequest.Builder, org.apache.bookkeeper.proto.DataFormats.ReadRequestOrBuilder> readRequestBuilder_;
@@ -4415,7 +4415,7 @@ public final class DataFormats {
         return readRequestBuilder_;
       }
       
-      // optional .AddRequest addRequest = 3;
+      // optional .AddRequest addRequest = 2;
       private org.apache.bookkeeper.proto.DataFormats.AddRequest addRequest_ = org.apache.bookkeeper.proto.DataFormats.AddRequest.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.DataFormats.AddRequest, org.apache.bookkeeper.proto.DataFormats.AddRequest.Builder, org.apache.bookkeeper.proto.DataFormats.AddRequestOrBuilder> addRequestBuilder_;
@@ -7047,8 +7047,8 @@ public final class DataFormats {
       "\t\022\022\n\nledgerDirs\030\003 \002(\t\022\022\n\ninstanceId\030\004 \001(" +
       "\t\"\"\n\016LockDataFormat\022\020\n\010bookieId\030\001 \001(\t\"%\n" +
       "\021AuditorVoteFormat\022\020\n\010bookieId\030\001 \001(\t\"S\n\r" +
-      "RequestHeader\022!\n\013readRequest\030\002 \001(\0132\014.Rea",
-      "dRequest\022\037\n\naddRequest\030\003 \001(\0132\013.AddReques" +
+      "RequestHeader\022!\n\013readRequest\030\001 \001(\0132\014.Rea",
+      "dRequest\022\037\n\naddRequest\030\002 \001(\0132\013.AddReques" +
       "t\"d\n\013ReadRequest\022\020\n\010ledgerId\030\001 \001(\003\022\017\n\007en" +
       "tryId\030\002 \001(\003\022\021\n\tmasterKey\030\003 \001(\014\022\037\n\020isFenc" +
       "ingRequest\030\004 \001(\010:\005false\"`\n\nAddRequest\022\020\n" +

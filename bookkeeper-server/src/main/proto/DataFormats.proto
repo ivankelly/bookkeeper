@@ -84,8 +84,8 @@ message AuditorVoteFormat {
 }
 
 message RequestHeader {
-    optional ReadRequest readRequest = 2;
-    optional AddRequest addRequest = 3;
+    optional ReadRequest readRequest = 1;
+    optional AddRequest addRequest = 2;
 }
 
 message ReadRequest {
