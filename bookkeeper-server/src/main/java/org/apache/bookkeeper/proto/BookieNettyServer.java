@@ -29,6 +29,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.bookkeeper.proto.ssl.SSLContextFactory;
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -66,6 +67,7 @@ class BookieNettyServer {
     boolean suspended = false;
 
     InetSocketAddress localAddress = null;
+    final SSLContextFactory sslContextFactory;
 
     BookieNettyServer(ServerConfiguration conf, Bookie bookie)
             throws IOException, KeeperException, InterruptedException, BookieException  {
@@ -77,7 +79,11 @@ class BookieNettyServer {
         serverChannelFactory = new NioServerSocketChannelFactory(
                 Executors.newCachedThreadPool(tfb.setNameFormat(base + "-boss-%d").build()),
                 Executors.newCachedThreadPool(tfb.setNameFormat(base + "-worker-%d").build()));
-
+        if (conf.isSSLEnabled()) {
+            sslContextFactory = new SSLContextFactory(conf);
+        } else {
+            sslContextFactory = null;
+        }
     }
 
     boolean isRunning() {
@@ -143,8 +149,8 @@ class BookieNettyServer {
 
             pipeline.addLast("bookieProtoDecoder", new BookieProtoEncoding.RequestDecoder());
             pipeline.addLast("bookieProtoEncoder", new BookieProtoEncoding.ResponseEncoder());
-            pipeline.addLast("bookieRequestHandler", new BookieRequestHandler(conf, bookie,
-                                                                              allChannels));
+            pipeline.addLast("bookieRequestHandler",
+                             new BookieRequestHandler(conf, bookie, allChannels, sslContextFactory));
             return pipeline;
         }
     }

@@ -66,6 +66,10 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String AUDITOR_PERIODIC_CHECK_INTERVAL = "auditorPeriodicCheckInterval";
     protected final static String AUTO_RECOVERY_DAEMON_ENABLED = "autoRecoveryDaemonEnabled";
 
+    protected final static String SSL_ENABLED = "sslEnabled";
+    protected final static String SSL_KEY_STORE = "sslKeyStore";
+    protected final static String SSL_KEY_STORE_PASSWORD = "sslKeyStorePassword";
+
     /**
      * Construct a default configuration object
      */
@@ -691,5 +695,32 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public boolean isAutoRecoveryDaemonEnabled() {
         return getBoolean(AUTO_RECOVERY_DAEMON_ENABLED, false);
+    }
+
+    public ServerConfiguration setSSLEnabled(boolean enabled) {
+        setProperty(SSL_ENABLED, enabled);
+        return this;
+    }
+
+    public boolean isSSLEnabled() {
+        return getBoolean(SSL_ENABLED, false);
+    }
+
+    public ServerConfiguration setSSLKeyStore(String keyStore) {
+        setProperty(SSL_KEY_STORE, keyStore);
+        return this;
+    }
+
+    public String getSSLKeyStore() {
+        return getString(SSL_KEY_STORE, "nonexistent_keystore");
+    }
+
+    public ServerConfiguration setSSLKeyStorePassword(String keyStorePassword) {
+        setProperty(SSL_KEY_STORE_PASSWORD, keyStorePassword);
+        return this;
+    }
+
+    public String getSSLKeyStorePassword() {
+        return getString(SSL_KEY_STORE_PASSWORD, "");
     }
 }

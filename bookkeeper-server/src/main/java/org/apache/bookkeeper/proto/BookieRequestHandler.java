@@ -29,6 +29,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.bookkeeper.proto.ssl.SSLContextFactory;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.bookie.Bookie;
@@ -41,6 +42,7 @@ import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.group.ChannelGroup;
+import org.jboss.netty.handler.ssl.SslHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,11 +59,14 @@ class BookieRequestHandler extends SimpleChannelHandler
 
     private final BKStats bkStats = BKStats.getInstance();
     private final boolean statsEnabled;
+    private final SSLContextFactory sslContextFactory;
 
-    BookieRequestHandler(ServerConfiguration conf, Bookie bookie, ChannelGroup allChannels) {
+    BookieRequestHandler(ServerConfiguration conf, Bookie bookie,
+                         ChannelGroup allChannels, SSLContextFactory sslContextFactory) {
         this.bookie = bookie;
         this.allChannels = allChannels;
         this.statsEnabled = conf.isStatisticsEnabled();
+        this.sslContextFactory = sslContextFactory;
     }
 
     @Override
@@ -105,6 +110,22 @@ class BookieRequestHandler extends SimpleChannelHandler
                       + " & " + BookieProtocol.CURRENT_PROTOCOL_VERSION
                       + ". got " + req.getProtocolVersion());
             c.write(ResponseBuilder.buildErrorResponse(BookieProtocol.EBADVERSION, req));
+            return;
+        }
+        if (req.getHeader().hasStartTLSRequest()) {
+            DataFormats.ResponseHeader.Builder builder = DataFormats.ResponseHeader.newBuilder();
+            if (sslContextFactory == null) {
+                LOG.error("Got StartTLS request but SSL not configured");
+                builder.setErrorCode(BookieProtocol.EBADREQ);
+            } else {
+                // insert the ssl handler
+                c.getPipeline().addFirst("ssl",
+                        new SslHandler(sslContextFactory.getEngine(), true));
+                builder.setErrorCode(BookieProtocol.EOK);
+            }
+
+            builder.setStartTLSResponse(DataFormats.StartTLSResponse.getDefaultInstance());
+            c.write(new BookieProtocol.Response(req.getProtocolVersion(), builder.build()));
             return;
         }
 

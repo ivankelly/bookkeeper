@@ -30,6 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.client.BKException;
+import org.apache.bookkeeper.proto.ssl.SSLContextFactory;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
@@ -64,13 +65,19 @@ public class BookieClient {
     private final ClientConfiguration conf;
     private volatile boolean closed;
     private ReentrantReadWriteLock closeLock;
+    final private SSLContextFactory sslContextFactory;
 
-    public BookieClient(ClientConfiguration conf, ClientSocketChannelFactory channelFactory, OrderedSafeExecutor executor) {
+    public BookieClient(ClientConfiguration conf, ClientSocketChannelFactory channelFactory, OrderedSafeExecutor executor) throws IOException {
         this.conf = conf;
         this.channelFactory = channelFactory;
         this.executor = executor;
         this.closed = false;
         this.closeLock = new ReentrantReadWriteLock();
+        if (conf.getUseSSL()) {
+            sslContextFactory = new SSLContextFactory(conf);
+        } else {
+            sslContextFactory = null;
+        }
     }
 
     public PerChannelBookieClient lookupClient(InetSocketAddress addr) {
@@ -82,7 +89,8 @@ public class BookieClient {
                 if (closed) {
                     return null;
                 }
-                channel = new PerChannelBookieClient(conf, executor, channelFactory, addr, totalBytesOutstanding);
+                channel = new PerChannelBookieClient(conf, executor, channelFactory,
+                                                     sslContextFactory, addr, totalBytesOutstanding);
                 PerChannelBookieClient prevChannel = channels.putIfAbsent(addr, channel);
                 if (prevChannel != null) {
                     channel = prevChannel;

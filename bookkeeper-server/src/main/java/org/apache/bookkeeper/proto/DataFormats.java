@@ -3961,6 +3961,11 @@ public final class DataFormats {
     boolean hasAddRequest();
     org.apache.bookkeeper.proto.DataFormats.AddRequest getAddRequest();
     org.apache.bookkeeper.proto.DataFormats.AddRequestOrBuilder getAddRequestOrBuilder();
+    
+    // optional .StartTLSRequest startTLSRequest = 3;
+    boolean hasStartTLSRequest();
+    org.apache.bookkeeper.proto.DataFormats.StartTLSRequest getStartTLSRequest();
+    org.apache.bookkeeper.proto.DataFormats.StartTLSRequestOrBuilder getStartTLSRequestOrBuilder();
   }
   public static final class RequestHeader extends
       com.google.protobuf.GeneratedMessage
@@ -4017,9 +4022,23 @@ public final class DataFormats {
       return addRequest_;
     }
     
+    // optional .StartTLSRequest startTLSRequest = 3;
+    public static final int STARTTLSREQUEST_FIELD_NUMBER = 3;
+    private org.apache.bookkeeper.proto.DataFormats.StartTLSRequest startTLSRequest_;
+    public boolean hasStartTLSRequest() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    public org.apache.bookkeeper.proto.DataFormats.StartTLSRequest getStartTLSRequest() {
+      return startTLSRequest_;
+    }
+    public org.apache.bookkeeper.proto.DataFormats.StartTLSRequestOrBuilder getStartTLSRequestOrBuilder() {
+      return startTLSRequest_;
+    }
+    
     private void initFields() {
       readRequest_ = org.apache.bookkeeper.proto.DataFormats.ReadRequest.getDefaultInstance();
       addRequest_ = org.apache.bookkeeper.proto.DataFormats.AddRequest.getDefaultInstance();
+      startTLSRequest_ = org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -4039,6 +4058,9 @@ public final class DataFormats {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeMessage(2, addRequest_);
       }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeMessage(3, startTLSRequest_);
+      }
       getUnknownFields().writeTo(output);
     }
     
@@ -4055,6 +4077,10 @@ public final class DataFormats {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(2, addRequest_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(3, startTLSRequest_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -4174,6 +4200,7 @@ public final class DataFormats {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getReadRequestFieldBuilder();
           getAddRequestFieldBuilder();
+          getStartTLSRequestFieldBuilder();
         }
       }
       private static Builder create() {
@@ -4194,6 +4221,12 @@ public final class DataFormats {
           addRequestBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000002);
+        if (startTLSRequestBuilder_ == null) {
+          startTLSRequest_ = org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.getDefaultInstance();
+        } else {
+          startTLSRequestBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
       
@@ -4248,6 +4281,14 @@ public final class DataFormats {
         } else {
           result.addRequest_ = addRequestBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        if (startTLSRequestBuilder_ == null) {
+          result.startTLSRequest_ = startTLSRequest_;
+        } else {
+          result.startTLSRequest_ = startTLSRequestBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -4269,6 +4310,9 @@ public final class DataFormats {
         }
         if (other.hasAddRequest()) {
           mergeAddRequest(other.getAddRequest());
+        }
+        if (other.hasStartTLSRequest()) {
+          mergeStartTLSRequest(other.getStartTLSRequest());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -4317,6 +4361,15 @@ public final class DataFormats {
               }
               input.readMessage(subBuilder, extensionRegistry);
               setAddRequest(subBuilder.buildPartial());
+              break;
+            }
+            case 26: {
+              org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.Builder subBuilder = org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.newBuilder();
+              if (hasStartTLSRequest()) {
+                subBuilder.mergeFrom(getStartTLSRequest());
+              }
+              input.readMessage(subBuilder, extensionRegistry);
+              setStartTLSRequest(subBuilder.buildPartial());
               break;
             }
           }
@@ -4503,6 +4556,96 @@ public final class DataFormats {
           addRequest_ = null;
         }
         return addRequestBuilder_;
+      }
+      
+      // optional .StartTLSRequest startTLSRequest = 3;
+      private org.apache.bookkeeper.proto.DataFormats.StartTLSRequest startTLSRequest_ = org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.StartTLSRequest, org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.Builder, org.apache.bookkeeper.proto.DataFormats.StartTLSRequestOrBuilder> startTLSRequestBuilder_;
+      public boolean hasStartTLSRequest() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSRequest getStartTLSRequest() {
+        if (startTLSRequestBuilder_ == null) {
+          return startTLSRequest_;
+        } else {
+          return startTLSRequestBuilder_.getMessage();
+        }
+      }
+      public Builder setStartTLSRequest(org.apache.bookkeeper.proto.DataFormats.StartTLSRequest value) {
+        if (startTLSRequestBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          startTLSRequest_ = value;
+          onChanged();
+        } else {
+          startTLSRequestBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      public Builder setStartTLSRequest(
+          org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.Builder builderForValue) {
+        if (startTLSRequestBuilder_ == null) {
+          startTLSRequest_ = builderForValue.build();
+          onChanged();
+        } else {
+          startTLSRequestBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      public Builder mergeStartTLSRequest(org.apache.bookkeeper.proto.DataFormats.StartTLSRequest value) {
+        if (startTLSRequestBuilder_ == null) {
+          if (((bitField0_ & 0x00000004) == 0x00000004) &&
+              startTLSRequest_ != org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.getDefaultInstance()) {
+            startTLSRequest_ =
+              org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.newBuilder(startTLSRequest_).mergeFrom(value).buildPartial();
+          } else {
+            startTLSRequest_ = value;
+          }
+          onChanged();
+        } else {
+          startTLSRequestBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      public Builder clearStartTLSRequest() {
+        if (startTLSRequestBuilder_ == null) {
+          startTLSRequest_ = org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.getDefaultInstance();
+          onChanged();
+        } else {
+          startTLSRequestBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
+        return this;
+      }
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.Builder getStartTLSRequestBuilder() {
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return getStartTLSRequestFieldBuilder().getBuilder();
+      }
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSRequestOrBuilder getStartTLSRequestOrBuilder() {
+        if (startTLSRequestBuilder_ != null) {
+          return startTLSRequestBuilder_.getMessageOrBuilder();
+        } else {
+          return startTLSRequest_;
+        }
+      }
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.StartTLSRequest, org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.Builder, org.apache.bookkeeper.proto.DataFormats.StartTLSRequestOrBuilder> 
+          getStartTLSRequestFieldBuilder() {
+        if (startTLSRequestBuilder_ == null) {
+          startTLSRequestBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.bookkeeper.proto.DataFormats.StartTLSRequest, org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.Builder, org.apache.bookkeeper.proto.DataFormats.StartTLSRequestOrBuilder>(
+                  startTLSRequest_,
+                  getParentForChildren(),
+                  isClean());
+          startTLSRequest_ = null;
+        }
+        return startTLSRequestBuilder_;
       }
       
       // @@protoc_insertion_point(builder_scope:RequestHeader)
@@ -5556,6 +5699,11 @@ public final class DataFormats {
     boolean hasReadResponse();
     org.apache.bookkeeper.proto.DataFormats.ReadResponse getReadResponse();
     org.apache.bookkeeper.proto.DataFormats.ReadResponseOrBuilder getReadResponseOrBuilder();
+    
+    // optional .StartTLSResponse startTLSResponse = 4;
+    boolean hasStartTLSResponse();
+    org.apache.bookkeeper.proto.DataFormats.StartTLSResponse getStartTLSResponse();
+    org.apache.bookkeeper.proto.DataFormats.StartTLSResponseOrBuilder getStartTLSResponseOrBuilder();
   }
   public static final class ResponseHeader extends
       com.google.protobuf.GeneratedMessage
@@ -5622,10 +5770,24 @@ public final class DataFormats {
       return readResponse_;
     }
     
+    // optional .StartTLSResponse startTLSResponse = 4;
+    public static final int STARTTLSRESPONSE_FIELD_NUMBER = 4;
+    private org.apache.bookkeeper.proto.DataFormats.StartTLSResponse startTLSResponse_;
+    public boolean hasStartTLSResponse() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    public org.apache.bookkeeper.proto.DataFormats.StartTLSResponse getStartTLSResponse() {
+      return startTLSResponse_;
+    }
+    public org.apache.bookkeeper.proto.DataFormats.StartTLSResponseOrBuilder getStartTLSResponseOrBuilder() {
+      return startTLSResponse_;
+    }
+    
     private void initFields() {
       errorCode_ = 0;
       addResponse_ = org.apache.bookkeeper.proto.DataFormats.AddResponse.getDefaultInstance();
       readResponse_ = org.apache.bookkeeper.proto.DataFormats.ReadResponse.getDefaultInstance();
+      startTLSResponse_ = org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -5648,6 +5810,9 @@ public final class DataFormats {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         output.writeMessage(3, readResponse_);
       }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeMessage(4, startTLSResponse_);
+      }
       getUnknownFields().writeTo(output);
     }
     
@@ -5668,6 +5833,10 @@ public final class DataFormats {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(3, readResponse_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(4, startTLSResponse_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -5787,6 +5956,7 @@ public final class DataFormats {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getAddResponseFieldBuilder();
           getReadResponseFieldBuilder();
+          getStartTLSResponseFieldBuilder();
         }
       }
       private static Builder create() {
@@ -5809,6 +5979,12 @@ public final class DataFormats {
           readResponseBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000004);
+        if (startTLSResponseBuilder_ == null) {
+          startTLSResponse_ = org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.getDefaultInstance();
+        } else {
+          startTLSResponseBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
       
@@ -5867,6 +6043,14 @@ public final class DataFormats {
         } else {
           result.readResponse_ = readResponseBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        if (startTLSResponseBuilder_ == null) {
+          result.startTLSResponse_ = startTLSResponse_;
+        } else {
+          result.startTLSResponse_ = startTLSResponseBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -5891,6 +6075,9 @@ public final class DataFormats {
         }
         if (other.hasReadResponse()) {
           mergeReadResponse(other.getReadResponse());
+        }
+        if (other.hasStartTLSResponse()) {
+          mergeStartTLSResponse(other.getStartTLSResponse());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -5944,6 +6131,15 @@ public final class DataFormats {
               }
               input.readMessage(subBuilder, extensionRegistry);
               setReadResponse(subBuilder.buildPartial());
+              break;
+            }
+            case 34: {
+              org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.Builder subBuilder = org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.newBuilder();
+              if (hasStartTLSResponse()) {
+                subBuilder.mergeFrom(getStartTLSResponse());
+              }
+              input.readMessage(subBuilder, extensionRegistry);
+              setStartTLSResponse(subBuilder.buildPartial());
               break;
             }
           }
@@ -6151,6 +6347,96 @@ public final class DataFormats {
           readResponse_ = null;
         }
         return readResponseBuilder_;
+      }
+      
+      // optional .StartTLSResponse startTLSResponse = 4;
+      private org.apache.bookkeeper.proto.DataFormats.StartTLSResponse startTLSResponse_ = org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.StartTLSResponse, org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.Builder, org.apache.bookkeeper.proto.DataFormats.StartTLSResponseOrBuilder> startTLSResponseBuilder_;
+      public boolean hasStartTLSResponse() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSResponse getStartTLSResponse() {
+        if (startTLSResponseBuilder_ == null) {
+          return startTLSResponse_;
+        } else {
+          return startTLSResponseBuilder_.getMessage();
+        }
+      }
+      public Builder setStartTLSResponse(org.apache.bookkeeper.proto.DataFormats.StartTLSResponse value) {
+        if (startTLSResponseBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          startTLSResponse_ = value;
+          onChanged();
+        } else {
+          startTLSResponseBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder setStartTLSResponse(
+          org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.Builder builderForValue) {
+        if (startTLSResponseBuilder_ == null) {
+          startTLSResponse_ = builderForValue.build();
+          onChanged();
+        } else {
+          startTLSResponseBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder mergeStartTLSResponse(org.apache.bookkeeper.proto.DataFormats.StartTLSResponse value) {
+        if (startTLSResponseBuilder_ == null) {
+          if (((bitField0_ & 0x00000008) == 0x00000008) &&
+              startTLSResponse_ != org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.getDefaultInstance()) {
+            startTLSResponse_ =
+              org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.newBuilder(startTLSResponse_).mergeFrom(value).buildPartial();
+          } else {
+            startTLSResponse_ = value;
+          }
+          onChanged();
+        } else {
+          startTLSResponseBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000008;
+        return this;
+      }
+      public Builder clearStartTLSResponse() {
+        if (startTLSResponseBuilder_ == null) {
+          startTLSResponse_ = org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.getDefaultInstance();
+          onChanged();
+        } else {
+          startTLSResponseBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000008);
+        return this;
+      }
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.Builder getStartTLSResponseBuilder() {
+        bitField0_ |= 0x00000008;
+        onChanged();
+        return getStartTLSResponseFieldBuilder().getBuilder();
+      }
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSResponseOrBuilder getStartTLSResponseOrBuilder() {
+        if (startTLSResponseBuilder_ != null) {
+          return startTLSResponseBuilder_.getMessageOrBuilder();
+        } else {
+          return startTLSResponse_;
+        }
+      }
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.StartTLSResponse, org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.Builder, org.apache.bookkeeper.proto.DataFormats.StartTLSResponseOrBuilder> 
+          getStartTLSResponseFieldBuilder() {
+        if (startTLSResponseBuilder_ == null) {
+          startTLSResponseBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.bookkeeper.proto.DataFormats.StartTLSResponse, org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.Builder, org.apache.bookkeeper.proto.DataFormats.StartTLSResponseOrBuilder>(
+                  startTLSResponse_,
+                  getParentForChildren(),
+                  isClean());
+          startTLSResponse_ = null;
+        }
+        return startTLSResponseBuilder_;
       }
       
       // @@protoc_insertion_point(builder_scope:ResponseHeader)
@@ -6954,6 +7240,558 @@ public final class DataFormats {
     // @@protoc_insertion_point(class_scope:ReadResponse)
   }
   
+  public interface StartTLSRequestOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+  }
+  public static final class StartTLSRequest extends
+      com.google.protobuf.GeneratedMessage
+      implements StartTLSRequestOrBuilder {
+    // Use StartTLSRequest.newBuilder() to construct.
+    private StartTLSRequest(Builder builder) {
+      super(builder);
+    }
+    private StartTLSRequest(boolean noInit) {}
+    
+    private static final StartTLSRequest defaultInstance;
+    public static StartTLSRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+    
+    public StartTLSRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_StartTLSRequest_descriptor;
+    }
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_StartTLSRequest_fieldAccessorTable;
+    }
+    
+    private void initFields() {
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+      
+      memoizedIsInitialized = 1;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+    
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.proto.DataFormats.StartTLSRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.bookkeeper.proto.DataFormats.StartTLSRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_StartTLSRequest_descriptor;
+      }
+      
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_StartTLSRequest_fieldAccessorTable;
+      }
+      
+      // Construct using org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+      
+      private Builder(BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+      
+      public Builder clear() {
+        super.clear();
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.getDescriptor();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSRequest getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.getDefaultInstance();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSRequest build() {
+        org.apache.bookkeeper.proto.DataFormats.StartTLSRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+      
+      private org.apache.bookkeeper.proto.DataFormats.StartTLSRequest buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        org.apache.bookkeeper.proto.DataFormats.StartTLSRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSRequest buildPartial() {
+        org.apache.bookkeeper.proto.DataFormats.StartTLSRequest result = new org.apache.bookkeeper.proto.DataFormats.StartTLSRequest(this);
+        onBuilt();
+        return result;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.proto.DataFormats.StartTLSRequest) {
+          return mergeFrom((org.apache.bookkeeper.proto.DataFormats.StartTLSRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(org.apache.bookkeeper.proto.DataFormats.StartTLSRequest other) {
+        if (other == org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.getDefaultInstance()) return this;
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public final boolean isInitialized() {
+        return true;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
+              }
+              break;
+            }
+          }
+        }
+      }
+      
+      
+      // @@protoc_insertion_point(builder_scope:StartTLSRequest)
+    }
+    
+    static {
+      defaultInstance = new StartTLSRequest(true);
+      defaultInstance.initFields();
+    }
+    
+    // @@protoc_insertion_point(class_scope:StartTLSRequest)
+  }
+  
+  public interface StartTLSResponseOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+  }
+  public static final class StartTLSResponse extends
+      com.google.protobuf.GeneratedMessage
+      implements StartTLSResponseOrBuilder {
+    // Use StartTLSResponse.newBuilder() to construct.
+    private StartTLSResponse(Builder builder) {
+      super(builder);
+    }
+    private StartTLSResponse(boolean noInit) {}
+    
+    private static final StartTLSResponse defaultInstance;
+    public static StartTLSResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+    
+    public StartTLSResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_StartTLSResponse_descriptor;
+    }
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_StartTLSResponse_fieldAccessorTable;
+    }
+    
+    private void initFields() {
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+      
+      memoizedIsInitialized = 1;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+    
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.StartTLSResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.proto.DataFormats.StartTLSResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.bookkeeper.proto.DataFormats.StartTLSResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_StartTLSResponse_descriptor;
+      }
+      
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_StartTLSResponse_fieldAccessorTable;
+      }
+      
+      // Construct using org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+      
+      private Builder(BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+      
+      public Builder clear() {
+        super.clear();
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.getDescriptor();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSResponse getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.getDefaultInstance();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSResponse build() {
+        org.apache.bookkeeper.proto.DataFormats.StartTLSResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+      
+      private org.apache.bookkeeper.proto.DataFormats.StartTLSResponse buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        org.apache.bookkeeper.proto.DataFormats.StartTLSResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.StartTLSResponse buildPartial() {
+        org.apache.bookkeeper.proto.DataFormats.StartTLSResponse result = new org.apache.bookkeeper.proto.DataFormats.StartTLSResponse(this);
+        onBuilt();
+        return result;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.proto.DataFormats.StartTLSResponse) {
+          return mergeFrom((org.apache.bookkeeper.proto.DataFormats.StartTLSResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(org.apache.bookkeeper.proto.DataFormats.StartTLSResponse other) {
+        if (other == org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.getDefaultInstance()) return this;
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public final boolean isInitialized() {
+        return true;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
+              }
+              break;
+            }
+          }
+        }
+      }
+      
+      
+      // @@protoc_insertion_point(builder_scope:StartTLSResponse)
+    }
+    
+    static {
+      defaultInstance = new StartTLSResponse(true);
+      defaultInstance.initFields();
+    }
+    
+    // @@protoc_insertion_point(class_scope:StartTLSResponse)
+  }
+  
   private static com.google.protobuf.Descriptors.Descriptor
     internal_static_LedgerMetadataFormat_descriptor;
   private static
@@ -7019,6 +7857,16 @@ public final class DataFormats {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_ReadResponse_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_StartTLSRequest_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_StartTLSRequest_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_StartTLSResponse_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_StartTLSResponse_fieldAccessorTable;
   
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -7046,21 +7894,24 @@ public final class DataFormats {
       "t\022\022\n\nbookieHost\030\001 \002(\t\022\022\n\njournalDir\030\002 \002(" +
       "\t\022\022\n\nledgerDirs\030\003 \002(\t\022\022\n\ninstanceId\030\004 \001(" +
       "\t\"\"\n\016LockDataFormat\022\020\n\010bookieId\030\001 \001(\t\"%\n" +
-      "\021AuditorVoteFormat\022\020\n\010bookieId\030\001 \001(\t\"S\n\r" +
+      "\021AuditorVoteFormat\022\020\n\010bookieId\030\001 \001(\t\"~\n\r" +
       "RequestHeader\022!\n\013readRequest\030\001 \001(\0132\014.Rea",
       "dRequest\022\037\n\naddRequest\030\002 \001(\0132\013.AddReques" +
-      "t\"d\n\013ReadRequest\022\020\n\010ledgerId\030\001 \001(\003\022\017\n\007en" +
-      "tryId\030\002 \001(\003\022\021\n\tmasterKey\030\003 \001(\014\022\037\n\020isFenc" +
-      "ingRequest\030\004 \001(\010:\005false\"`\n\nAddRequest\022\020\n" +
-      "\010ledgerId\030\001 \001(\003\022\017\n\007entryId\030\002 \001(\003\022\021\n\tmast" +
-      "erKey\030\003 \001(\014\022\034\n\risRecoveryAdd\030\004 \001(\010:\005fals" +
-      "e\"k\n\016ResponseHeader\022\021\n\terrorCode\030\001 \001(\005\022!" +
-      "\n\013addResponse\030\002 \001(\0132\014.AddResponse\022#\n\014rea" +
-      "dResponse\030\003 \001(\0132\r.ReadResponse\"0\n\013AddRes" +
-      "ponse\022\020\n\010ledgerId\030\001 \001(\003\022\017\n\007entryId\030\002 \001(\003",
-      "\"1\n\014ReadResponse\022\020\n\010ledgerId\030\001 \001(\003\022\017\n\007en" +
-      "tryId\030\002 \001(\003B\037\n\033org.apache.bookkeeper.pro" +
-      "toH\001"
+      "t\022)\n\017startTLSRequest\030\003 \001(\0132\020.StartTLSReq" +
+      "uest\"d\n\013ReadRequest\022\020\n\010ledgerId\030\001 \001(\003\022\017\n" +
+      "\007entryId\030\002 \001(\003\022\021\n\tmasterKey\030\003 \001(\014\022\037\n\020isF" +
+      "encingRequest\030\004 \001(\010:\005false\"`\n\nAddRequest" +
+      "\022\020\n\010ledgerId\030\001 \001(\003\022\017\n\007entryId\030\002 \001(\003\022\021\n\tm" +
+      "asterKey\030\003 \001(\014\022\034\n\risRecoveryAdd\030\004 \001(\010:\005f" +
+      "alse\"\230\001\n\016ResponseHeader\022\021\n\terrorCode\030\001 \001" +
+      "(\005\022!\n\013addResponse\030\002 \001(\0132\014.AddResponse\022#\n" +
+      "\014readResponse\030\003 \001(\0132\r.ReadResponse\022+\n\020st",
+      "artTLSResponse\030\004 \001(\0132\021.StartTLSResponse\"" +
+      "0\n\013AddResponse\022\020\n\010ledgerId\030\001 \001(\003\022\017\n\007entr" +
+      "yId\030\002 \001(\003\"1\n\014ReadResponse\022\020\n\010ledgerId\030\001 " +
+      "\001(\003\022\017\n\007entryId\030\002 \001(\003\"\021\n\017StartTLSRequest\"" +
+      "\022\n\020StartTLSResponseB\037\n\033org.apache.bookke" +
+      "eper.protoH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -7128,7 +7979,7 @@ public final class DataFormats {
           internal_static_RequestHeader_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RequestHeader_descriptor,
-              new java.lang.String[] { "ReadRequest", "AddRequest", },
+              new java.lang.String[] { "ReadRequest", "AddRequest", "StartTLSRequest", },
               org.apache.bookkeeper.proto.DataFormats.RequestHeader.class,
               org.apache.bookkeeper.proto.DataFormats.RequestHeader.Builder.class);
           internal_static_ReadRequest_descriptor =
@@ -7152,7 +8003,7 @@ public final class DataFormats {
           internal_static_ResponseHeader_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ResponseHeader_descriptor,
-              new java.lang.String[] { "ErrorCode", "AddResponse", "ReadResponse", },
+              new java.lang.String[] { "ErrorCode", "AddResponse", "ReadResponse", "StartTLSResponse", },
               org.apache.bookkeeper.proto.DataFormats.ResponseHeader.class,
               org.apache.bookkeeper.proto.DataFormats.ResponseHeader.Builder.class);
           internal_static_AddResponse_descriptor =
@@ -7171,6 +8022,22 @@ public final class DataFormats {
               new java.lang.String[] { "LedgerId", "EntryId", },
               org.apache.bookkeeper.proto.DataFormats.ReadResponse.class,
               org.apache.bookkeeper.proto.DataFormats.ReadResponse.Builder.class);
+          internal_static_StartTLSRequest_descriptor =
+            getDescriptor().getMessageTypes().get(12);
+          internal_static_StartTLSRequest_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_StartTLSRequest_descriptor,
+              new java.lang.String[] { },
+              org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.class,
+              org.apache.bookkeeper.proto.DataFormats.StartTLSRequest.Builder.class);
+          internal_static_StartTLSResponse_descriptor =
+            getDescriptor().getMessageTypes().get(13);
+          internal_static_StartTLSResponse_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_StartTLSResponse_descriptor,
+              new java.lang.String[] { },
+              org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.class,
+              org.apache.bookkeeper.proto.DataFormats.StartTLSResponse.Builder.class);
           return null;
         }
       };

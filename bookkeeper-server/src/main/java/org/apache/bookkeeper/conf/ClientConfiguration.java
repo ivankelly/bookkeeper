@@ -49,6 +49,8 @@ public class ClientConfiguration extends AbstractConfiguration {
     // Number Woker Threads
     protected final static String NUM_WORKER_THREADS = "numWorkerThreads";
 
+    protected final static String USE_SSL = "useSSL";
+
     /**
      * Construct a default client-side configuration
      */
@@ -310,6 +312,25 @@ public class ClientConfiguration extends AbstractConfiguration {
      */
     public ClientConfiguration setSpeculativeReadTimeout(int timeout) {
         setProperty(SPECULATIVE_READ_TIMEOUT, timeout);
+        return this;
+    }
+
+    /**
+     * Whether the client uses SSL or not. By default the client does not use SSL.
+     * @return whether the client uses SSL or not
+     */
+    public boolean getUseSSL() {
+        return getBoolean(USE_SSL, false);
+    }
+
+    /**
+     * Specify whether the client should use SSL or not. BookKeeper uses startTLS,
+     * so both SSL communication and non-SSL communication runs on the same port.
+     * @param useSSL whether to use SSL or not
+     * @return client configuration
+     */
+    public ClientConfiguration setUseSSL(boolean useSSL) {
+        setProperty(USE_SSL, useSSL);
         return this;
     }
 }
