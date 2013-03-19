@@ -375,18 +375,30 @@ public abstract class BookKeeperClusterTestCase extends TestCase {
     }
 
     /**
-     * Helper method to startup a new bookie server with the indicated port
-     * number. Also, starts the auto recovery process, if the
+     * Helper method to startup a new bookie server.
+     * Also, starts the auto recovery process, if the
      * isAutoRecoveryEnabled is set true.
      *
-     * @param port
-     *            Port to start the new bookie server on
      * @throws IOException
      */
     public int startNewBookie()
             throws IOException, InterruptedException, KeeperException,
             BookieException, UnavailableException, CompatibilityException {
         ServerConfiguration conf = newServerConfiguration();
+        return startNewBookie(conf);
+    }
+
+    /**
+     * Helper method to startup a new bookie server with the given config.
+     * Also, starts the auto recovery process, if the
+     * isAutoRecoveryEnabled is set true.
+     * @param conf
+     *            The configuration to start with
+     * @throws IOException
+     */
+    public int startNewBookie(ServerConfiguration conf)
+            throws IOException, InterruptedException, KeeperException,
+            BookieException, UnavailableException, CompatibilityException {
         bsConfs.add(conf);
         bs.add(startBookie(conf));
 

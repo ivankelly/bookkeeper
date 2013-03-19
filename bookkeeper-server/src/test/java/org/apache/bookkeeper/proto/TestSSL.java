@@ -28,15 +28,29 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Executors;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.Enumeration;
+import java.util.Arrays;
 
 import org.apache.bookkeeper.conf.ClientConfiguration;
+import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.proto.ssl.SSLContextFactory;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.apache.bookkeeper.util.OrderedSafeExecutor;
 
+import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.client.LedgerEntry;
+import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.bookkeeper.client.BookKeeper.DigestType;
+
 import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+
+import org.apache.commons.io.IOUtils;
+import java.io.IOException;
+import java.io.File;
+import java.io.InputStream;
+import java.io.FileOutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,10 +60,13 @@ import org.slf4j.LoggerFactory;
  */
 public class TestSSL extends BookKeeperClusterTestCase {
     static Logger LOG = LoggerFactory.getLogger(TestPerChannelBookieClient.class);
+    private final static String CERT_RESOURCE = "/testcert.p12";
+    private final static String CERT_PASSWORD = "testpass";
 
     public TestSSL() {
-        super(1);
-        baseConf.setSSLEnabled(true).setSSLKeyStore("/testcert.p12").setSSLKeyStorePassword("testpass");
+        super(3);
+        baseConf.setSSLEnabled(true).setSSLKeyStore(CERT_RESOURCE)
+            .setSSLKeyStorePassword(CERT_PASSWORD);
     }
 
     /**
@@ -93,4 +110,103 @@ public class TestSSL extends BookKeeperClusterTestCase {
         executor.shutdown();
     }
 
+    /**
+     * Verify that a server will not start if ssl is enabled but no cert
+     * is specified
+     */
+    @Test
+    public void testStartSSLServerNoKeyStore() throws Exception {
+        ServerConfiguration conf = newServerConfiguration()
+            .setSSLEnabled(true).setSSLKeyStore("");
+        try {
+            startNewBookie(conf);
+            fail("Shouldn't have been able to start");
+        } catch (IOException ioe) {
+            assertTrue(true);
+        }
+    }
+
+    /**
+     * Verify that a server will not start if ssl is enabled but the
+     * cert password is incorrect
+     */
+    @Test
+    public void testStartSSLServerBadPassword() throws Exception {
+        ServerConfiguration conf = newServerConfiguration()
+            .setSSLEnabled(true).setSSLKeyStorePassword("badpassword");
+        try {
+            startNewBookie(conf);
+            fail("Shouldn't have been able to start");
+        } catch (IOException ioe) {
+            assertTrue(true);
+        }
+    }
+
+    /**
+     * Verify that a server can start while loading the cert from
+     * a file rather than a resource.
+     */
+    @Test
+    public void testStartSSLServerFileCert() throws Exception {
+        InputStream in = getClass().getResourceAsStream(CERT_RESOURCE);
+        File f = File.createTempFile("keystore", ".p12");
+        FileOutputStream out = new FileOutputStream(f);
+        IOUtils.copy(in, out);
+        in.close();
+        out.close();
+
+        ServerConfiguration conf = newServerConfiguration()
+            .setSSLEnabled(true)
+            .setSSLKeyStore(f.toString())
+            .setSSLKeyStorePassword(CERT_PASSWORD);
+        startNewBookie(conf);        
+    }
+
+    private void testClient(ClientConfiguration conf, int clusterSize) throws Exception {
+        BookKeeper client = new BookKeeper(conf);
+        byte[] passwd = "testPassword".getBytes();
+        int numEntries = 100;
+        LedgerHandle lh = client.createLedger(clusterSize, clusterSize,
+                                              DigestType.CRC32, passwd);
+        
+        byte[] testEntry = "testEntry".getBytes();
+        for (int i = 0; i <= numEntries; i++) {
+            lh.addEntry(testEntry);
+        }
+        long lid = lh.getId();
+        lh.close();
+        lh = client.openLedger(lid, DigestType.CRC32, passwd);
+        Enumeration<LedgerEntry> entries = lh.readEntries(0, numEntries);
+        while (entries.hasMoreElements()) {
+            LedgerEntry e = entries.nextElement();
+            assertTrue("Entry contents incorrect", Arrays.equals(e.getEntry(), testEntry));
+        }
+        lh.close();
+    }
+
+    /**
+     * Verify that a client without ssl enabled can connect to a cluster
+     * with SSL
+     */
+    @Test
+    public void testConnectToSSLClusterNonSSLClient() throws Exception {
+        ClientConfiguration conf = new ClientConfiguration(baseClientConf).setUseSSL(false);
+        testClient(conf, numBookies);
+    }
+
+    /**
+     * Verify that a client will fail to connect to a server if it has asked for SSL,
+     * but it is not available. Verify that if there are enough SSL servers to fill the
+     * ensemble, it will eventually use those rather than the non-SSL
+     */
+    @Test
+    public void testMixedCluster() throws Exception {
+        ClientConfiguration clientConf = new ClientConfiguration(baseClientConf).setUseSSL(true);
+        int origNumBookies = numBookies;
+
+        ServerConfiguration bookieConf = newServerConfiguration()
+            .setSSLEnabled(false);
+        startNewBookie(bookieConf);
+        testClient(clientConf, origNumBookies + 1);
+    }
 }
