@@ -93,6 +93,7 @@ public class LedgerCacheTest extends TestCase {
         FileUtils.deleteDirectory(ledgerDir);
     }
 
+    @SuppressWarnings("deprecation")
     private void newLedgerCache() throws IOException {
         if (ledgerCache != null) {
             ledgerCache.close();
@@ -298,6 +299,7 @@ public class LedgerCacheTest extends TestCase {
      * {@link https://issues.apache.org/jira/browse/BOOKKEEPER-447}
      */
     @Test(timeout=30000)
+    @SuppressWarnings("deprecation")
     public void testIndexPageEvictionWriteOrder() throws Exception {
         final int numLedgers = 10;
         File journalDir = File.createTempFile("bookie", "journal");

@@ -201,7 +201,7 @@ public class BookieJournalRollingTest extends BookKeeperClusterTestCase {
 
         // set flush interval to a large value
         ServerConfiguration newConf = new ServerConfiguration();
-        newConf.setFlushInterval(999999999);
+        newConf.setJournalGCInterval(999999999);
         // restart bookies
         restartBookies(newConf);
 
@@ -234,11 +234,11 @@ public class BookieJournalRollingTest extends BookKeeperClusterTestCase {
         // Write entries
         LedgerHandle[] lhs = writeLedgerEntries(1, 1024, 10);
         // Wait until all entries are flushed and last mark rolls
-        Thread.sleep(3 * baseConf.getFlushInterval());
+        Thread.sleep(3 * baseConf.getJournalGCInterval());
 
         // restart bookies with flush interval set to a large value
         ServerConfiguration newConf = new ServerConfiguration();
-        newConf.setFlushInterval(999999999);
+        newConf.setJournalGCInterval(999999999);
         // restart bookies
         restartBookies(newConf);
 

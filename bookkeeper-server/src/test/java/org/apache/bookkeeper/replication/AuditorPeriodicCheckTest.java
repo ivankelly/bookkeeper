@@ -71,6 +71,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
     public AuditorPeriodicCheckTest() {
         super(3);
         baseConf.setPageLimit(1); // to make it easy to push ledger out of cache
+        baseConf.setEntryLogFilePreAllocationEnabled(false);
     }
 
     @Before
@@ -140,6 +141,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
             });
         ByteBuffer junk = ByteBuffer.allocate(1024*1024);
         for (File f : entryLogs) {
+            LOG.info("Corrupt entry log file {}.", f);
             FileOutputStream out = new FileOutputStream(f);
             out.getChannel().write(junk);
             out.close();

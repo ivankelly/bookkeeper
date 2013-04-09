@@ -91,16 +91,15 @@ interface LedgerStorage {
     ByteBuffer getEntry(long ledgerId, long entryId) throws IOException;
 
     /**
-     * Whether there is data in the storage which needs to be flushed
+     * Set the mark from which the journal will have to be replayed to bring
+     * bring the ledger storage back to its current state if a crash occurs
      */
-    boolean isFlushRequired();
+    void setLastAddedMark(LogMark logMark);
 
     /**
-     * Flushes all data in the storage. Once this is called,
-     * add data written to the LedgerStorage up until this point
-     * has been persisted to perminant storage
+     * Get the journal mark to which the ledger storage has been synced.
      */
-    void flush() throws IOException;
+    LogMark getLastSyncedMark() throws IOException;
 
     /**
      * Get the JMX management bean for this LedgerStorage

@@ -28,6 +28,7 @@ import org.apache.commons.lang.StringUtils;
 public class ServerConfiguration extends AbstractConfiguration {
     // Entry Log Parameters
     protected final static String ENTRY_LOG_SIZE_LIMIT = "logSizeLimit";
+    protected final static String ENTRY_LOG_FILE_PREALLOCATION_ENABLED = "entryLogFilePreallocationEnabled";
     protected final static String MINOR_COMPACTION_INTERVAL = "minorCompactionInterval";
     protected final static String MINOR_COMPACTION_THRESHOLD = "minorCompactionThreshold";
     protected final static String MAJOR_COMPACTION_INTERVAL = "majorCompactionInterval";
@@ -37,6 +38,7 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String GC_WAIT_TIME = "gcWaitTime";
     // Sync Parameters
     protected final static String FLUSH_INTERVAL = "flushInterval";
+    protected final static String JOURNAL_GC_INTERVAL = "journalGCInterval";
     // Bookie death watch interval
     protected final static String DEATH_WATCH_INTERVAL = "bookieDeathWatchInterval";
     // Ledger Cache Parameters
@@ -105,6 +107,27 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
+     * Is entry log file preallocation enabled.
+     *
+     * @return whether entry log file preallocation is enabled or not.
+     */
+    public boolean isEntryLogFilePreAllocationEnabled() {
+        return this.getBoolean(ENTRY_LOG_FILE_PREALLOCATION_ENABLED, true);
+    }
+
+    /**
+     * Enable/disable entry log file preallocation.
+     *
+     * @param enabled
+     *          enable/disable entry log file preallocation.
+     * @return server configuration object.
+     */
+    public ServerConfiguration setEntryLogFilePreAllocationEnabled(boolean enabled) {
+        this.setProperty(ENTRY_LOG_FILE_PREALLOCATION_ENABLED, enabled);
+        return this;
+    }
+
+    /**
      * Get Garbage collection wait time
      *
      * @return gc wait time
@@ -130,6 +153,7 @@ public class ServerConfiguration extends AbstractConfiguration {
      *
      * @return flush interval
      */
+    @Deprecated
     public int getFlushInterval() {
         return this.getInt(FLUSH_INTERVAL, 100);
     }
@@ -141,8 +165,27 @@ public class ServerConfiguration extends AbstractConfiguration {
      *          Flush Interval
      * @return server configuration
      */
+    @Deprecated
     public ServerConfiguration setFlushInterval(int flushInterval) {
         this.setProperty(FLUSH_INTERVAL, Integer.toString(flushInterval));
+        return this;
+    }
+
+    /**
+     * Get the interval at which old journals will be cleaned up.
+     * By default this is set to 15 minutes.
+     * @return the interval in seconds
+     */
+    public int getJournalGCInterval() {
+        return this.getInt(JOURNAL_GC_INTERVAL, 15*60);
+    }
+
+    /**
+     * Set the internal at which old journals should be cleaned up.
+     * @param the interval in seconds
+     */
+    public ServerConfiguration setJournalGCInterval(int interval) {
+        this.setProperty(JOURNAL_GC_INTERVAL, interval);
         return this;
     }
 

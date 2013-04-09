@@ -30,6 +30,10 @@ public class BookieAccessor {
      * Force a bookie to flush its ledger storage
      */
     public static void forceFlush(Bookie b) throws IOException {
-        b.ledgerStorage.flush();
+        if (b.ledgerStorage instanceof InterleavedLedgerStorage) {
+            ((InterleavedLedgerStorage)b.ledgerStorage).flush();
+        } else {
+            throw new IOException("Unsupported ledger storage type");
+        }
     }
 }

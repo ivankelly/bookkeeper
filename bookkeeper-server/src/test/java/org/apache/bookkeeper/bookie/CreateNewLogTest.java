@@ -78,6 +78,7 @@ public class CreateNewLogTest {
     @Test(timeout=60000)
     public void testCreateNewLog() throws Exception {
         ServerConfiguration conf = new ServerConfiguration();
+        conf.setEntryLogFilePreAllocationEnabled(false);
                      
         // Creating a new configuration with a number of 
         // ledger directories.

@@ -34,7 +34,6 @@ import org.apache.bookkeeper.zookeeper.ZooKeeperWatcherBase;
 
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogScanner;
 import org.apache.bookkeeper.bookie.Journal.JournalScanner;
-import org.apache.bookkeeper.bookie.Journal.LastLogMark;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.conf.ClientConfiguration;
@@ -774,7 +773,8 @@ public class BookieShell implements Tool {
 
     private synchronized Journal getJournal() throws IOException {
         if (null == journal) {
-            journal = new Journal(bkConf, new LedgerDirsManager(bkConf));
+            journal = new Journal(bkConf,
+                    InterleavedLedgerStorage.readLastSyncedMark(new LedgerDirsManager(bkConf)));
         }
         return journal;
     }
@@ -916,10 +916,11 @@ public class BookieShell implements Tool {
      * Print last log mark
      */
     protected void printLastLogMark() throws IOException {
-        LastLogMark lastLogMark = getJournal().getLastLogMark();
-        System.out.println("LastLogMark: Journal Id - " + lastLogMark.getTxnLogId() + "("
-                + Long.toHexString(lastLogMark.getTxnLogId()) + ".txn), Pos - "
-                + lastLogMark.getTxnLogPosition());
+        LogMark lastLogMark = InterleavedLedgerStorage.readLastSyncedMark(
+                new LedgerDirsManager(bkConf));
+        System.out.println("LastLogMark: Journal Id - " + lastLogMark.getLogFileId() + "("
+                + Long.toHexString(lastLogMark.getLogFileId()) + ".txn), Pos - "
+                + lastLogMark.getLogFileOffset());
     }
 
     /**

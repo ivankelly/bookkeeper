@@ -21,28 +21,31 @@
 
 package org.apache.bookkeeper.bookie;
 
+import static com.google.common.base.Charsets.UTF_8;
+
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.bookkeeper.meta.LedgerManager;
-import org.apache.bookkeeper.meta.LedgerManagerFactory;
-import org.apache.bookkeeper.bookie.BookieException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Executors;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import org.apache.bookkeeper.bookie.GarbageCollectorThread.SafeEntryAdder;
 import org.apache.bookkeeper.bookie.Journal.JournalScanner;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.LedgerDirsListener;
@@ -50,27 +53,28 @@ import org.apache.bookkeeper.bookie.LedgerDirsManager.NoWritableLedgerDirExcepti
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.jmx.BKMBeanInfo;
 import org.apache.bookkeeper.jmx.BKMBeanRegistry;
-import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
+import org.apache.bookkeeper.meta.LedgerManager;
+import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.util.BookKeeperConstants;
 import org.apache.bookkeeper.util.IOUtils;
 import org.apache.bookkeeper.util.MathUtils;
-import org.apache.bookkeeper.util.ZkUtils;
 import org.apache.bookkeeper.util.StringUtils;
+import org.apache.bookkeeper.util.ZkUtils;
 import org.apache.bookkeeper.zookeeper.ZooKeeperWatcherBase;
 import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.NodeExistsException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import static com.google.common.base.Charsets.UTF_8;
 import com.google.common.annotations.VisibleForTesting;
 
 /**
@@ -85,11 +89,11 @@ public class Bookie extends Thread {
     final File journalDirectory;
     final ServerConfiguration conf;
 
-    final SyncThread syncThread;
     final LedgerManagerFactory ledgerManagerFactory;
     final LedgerManager ledgerManager;
     final LedgerStorage ledgerStorage;
     final Journal journal;
+    final private ScheduledExecutorService journalGCExecutor;
 
     final HandleFactory handles;
 
@@ -235,143 +239,6 @@ public class Bookie extends Thread {
 
         public Future<Boolean> getResult() {
             return result;
-        }
-    }
-
-    /**
-     * SyncThread is a background thread which flushes ledger index pages periodically.
-     * Also it takes responsibility of garbage collecting journal files.
-     *
-     * <p>
-     * Before flushing, SyncThread first records a log marker {journalId, journalPos} in memory,
-     * which indicates entries before this log marker would be persisted to ledger files.
-     * Then sync thread begins flushing ledger index pages to ledger index files, flush entry
-     * logger to ensure all entries persisted to entry loggers for future reads.
-     * </p>
-     * <p>
-     * After all data has been persisted to ledger index files and entry loggers, it is safe
-     * to persist the log marker to disk. If bookie failed after persist log mark,
-     * bookie is able to relay journal entries started from last log mark without losing
-     * any entries.
-     * </p>
-     * <p>
-     * Those journal files whose id are less than the log id in last log mark, could be
-     * removed safely after persisting last log mark. We provide a setting to let user keeping
-     * number of old journal files which may be used for manual recovery in critical disaster.
-     * </p>
-     */
-    class SyncThread extends Thread {
-        volatile boolean running = true;
-        // flag to ensure sync thread will not be interrupted during flush
-        final AtomicBoolean flushing = new AtomicBoolean(false);
-        // make flush interval as a parameter
-        final int flushInterval;
-        public SyncThread(ServerConfiguration conf) {
-            super("SyncThread");
-            flushInterval = conf.getFlushInterval();
-            LOG.debug("Flush Interval : {}", flushInterval);
-        }
-
-        private Object suspensionLock = new Object();
-        private boolean suspended = false;
-
-        /**
-         * Suspend sync thread. (for testing)
-         */
-        @VisibleForTesting
-        public void suspendSync() {
-            synchronized(suspensionLock) {
-                suspended = true;
-            }
-        }
-
-        /**
-         * Resume sync thread. (for testing)
-         */
-        @VisibleForTesting
-        public void resumeSync() {
-            synchronized(suspensionLock) {
-                suspended = false;
-                suspensionLock.notify();
-            }
-        }
-
-        @Override
-        public void run() {
-            try {
-                while (running) {
-                    synchronized (this) {
-                        try {
-                            wait(flushInterval);
-                            if (!ledgerStorage.isFlushRequired()) {
-                                continue;
-                            }
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            continue;
-                        }
-                    }
-                    synchronized (suspensionLock) {
-                        while (suspended) {
-                            suspensionLock.wait();
-                        }
-                    }
-                    // try to mark flushing flag to make sure it would not be interrupted
-                    // by shutdown during flushing. otherwise it will receive
-                    // ClosedByInterruptException which may cause index file & entry logger
-                    // closed and corrupted.
-                    if (!flushing.compareAndSet(false, true)) {
-                        // set flushing flag failed, means flushing is true now
-                        // indicates another thread wants to interrupt sync thread to exit
-                        break;
-                    }
-
-                    // journal mark log
-                    journal.markLog();
-
-                    boolean flushFailed = false;
-                    try {
-                        ledgerStorage.flush();
-                    } catch (NoWritableLedgerDirException e) {
-                        flushFailed = true;
-                        flushing.set(false);
-                        transitionToReadOnlyMode();
-                    } catch (IOException e) {
-                        LOG.error("Exception flushing Ledger", e);
-                        flushFailed = true;
-                    }
-
-                    // if flush failed, we should not roll last mark, otherwise we would
-                    // have some ledgers are not flushed and their journal entries were lost
-                    if (!flushFailed) {
-                        try {
-                            journal.rollLog();
-                            journal.gcJournals();
-                        } catch (NoWritableLedgerDirException e) {
-                            flushing.set(false);
-                            transitionToReadOnlyMode();
-                        }
-                    }
-
-                    // clear flushing flag
-                    flushing.set(false);
-                }
-            } catch (Throwable t) {
-                LOG.error("Exception in SyncThread", t);
-                flushing.set(false);
-                triggerBookieShutdown(ExitCode.BOOKIE_EXCEPTION);
-            }
-        }
-
-        // shutdown sync thread
-        void shutdown() throws InterruptedException {
-            running = false;
-            if (flushing.compareAndSet(false, true)) {
-                // if setting flushing flag succeed, means syncThread is not flushing now
-                // it is safe to interrupt itself now 
-                this.interrupt();
-            }
-            this.join();
         }
     }
 
@@ -531,13 +398,24 @@ public class Bookie extends Thread {
         ledgerManagerFactory = LedgerManagerFactory.newLedgerManagerFactory(conf, this.zk);
         LOG.info("instantiate ledger manager {}", ledgerManagerFactory.getClass().getName());
         ledgerManager = ledgerManagerFactory.newLedgerManager();
-        syncThread = new SyncThread(conf);
         ledgerStorage = new InterleavedLedgerStorage(conf, ledgerManager,
                                                      ledgerDirsManager,
                                                      new BookieSafeEntryAdder());
         handles = new HandleFactoryImpl(ledgerStorage);
         // instantiate the journal
-        journal = new Journal(conf, ledgerDirsManager);
+        journal = new Journal(conf, ledgerStorage.getLastSyncedMark());
+        journalGCExecutor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder()
+                                                                 .setNameFormat("JournalGC-%d")
+                                                                 .build());
+        journalGCExecutor.scheduleAtFixedRate(new Runnable() {
+                public void run() {
+                    try {
+                        journal.gc(ledgerStorage.getLastSyncedMark());
+                    } catch (IOException ioe) {
+                        LOG.error("Error cleaning up old journals", ioe);
+                    }
+                }
+            }, conf.getJournalGCInterval(), conf.getJournalGCInterval(), TimeUnit.SECONDS);
 
         // ZK ephemeral node for this Bookie.
         zkBookieRegPath = this.bookieRegistrationPath + getMyId();
@@ -624,7 +502,6 @@ public class Bookie extends Thread {
 
         ledgerStorage.start();
 
-        syncThread.start();
         // set running here.
         // since bookie server use running as a flag to tell bookie server whether it is alive
         // if setting it in bookie thread, the watcher might run before bookie thread.
@@ -946,10 +823,15 @@ public class Bookie extends Thread {
                 //Shutdown disk checker
                 ledgerDirsManager.shutdown();
 
+                journalGCExecutor.shutdown();
+                if (!journalGCExecutor.awaitTermination(5, TimeUnit.MINUTES)) {
+                    LOG.warn("Journal GC did not shutdown cleanly in a prompt fashion."
+                             + " Forcing shutdown");
+                    journalGCExecutor.shutdownNow();
+                }
                 // Shutdown journal
                 journal.shutdown();
                 this.join();
-                syncThread.shutdown();
 
                 // Shutdown the EntryLogger which has the GarbageCollector Thread running
                 ledgerStorage.shutdown();
@@ -1011,7 +893,7 @@ public class Bookie extends Thread {
         long ledgerId = handle.getLedgerId();
         entry.rewind();
         long entryId = handle.addEntry(entry);
-
+        ledgerStorage.setLastAddedMark(journal.getLastLogMark());
         entry.rewind();
         LOG.trace("Adding {}@{}", entryId, ledgerId);
         journal.logAddEntry(entry, cb, ctx);

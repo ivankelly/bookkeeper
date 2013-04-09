@@ -21,6 +21,8 @@
 
 package org.apache.bookkeeper.bookie;
 
+import static com.google.common.base.Charsets.UTF_8;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -36,19 +38,23 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import static com.google.common.base.Charsets.UTF_8;
 
 import org.apache.bookkeeper.bookie.LedgerDirsManager.LedgerDirsListener;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.util.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class manages the writing of the bookkeeper entries. All the new
@@ -65,12 +71,17 @@ public class EntryLogger {
     private AtomicBoolean shouldCreateNewEntryLog = new AtomicBoolean(false);
 
     private long logId;
+    private volatile long leastUnflushedLogId;
 
     /**
      * The maximum size of a entry logger file.
      */
     final long logSizeLimit;
+    private List<BufferedChannel> logChannelsToFlush;
     private volatile BufferedChannel logChannel;
+    private final EntryLoggerAllocator entryLoggerAllocator;
+    private final EntryLogListener listener;
+    private final boolean entryLogPreAllocationEnabled;
     /**
      * The 1K block at the head of the entry logger file
      * that contains the fingerprint and (future) meta-data
@@ -110,14 +121,32 @@ public class EntryLogger {
     }
 
     /**
+     * Entry Log Listener
+     */
+    static interface EntryLogListener {
+        /**
+         * Rotate a new entry log to write.
+         */
+        public void onRotateEntryLog();
+    }
+
+    /**
      * Create an EntryLogger that stores it's log files in the given
      * directories
      */
     public EntryLogger(ServerConfiguration conf,
             LedgerDirsManager ledgerDirsManager) throws IOException {
+        this(conf, ledgerDirsManager, null);
+    }
+
+    public EntryLogger(ServerConfiguration conf,
+            LedgerDirsManager ledgerDirsManager, EntryLogListener listener)
+                    throws IOException {
         this.ledgerDirsManager = ledgerDirsManager;
+        this.listener = listener;
         // log size limit
         this.logSizeLimit = conf.getEntryLogSizeLimit();
+        this.entryLogPreAllocationEnabled = conf.isEntryLogFilePreAllocationEnabled();
 
         // Initialize the entry log header buffer. This cannot be a static object
         // since in our unit tests, we run multiple Bookies and thus EntryLoggers
@@ -138,7 +167,8 @@ public class EntryLogger {
                 logId = lastLogId;
             }
         }
-
+        this.leastUnflushedLogId = logId + 1;
+        this.entryLoggerAllocator = new EntryLoggerAllocator(logId);
         initialize();
     }
 
@@ -146,6 +176,16 @@ public class EntryLogger {
      * Maps entry log files to open channels.
      */
     private ConcurrentHashMap<Long, BufferedChannel> channels = new ConcurrentHashMap<Long, BufferedChannel>();
+
+    /**
+     * Get the least unflushed log id. Garbage collector thread should not process
+     * unflushed entry log file.
+     *
+     * @return least unflushed log id.
+     */
+    synchronized long getLeastUnflushedLogId() {
+        return leastUnflushedLogId;
+    }
 
     synchronized long getCurrentLogId() {
         return logId;
@@ -187,36 +227,114 @@ public class EntryLogger {
     }
 
     /**
+     * Rolling a new log file to write.
+     */
+    synchronized void rollLog() throws IOException {
+        createNewLog();
+    }
+
+    /**
      * Creates a new log file
      */
     void createNewLog() throws IOException {
-        if (logChannel != null) {
-            logChannel.flush(true);
+        if (null != logChannel) {
+            if (null == logChannelsToFlush) {
+                logChannelsToFlush = new LinkedList<BufferedChannel>();
+            }
+            // flush the internal buffer back to filesystem but not sync disk
+            // so the readers could access the data from filesystem.
+            logChannel.flush(false);
+            logChannelsToFlush.add(logChannel);
+            if (null != listener) {
+                listener.onRotateEntryLog();
+            }
+        }
+        logChannel = entryLoggerAllocator.createNewLog();
+    }
+
+    /**
+     * An allocator pre-allocates entry log files.
+     */
+    class EntryLoggerAllocator {
+
+        long preallocatedLogId;
+        Future<BufferedChannel> preallocation = null;
+        ExecutorService allocatorExecutor;
+
+        EntryLoggerAllocator(long logId) {
+            preallocatedLogId = logId;
+            allocatorExecutor = Executors.newSingleThreadExecutor();
         }
 
-        // It would better not to overwrite existing entry log files
-        String logFileName = null;
-        do {
-            logFileName = Long.toHexString(++logId) + ".log";
-            for (File dir : ledgerDirsManager.getAllLedgerDirs()) {
-                File newLogFile = new File(dir, logFileName);
-                if (newLogFile.exists()) {
-                    LOG.warn("Found existed entry log " + newLogFile
-                           + " when trying to create it as a new log.");
-                    logFileName = null;
-                    break;
+        synchronized BufferedChannel createNewLog() throws IOException {
+            BufferedChannel bc;
+            if (!entryLogPreAllocationEnabled || null == preallocation) {
+                // initialization time to create a new log
+                bc = allocateNewLog();
+                setCurrentLogId(preallocatedLogId);
+            } else {
+                // has a preallocated entry log
+                try {
+                    bc = preallocation.get();
+                } catch (ExecutionException ee) {
+                    if (ee.getCause() instanceof IOException) {
+                        throw (IOException) (ee.getCause());
+                    } else {
+                        throw new IOException("Error to execute entry log allocation.", ee);
+                    }
+                } catch (CancellationException ce) {
+                    throw new IOException("Task to allocate a new entry log is cancelled.", ce);
+                } catch (InterruptedException ie) {
+                    throw new IOException("Intrrupted when waiting a new entry log to be allocated.", ie);
                 }
+                setCurrentLogId(preallocatedLogId);
+                preallocation = allocatorExecutor.submit(new Callable<BufferedChannel>() {
+                    @Override
+                    public BufferedChannel call() throws IOException {
+                        return allocateNewLog();
+                    }
+                });
             }
-        } while (logFileName == null);
+            return bc;
+        }
 
-        // Update last log id first
-        currentDir = ledgerDirsManager.pickRandomWritableDir();
-        setLastLogId(currentDir, logId);
+        /**
+         * Allocate a new log file.
+         */
+        BufferedChannel allocateNewLog() throws IOException {
+            // It would better not to overwrite existing entry log files
+            String logFileName = null;
+            do {
+                logFileName = Long.toHexString(++preallocatedLogId) + ".log";
+                for (File dir : ledgerDirsManager.getAllLedgerDirs()) {
+                    File newLogFile = new File(dir, logFileName);
+                    if (newLogFile.exists()) {
+                        LOG.warn("Found existed entry log " + newLogFile
+                               + " when trying to create it as a new log.");
+                        logFileName = null;
+                        break;
+                    }
+                }
+            } while (logFileName == null);
 
-        File newLogFile = new File(currentDir, logFileName);
-        logChannel = new BufferedChannel(new RandomAccessFile(newLogFile, "rw").getChannel(), 64*1024);
-        logChannel.write((ByteBuffer) LOGFILE_HEADER.clear());
-        channels.put(logId, logChannel);
+            // Update last log id first
+            currentDir = ledgerDirsManager.pickRandomWritableDir();
+            setLastLogId(currentDir, preallocatedLogId);
+
+            File newLogFile = new File(currentDir, logFileName);
+            logChannel = new BufferedChannel(new RandomAccessFile(newLogFile, "rw").getChannel(), 64*1024);
+            logChannel.write((ByteBuffer) LOGFILE_HEADER.clear());
+            channels.put(preallocatedLogId, logChannel);
+            return logChannel;
+        }
+
+        /**
+         * Stop the allocator.
+         */
+        void stop() {
+            // wait until the preallocation finished.
+            allocatorExecutor.shutdown();
+        }
     }
 
     /**
@@ -247,6 +365,10 @@ public class EntryLogger {
             LOG.warn("Could not delete entry log file {}", entryLogFile);
         }
         return true;
+    }
+
+    private synchronized void setCurrentLogId(long logId) {
+        this.logId = logId;
     }
 
     /**
@@ -324,21 +446,57 @@ public class EntryLogger {
         }
     }
 
-    synchronized void flush() throws IOException {
+    /**
+     * Flushes all rotated log channels. After log channels are flushed,
+     * move leastUnflushedLogId ptr to current logId.
+     */
+    void checkpoint() throws IOException {
+        flushRotatedLogs();
+    }
+
+    void flushRotatedLogs() throws IOException {
+        List<BufferedChannel> tmpChannels = null;
+        long newUnflushedLogId;
+        synchronized (this) {
+            tmpChannels = logChannelsToFlush;
+            logChannelsToFlush = null;
+            newUnflushedLogId = logId;
+        }
+        if (null == tmpChannels) {
+            return;
+        }
+        for (BufferedChannel channel : tmpChannels) {
+            channel.flush(true);
+        }
+        // move the leastUnflushedLogId ptr
+        leastUnflushedLogId = newUnflushedLogId;
+    }
+
+    void flush() throws IOException {
+        flushRotatedLogs();
+        flushCurrentLog();
+    }
+
+    synchronized void flushCurrentLog() throws IOException {
         if (logChannel != null) {
             logChannel.flush(true);
         }
     }
-    synchronized long addEntry(long ledger, ByteBuffer entry) throws IOException {
-        // Create new log if logSizeLimit reached or current disk is full
-        boolean createNewLog = shouldCreateNewEntryLog.get();
-        if (createNewLog
-                || (logChannel.position() + entry.remaining() + 4 > logSizeLimit)) {
-            createNewLog();
 
-            // Reset the flag
-            if (createNewLog) {
-                shouldCreateNewEntryLog.set(false);
+    long addEntry(long ledger, ByteBuffer entry) throws IOException {
+        return addEntry(ledger, entry, true);
+    }
+
+    synchronized long addEntry(long ledger, ByteBuffer entry, boolean rollLog) throws IOException {
+        if (rollLog) {
+            // Create new log if logSizeLimit reached or current disk is full
+            boolean createNewLog = shouldCreateNewEntryLog.get();
+            if (createNewLog || reachEntryLogLimit(entry.remaining() + 4)) {
+                createNewLog();
+                // Reset the flag
+                if (createNewLog) {
+                    shouldCreateNewEntryLog.set(false);
+                }
             }
         }
         ByteBuffer buff = ByteBuffer.allocate(4);
@@ -347,9 +505,12 @@ public class EntryLogger {
         logChannel.write(buff);
         long pos = logChannel.position();
         logChannel.write(entry);
-        //logChannel.flush(false);
 
         return (logId << 32L) | pos;
+    }
+
+    synchronized boolean reachEntryLogLimit(long size) {
+        return logChannel.position() + size > logSizeLimit;
     }
 
     byte[] readEntry(long ledgerId, long entryId, long location) throws IOException, Bookie.NoEntryException {
@@ -548,6 +709,8 @@ public class EntryLogger {
                 }
             }
         }
+        // shutdown the pre-allocation thread
+        entryLoggerAllocator.stop();
     }
 
 }
