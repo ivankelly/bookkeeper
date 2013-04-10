@@ -68,6 +68,11 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String AUDITOR_PERIODIC_CHECK_INTERVAL = "auditorPeriodicCheckInterval";
     protected final static String AUTO_RECOVERY_DAEMON_ENABLED = "autoRecoveryDaemonEnabled";
 
+    protected final static String SORTED_LEDGER_STORAGE_ENABLED = "sortedLedgerStorageEnabled";
+    protected final static String SKIP_LIST_SIZE_LIMIT = "skipListSizeLimit";
+    protected final static String SKIP_LIST_CHUNK_SIZE_ENTRY = "skipListArenaChunkSize";
+    protected final static String SKIP_LIST_MAX_ALLOC_ENTRY = "skipListArenaMaxAllocSize";
+
     /**
      * Construct a default configuration object
      */
@@ -734,5 +739,76 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public boolean isAutoRecoveryDaemonEnabled() {
         return getBoolean(AUTO_RECOVERY_DAEMON_ENABLED, false);
+    }
+
+    /**
+     * Set sorted-ledger storage enabled or not
+     *
+     * @param enabled
+     */
+    public ServerConfiguration setSortedLedgerStorageEnabled(boolean enabled) {
+        this.setProperty(SORTED_LEDGER_STORAGE_ENABLED, enabled);
+        return this;
+    }
+
+    /**
+     * Check if sorted-ledger storage enabled (default true)
+     *
+     * @return
+     */
+    public boolean getSortedLedgerStorageEnabled() {
+        return this.getBoolean(SORTED_LEDGER_STORAGE_ENABLED, true);
+    }
+
+    /**
+     * Get skip list data size limitation (default 64MB)
+     *
+     * @return skip list data size limitation
+     */
+    public long getSkipListSizeLimit() {
+        return this.getLong(SKIP_LIST_SIZE_LIMIT, 64 * 1024 * 1024L);
+    }
+
+    /**
+     * Set skip list size limit.
+     *
+     * @param size skip list size limit.
+     * @return server configuration object.
+     */
+    public ServerConfiguration setSkipListSizeLimit(int size) {
+        setProperty(SKIP_LIST_SIZE_LIMIT, size);
+        return this;
+    }
+
+    /**
+     * Get the number of bytes we should use as chunk allocation for the {@link
+     * org.apache.bookkeeper.bookie.SkipListArena}
+     * Default is 4 MB
+     * @return
+     */
+    public int getSkipListArenaChunkSize() {
+        return getInt(SKIP_LIST_CHUNK_SIZE_ENTRY, 4096 * 1024);
+    }
+
+    /**
+     * Set the number of bytes w used as chunk allocation for {@link
+     * org.apache.bookkeeper.bookie.SkipListArena}.
+     *
+     * @param size chunk size.
+     * @return server configuration object.
+     */
+    public ServerConfiguration setSkipListArenaChunkSize(int size) {
+        setProperty(SKIP_LIST_CHUNK_SIZE_ENTRY, size);
+        return this;
+    }
+
+    /**
+     * Get the max size we should delegate memory allocation to VM for the {@link
+     * org.apache.bookkeeper.bookie.SkipListArena}
+     * Default is 128 KB
+     * @return
+     */
+    public int getSkipListArenaMaxAllocSize() {
+        return getInt(SKIP_LIST_MAX_ALLOC_ENTRY, 128 * 1024);
     }
 }

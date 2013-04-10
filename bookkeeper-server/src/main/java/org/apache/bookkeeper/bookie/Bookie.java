@@ -398,9 +398,17 @@ public class Bookie extends Thread {
         ledgerManagerFactory = LedgerManagerFactory.newLedgerManagerFactory(conf, this.zk);
         LOG.info("instantiate ledger manager {}", ledgerManagerFactory.getClass().getName());
         ledgerManager = ledgerManagerFactory.newLedgerManager();
-        ledgerStorage = new InterleavedLedgerStorage(conf, ledgerManager,
-                                                     ledgerDirsManager,
-                                                     new BookieSafeEntryAdder());
+
+        if (conf.getSortedLedgerStorageEnabled()) {
+            ledgerStorage = new SortedLedgerStorage(conf, ledgerManager,
+                                                    ledgerDirsManager,
+                                                    new BookieSafeEntryAdder());
+        } else {
+            ledgerStorage = new InterleavedLedgerStorage(conf, ledgerManager,
+                                                    ledgerDirsManager,
+                                                    new BookieSafeEntryAdder());
+        }
+
         handles = new HandleFactoryImpl(ledgerStorage);
         // instantiate the journal
         journal = new Journal(conf, ledgerStorage.getLastSyncedMark());

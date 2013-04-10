@@ -191,7 +191,7 @@ class InterleavedLedgerStorage implements LedgerStorage, EntryLogListener {
         return true;
     }
 
-    private void checkpoint(LogMark mark) throws IOException {
+    void checkpoint(LogMark mark) throws IOException {
         // we don't need to check somethingwritten since checkpoint
         // is scheduled when rotate an entry logger file. and we could
         // not set somethingWritten to false after checkpoint, since
