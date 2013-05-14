@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  * This ledger storage implementation stores all entries in a single
  * file and maintains an index file for each ledger.
  */
-class InterleavedLedgerStorage implements LedgerStorage, EntryLogListener {
+public class InterleavedLedgerStorage implements LedgerStorage, EntryLogListener {
     final static Logger LOG = LoggerFactory.getLogger(InterleavedLedgerStorage.class);
 
     // Hold the last checkpoint
@@ -63,8 +63,8 @@ class InterleavedLedgerStorage implements LedgerStorage, EntryLogListener {
         }
     }
 
-    EntryLogger entryLogger;
-    LedgerCache ledgerCache;
+    protected EntryLogger entryLogger;
+    protected LedgerCache ledgerCache;
     private final CheckpointSource checkpointSource;
     private final CheckpointHolder checkpointHolder = new CheckpointHolder();
 
@@ -79,7 +79,7 @@ class InterleavedLedgerStorage implements LedgerStorage, EntryLogListener {
     // this indicates that a write has happened since the last flush
     private volatile boolean somethingWritten = false;
 
-    InterleavedLedgerStorage(ServerConfiguration conf, LedgerManager ledgerManager,
+    protected InterleavedLedgerStorage(ServerConfiguration conf, LedgerManager ledgerManager,
             LedgerDirsManager ledgerDirsManager, CheckpointSource checkpointSource,
             GarbageCollectorThread.SafeEntryAdder safeEntryAdder) throws IOException {
         activeLedgers = new SnapshotMap<Long, Boolean>();

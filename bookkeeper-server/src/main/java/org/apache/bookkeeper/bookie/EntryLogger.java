@@ -226,7 +226,7 @@ public class EntryLogger {
     /**
      * Rolling a new log file to write.
      */
-    synchronized void rollLog() throws IOException {
+    public synchronized void rollLog() throws IOException {
         createNewLog();
     }
 
@@ -438,7 +438,7 @@ public class EntryLogger {
         return (logId << 32L) | pos;
     }
 
-    synchronized boolean reachEntryLogLimit(long size) {
+    public synchronized boolean reachEntryLogLimit(long size) {
         return logChannel.position() + size > logSizeLimit;
     }
 

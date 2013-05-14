@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
+import org.apache.bookkeeper.bookie.sls.SortedLedgerStorage;
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.bookie.GarbageCollectorThread.SafeEntryAdder;
 import org.apache.bookkeeper.bookie.Journal.JournalScanner;
@@ -397,9 +398,15 @@ public class Bookie extends Thread {
 
         // instantiate the journal
         journal = new Journal(conf, ledgerDirsManager);
-        ledgerStorage = new InterleavedLedgerStorage(conf, ledgerManager,
-                                                     ledgerDirsManager, journal,
-                                                     new BookieSafeEntryAdder());
+        if (conf.getSortedLedgerStorageEnabled()) {
+            ledgerStorage = new SortedLedgerStorage(conf, ledgerManager,
+                                                    ledgerDirsManager, journal,
+                                                    new BookieSafeEntryAdder());
+        } else {
+            ledgerStorage = new InterleavedLedgerStorage(conf, ledgerManager,
+                                                         ledgerDirsManager, journal,
+                                                         new BookieSafeEntryAdder());
+        }
         syncThread = new SyncThread(conf, getLedgerDirsListener(),
                                     ledgerStorage, journal);
 

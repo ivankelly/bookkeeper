@@ -94,7 +94,7 @@ public class GarbageCollectorThread extends Thread {
      * Interface for adding entries. When the write callback is triggered, the
      * entry must be guaranteed to be presisted.
      */
-    interface SafeEntryAdder {
+    public interface SafeEntryAdder {
         public void safeAddEntry(long ledgerId, ByteBuffer buffer, GenericCallback<Void> cb);
     }
 
