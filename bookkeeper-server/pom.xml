@@ -151,6 +151,47 @@
         </exclusion>
       </exclusions>
     </dependency>
+
+
+    <dependency>
+      <groupId>com.twitter.common</groupId>
+      <artifactId>stats</artifactId>
+      <version>0.0.64</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter.common</groupId>
+      <artifactId>net-http-handlers</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>javax.servlet</groupId>
+          <artifactId>servlet-api</artifactId>
+        </exclusion>
+      </exclusions>
+      <version>0.0.39</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter.common</groupId>
+      <artifactId>stats-time-series</artifactId>
+      <version>0.0.36</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter.common</groupId>
+      <artifactId>stats-jvm</artifactId>
+      <version>0.0.33</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-server</artifactId>
+      <version>8.1.4.v20120524</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-servlet</artifactId>
+      <version>8.1.4.v20120524</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -251,4 +292,13 @@
       </build>
     </profile>
   </profiles>
+  <repositories>
+    <repository>
+      <id>twitter</id>
+      <name>Twitter repo</name>
+      <layout>default</layout>
+      <url>http://maven.twttr.com</url>
+    </repository>
+  </repositories>
+
 </project>
