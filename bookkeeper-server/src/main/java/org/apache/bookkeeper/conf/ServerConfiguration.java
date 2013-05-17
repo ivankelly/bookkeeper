@@ -20,6 +20,7 @@ package org.apache.bookkeeper.conf;
 import java.io.File;
 import java.util.List;
 
+import com.google.common.annotations.Beta;
 import org.apache.commons.lang.StringUtils;
 
 /**
@@ -699,29 +700,43 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Set sorted-ledger storage enabled or not
+     * *Experimental* Enable sorted ledger storage (disabled by default).
+     * With this enabled, entries will be sorted by ledger ID before
+     * being flushed to disk. This should give better performance for
+     * read operations as entries for the same ledger will be stored
+     * contiguously.
      *
-     * @param enabled
+     * If this option is enabled, the flush interval should also be
+     * set to a higher value such as 5 minutes.
+     *
+     * @see #setFlushInterval(int)
+     *
+     * @param enabled true if you want to enable sorted ledger storage
+     * @return the server configuration
      */
+    @Beta
     public ServerConfiguration setSortedLedgerStorageEnabled(boolean enabled) {
         this.setProperty(SORTED_LEDGER_STORAGE_ENABLED, enabled);
         return this;
     }
 
     /**
-     * Check if sorted-ledger storage enabled (default false)
-     *
-     * @return
+     * Get whether sorted ledger storage is enabled or not.
+     * @see #setSortedLedgerStorageEnabled(boolean)
+     *x
+     * @return true if sorted ledger storage is enabled
      */
+    @Beta
     public boolean getSortedLedgerStorageEnabled() {
-        return this.getBoolean(SORTED_LEDGER_STORAGE_ENABLED, true);
+        return this.getBoolean(SORTED_LEDGER_STORAGE_ENABLED, false);
     }
 
     /**
-     * Get skip list data size limitation (default 64MB)
-     *
+     * Get skip list data size limitation (default 64MB).
+     * @see #setSkipListSizeLimit(int)
      * @return skip list data size limitation
      */
+    @Beta
     public long getSkipListSizeLimit() {
         return this.getLong(SKIP_LIST_SIZE_LIMIT, 64 * 1024 * 1024L);
     }
@@ -729,30 +744,37 @@ public class ServerConfiguration extends AbstractConfiguration {
     /**
      * Set skip list size limit.
      *
-     * @param size skip list size limit.
-     * @return server configuration object.
+     * This only has an effect if sorted ledger storage is enabled.
+     *
+     * @param size skip list size limit
+     * @return server configuration object
      */
+    @Beta
     public ServerConfiguration setSkipListSizeLimit(int size) {
         setProperty(SKIP_LIST_SIZE_LIMIT, size);
         return this;
     }
 
     /**
-     * Get the number of bytes we should use as chunk allocation for the {@link
+     * Get amount of memory we should use as chunk allocation for the {@link
      * org.apache.bookkeeper.bookie.SkipListArena}
+     *
      * Default is 4 MB
-     * @return
+     *
+     * @return the amount of memory in bytes
      */
     public int getSkipListArenaChunkSize() {
         return getInt(SKIP_LIST_CHUNK_SIZE_ENTRY, 4096 * 1024);
     }
 
     /**
-     * Set the number of bytes w used as chunk allocation for {@link
+     * Set the amount of memory used as chunk allocation for {@link
      * org.apache.bookkeeper.bookie.SkipListArena}.
      *
-     * @param size chunk size.
-     * @return server configuration object.
+     * This only has an effect if sorted ledger storage is enabled.
+     *
+     * @param size chunk size in bytes
+     * @return server configuration object
      */
     public ServerConfiguration setSkipListArenaChunkSize(int size) {
         setProperty(SKIP_LIST_CHUNK_SIZE_ENTRY, size);
