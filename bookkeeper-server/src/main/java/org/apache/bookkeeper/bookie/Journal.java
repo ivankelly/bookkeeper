@@ -38,6 +38,9 @@ import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.util.IOUtils;
 import org.apache.bookkeeper.util.MathUtils;
+
+import org.apache.bookkeeper.stats.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -254,8 +257,11 @@ class Journal extends Thread implements CheckpointSource {
             this.ctx = ctx;
             this.ledgerId = ledgerId;
             this.entryId = entryId;
+
+            this.timer = Stats.get().getTimedOp(Journal.class.getName(), "queue-entry-op");
         }
 
+        TimedOp timer;
         ByteBuffer entry;
 
         long ledgerId;
@@ -295,6 +301,13 @@ class Journal extends Thread implements CheckpointSource {
         // read last log mark
         lastLogMark.readLog();
         LOG.debug("Last Log Mark : {}", lastLogMark.getCurMark());
+
+        Stats.get().registerGauge(Journal.class.getName(), "queue-size",
+                new Gauge<Integer>() {
+                                      public Integer getSample() {
+                                          return queue.size();
+                                      }
+                                  });
     }
 
     LastLogMark getLastLogMark() {
@@ -507,6 +520,9 @@ class Journal extends Thread implements CheckpointSource {
                             for (QueueEntry e : toFlush) {
                                 e.cb.writeComplete(BookieException.Code.OK,
                                                    e.ledgerId, e.entryId, null, e.ctx);
+                                e.timer.success();
+                                Stats.get().getCounter(Journal.class.getName(),
+                                                       "entries-flushed").inc();
                             }
                             toFlush.clear();
 
