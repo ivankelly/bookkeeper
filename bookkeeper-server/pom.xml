@@ -255,5 +255,16 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>twitter-stats</id>
+      <dependencies>
+	<dependency>
+	  <groupId>org.apache.bookkeeper.stats</groupId>
+	  <artifactId>twitter-provider</artifactId>
+	  <version>${project.parent.version}</version>
+	</dependency>
+      </dependencies>
+    </profile>
   </profiles>
+
 </project>

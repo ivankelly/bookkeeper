@@ -198,5 +198,11 @@
 	</plugins>
       </build>
     </profile>
+    <profile>
+      <id>twitter-stats</id>
+      <modules>
+	<module>bookkeeper-stats/twitter-provider</module>
+      </modules>
+    </profile>
   </profiles>
 </project>
