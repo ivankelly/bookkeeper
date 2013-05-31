@@ -28,6 +28,8 @@ import org.apache.commons.configuration.SystemConfiguration;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.util.ReflectionUtils;
 
+import org.apache.bookkeeper.stats.Stats;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -232,5 +234,25 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
      */
     public void setMetastoreMaxEntriesPerScan(int maxEntries) {
         setProperty(METASTORE_MAX_ENTRIES_PER_SCAN, maxEntries);
+    }
+
+    /**
+     * Get the class which will provide stats collection.
+     *
+     * @return the name of the stats provider, or null if none configured
+     */
+    public String getStatsProviderClass() {
+        return getString(Stats.STATS_PROVIDER_CLASS);
+    }
+
+    /**
+     * Set the name of the class that will provide stats collection.
+     * This class must be available on the classpath.
+     *
+     * @param statsProviderClass
+     *          The name of the stats provider class
+     */
+    public void setStatsProviderClass(String statsProviderName) {
+        setProperty(Stats.STATS_PROVIDER_CLASS, statsProviderName);
     }
 }

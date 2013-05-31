@@ -28,6 +28,8 @@ import java.net.UnknownHostException;
 
 import org.apache.zookeeper.KeeperException;
 
+import org.apache.bookkeeper.stats.Stats;
+
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.bookie.ExitCode;
@@ -86,6 +88,8 @@ public class BookieServer {
     }
 
     public void start() throws IOException, UnavailableException {
+        Stats.init(conf);
+
         this.bookie.start();
         if (isAutoRecoveryDaemonEnabled && this.autoRecoveryMain != null) {
             this.autoRecoveryMain.start();
