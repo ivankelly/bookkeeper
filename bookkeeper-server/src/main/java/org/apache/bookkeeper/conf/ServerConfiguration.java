@@ -299,7 +299,7 @@ public class ServerConfiguration extends AbstractConfiguration {
         return this.getBoolean(ALLOW_LOOPBACK, false);
     }
 
-    public ServerConfiguration setSetAllowLoopback(boolean allow) {
+    public ServerConfiguration setAllowLoopback(boolean allow) {
         this.setProperty(ALLOW_LOOPBACK, allow);
         return this;
     }

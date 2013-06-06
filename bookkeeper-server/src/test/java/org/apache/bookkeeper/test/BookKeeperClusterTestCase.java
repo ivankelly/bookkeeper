@@ -191,6 +191,7 @@ public abstract class BookKeeperClusterTestCase extends TestCase {
         conf.setBookiePort(port);
         conf.setZkServers(zkServers);
         conf.setJournalDirName(journalDir.getPath());
+        conf.setAllowLoopback(true);
         String[] ledgerDirNames = new String[ledgerDirs.length];
         for (int i=0; i<ledgerDirs.length; i++) {
             ledgerDirNames[i] = ledgerDirs[i].getPath();
