@@ -358,7 +358,8 @@ public class Bookie extends Thread {
         if (addr.getAddress().isLoopbackAddress()
             && !conf.getAllowLoopback()) {
             throw new UnknownHostException("Trying to listen on loopback address, "
-                    + addr + " but this is forbidden by default");
+                    + addr + " but this is forbidden by default "
+                    + "(see ServerConfiguration#getAllowLoopback())");
         }
         return addr;
     }
