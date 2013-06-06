@@ -48,6 +48,9 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String MAX_BACKUP_JOURNALS = "journalMaxBackups";
     // Bookie Parameters
     protected final static String BOOKIE_PORT = "bookiePort";
+    protected final static String LISTENING_INTERFACE = "listeningInterface";
+    protected final static String ALLOW_LOOPBACK = "allowLoopback";
+
     protected final static String JOURNAL_DIR = "journalDirectory";
     protected final static String LEDGER_DIRS = "ledgerDirectories";
     // NIO Parameters
@@ -280,6 +283,24 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public ServerConfiguration setBookiePort(int port) {
         this.setProperty(BOOKIE_PORT, Integer.toString(port));
+        return this;
+    }
+
+    public String getListeningInterface() {
+        return this.getString(LISTENING_INTERFACE);
+    }
+
+    public ServerConfiguration setListeningInterface(String iface) {
+        this.setProperty(LISTENING_INTERFACE, iface);
+        return this;
+    }
+
+    public boolean getAllowLoopback() {
+        return this.getBoolean(ALLOW_LOOPBACK, false);
+    }
+
+    public ServerConfiguration setSetAllowLoopback(boolean allow) {
+        this.setProperty(ALLOW_LOOPBACK, allow);
         return this;
     }
 
