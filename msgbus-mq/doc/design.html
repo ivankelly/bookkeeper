@@ -1,0 +1,193 @@
+<?xml version='1.0' encoding='utf-8' ?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/></head><body><h1 id="h1-1">整体设计 </h1><p>实现消息队列时，重点需要解决以下下几个问题：</p><ol><li><strong>消费者集群</strong>。即多个消费者可以同时从队列中取消息，且每个消息只能被一个消费者接收；</li><li><strong>消息确认</strong>。消费者在收到消息并处理完毕后，应该发送确认序号给服务器，告诉服务器该消息所占的空间可以被回收。在发布订阅模式中，一个主题下的消息发给所有订阅者，某个订阅者顺序处理完某一批消息后，可对一个消息序号进行确认，表示该序号之前的所有消息都已被处理。在消息队列中，由于支持集群模式，某个序号之前的消息可能被不同的消费者接收，所以一个消费者只能对自己收到并处理完毕的消息进行确认，而不能对某个序号之前的所有消息进行确认。消费者也不能使用一个序号对自己收到的消息进行批量确认，因为其不知道某个序号之前的消息被服务器发给了其他消费者，还是发给自己但尚未收到。因此，在消息队列中，消费者只能对每个收到的消息都发送一次确认信号。服务器应该为每个消费者维护一个消费状态。当某个序号之前的所有消息都被确认之后，才能将consume指针前移。</li><li><strong>消息重传</strong>。如果一个消费者接收了某些消息，但因为某些原因未能成功处理，则服务器需要将这些消息放入重传队列，在适当的时机重新发送给其他消费者。服务器需要判断消息处理是否成功。可以采用两种方法，一是为消息设定一个超时时间，发送之后超过该时间未收到客户端确认信息的，则将其视为处理失败，放入重传队列，这是Amazon SQS提供的功能；二是通过客户端连接状态判断处理是否成功，如果客户端到服务器的连接一直保持，则不重传该消息，一旦客户端的连接断开，则将其已接收但未确认的消息放入重传队列，这是RabbitMQ采用的处理方式。最初采用第一种方案，但为每条消息设置定时器，或者加时间戳增加了服务器端的处理开销，影响服务器效率。现在正考虑采用第二种方案。Hedwig的客户端和服务器端采用长连接，通过定期发送心跳信号确认连接是否正常，因此第二种方案在实现上是可行的。</li><li><strong>异步发送</strong>。现有的实现采用同步发送，某个客户端只有在对上一条消息进行确认之后，才能接收下一条消息，这使得消息接收的效率非常低。可通过增加多个客户端（消费者集群）提高服务器的利用率，但仍然无法提高单个客户端的接收速度。接下来计划将消息的发送改为异步的。服务器不等客户端将上一条消息处理完就可以发送后续的消息，并且在服务器端看来，不同消息的发送和确认是相互独立的。该方案的难点在于，服务器应该为每个客户端正在处理的每条消息维护其状态，控制机制更加复杂。为实现重传，需缓存每个已发送未确认的消息，如果服务器为每个客户端创建一个缓存队列，则会大大增加内存开销。而Hedwig本身提供了消息的缓存机制，不同的是，当缓存的消息过多时，会对其进行回收，删除较旧的消息。正考虑对该缓存机制进行改造，使其可用于消息队列。</li><li><strong>流量控制和负载均衡</strong>。在异步发送模式中，客户端会将已收到但未处理的消息缓存在本地。如果客户端的处理速度低于消息接收速度，则本地缓存会不断增加，可能导致内存溢出。并且，如果服务器不知道客户端的处理能力，只能通过轮询的方式发送消息给不同的客户端，无法实现有效的负载均衡。计划为每个客户-服务器连接维护一个消息窗口，只有已发送未确认的消息数量小于窗口大小时，服务器才会向客户端发送消息。Hedwig提供了窗口机制进行流量控制，但在消息队列的实现中，需要对其进行改造。窗口为1时相当于同步接收，即消费者在确认了一条消息后，才能够接收下一条消息。</li></ol><h1 id="h1-2">实现方案</h1><h2 id="h2-1">消息队列缓存</h2><h3 id="h3-1">最初方案</h3><p>因为Hedwig有缓存机制，所以重新开辟空间缓存每个已发送消息是一种不合理的做法，应该在现有机制上进行改进，适应自己的需要。在原有的实现中，ReadAheadCache负责缓存消息。当缓存的消息数达到一定上限时，会回收最先读出来的消息。</p><h3 id="h3-2">方案一</h3><p>在消息队列中，缓存消息主要是为了重传。如果采用现有机制，发送出去消息尚未被确认就被回收，则重传时需要重新到Bookeeper中读取消息。虽然这种情况发生可能不会经常发生，但却是不得不考虑的。重新读取消息的一个好处是，可以在读取之前添加自己指定的回调函数，使得消息的发送和重传分离，并且缓存大小无限制，也不会破环原有的缓存回收机制。</p><p>但每次只读取一条消息，效率较低，即使采用预读，也无法保证重传的消息在小范围内是连续的。这种方案最简单。</p><h3 id="h3-3">方案二</h3><p>只有发送成功的消息才可回收，则重传时无需读取Bookeeper，提高了重传的效率。由于需要和原有机制兼容，因此需要考虑的细节问题较多。最好为消息队列单独使用一个cache，和原来的cache独立工作。队列中的消息被确认后直接回收，而未被确认的消息不回收。</p><p>但是，在极端情况下，如果未确认的消息过多，使消息缓存达到上限而又不能回收，则无法添加新的缓存，从而导致发送停止。为了满足稳定性，要求有较大的缓存空间。</p><h3 id="h3-4">方案三</h3><p>混合机制，发布订阅模式的cache和消息队列cache仍然独立工作。对于后者，被确认的消息立刻回收，未被确认的消息（不得不回收时）按时间顺序回收。重传时，先到队列cache中查找，如果找不到，则去Bookeeper中读取。这样不会导致发送停止，也能尽可能提高重传效率，但机制也较复杂。</p><p>如果按优先级回收缓存，优先级变化时还要更新缓存项的位置，也就是说，需要对缓存执行添加和删除操作。	</p><p>最终的实现应该采用第3种方案，但可分阶段实现。先实现第2种方案，后实现第一种方案较好，因为衔接性好。</p><h3 id="cache">修正方案—一个cache的方案</h3><p>使用两个cache时，对源代码的改动较大，为了加快开发速度，首先采用一个cache。发布订阅模式和消息队列的cache操作，在读取消息和将消息写入cache时的操作完全相同，区别在于，1)消息队列需要在消息被确认后删除消息，2)未被确认的消息只在不得已时删除。对于第一种情况，需要在FIFODeliveryManager中使用删除缓存项的方法，可以将ReadAheadCache中的removeMessageFromCache()方法进行封装，使FIFODeliveryManager可以使用。对于第二种情况，需要更改ReadAheadCache原有的collectOldCacheEntries()方法，在其中实现一种回收策略，对主题消息缓存和队列消息缓存分别处理。</p><p>原代码在回收消息时，按时间顺序依次取出缓存的消息进行删除，直到缓存大小低于阈值。如果队列消息和主题消息使用同一个缓存，则可以设置删除缓存的条件，以实现不同的消息分别处理。指定策略时，应考虑以下几点：</p><ol><li>缓存的消息一定会被用到。在发布订阅模式中，当所有在线订阅者都消费了某一序号之前的消息后，会调用ReadAheadCache的deliveredUntil()方法，删除该消息。对于消息队列模式，缓存的消息应该在被确认后删除。因此，缓存中的消息如果属于主题，则尚未提交给所有在线订阅者，如果属于队列，则尚未被某个在线订阅者确认，可能会用于重传。</li><li>在缓存中找不到消息而必须到Bookeeper中读取时，发布订阅模式会读出从该消息开始的多条消息，并且都是会被用到的；而消息队列模式只需要读取当前消息。也就是说，前者需要被重新读取的消息具有连续性，而后者不具有连续性。因此，一般情况下，重新读取一定数量的消息，消息队列的代价更大。</li><li>发布订阅模式的消息被多个订阅者接收，而消息队列的消息被一个订阅者接收。一般情况下，所用缓存的数量与topic个数和该topic下的消息数有关。但是，当主题数和消息数均相同时，在发布订阅模式下，如果订阅者不是同时在线，并且某些消息因为回收机制而删除，则可能会导致同一消息被多次从Bookeeper中读出；在消息队列模式，接收者处理消息失败，并且该消息因为回收机制而删除时，可能导致同一消息被多次读出。前者属于正常现象，虽然在某些场景中几乎不会出现；后者属于非正常现象，出现的概率不多。</li></ol><p>综上所述，应该尽量不回收队列消息的缓存，以避免重读。实际采用的策略是：只有消息缓存的总数超过规定阈值，且队列消息超过一个比例时，才对其进行回收，而这个比例的值应视具体应用情况而定。</p><p>需要更改：timeIndexOfAddition在addMessageToCache(), removeMessageFromCache(), collectOldCacheEntries()。</p><h3 id="cache2">最终方案—一个cache+分类索引的方案</h3><p>仍使用一个cache，但将二者进一步分类存储。为达到此目的，可考虑ReadAheadCache的两个用于索引的映射timeIndexOfAddition和orderedIndexOnSeqId。可使用两组timeIndexOfAddition进行索引，一组对应主题，一组对应队列，需要修改如下方法：timeIndexOfAddition在addMessageToCache(), removeMessageFromCache(), collectOldCacheEntries()中被使用。而orderedIndexOnSeqId在addMessageToCache(), removeMessageFromCache(), deliveredUntil()中被使用。二者的区别在于最后一个方法，timeIndexOfAddition以时间为基准对CacheKey进行索引，而orderedIndexOnSeqId以序号为基准对CacheKey进行索引。因此可添加一个时间索引，例如timeIndexOfAdditionForQueue，以达到对队列和主题分别进行索引的目的。</p><p>首先，将原有timeIndexOfAddition视为两部分：针对队列的和针对主题的，并且timeIndexOfAdditionForQueue共享timeIndexOfAddition相关的一些参数，例如removeMessageFromCache的maintainTimeIndex参数。对于队列缓存，还需要有一个参数presentCacheSizeForQueue，用于对缓存占用情况进行统计。</p><p>addMessageToCache()中，如果topic用于队列，则将索引添加到timeIndexOfAdditionForQueue中；否则，将索引添加到timeIndexOfAddition中；更新presentCacheSizeForQueue（原代码已更新了presentCacheSize）。</p><p>removeMessageFromCache()中，如果topic属于队列，则从timeIndexOfAdditionForQueue中删除索引，否则，从timeIndexOfAddition中删除；更新presentCacheSizeForQueue。</p><p>collectOldCacheEntries()中，分别对presentCacheSize和presentCacheSizeForQueue进行检查，视情况决定回收那些消息。删除消息后，要更新presentCacheSizeForQueue和timeIndexOfAddition。</p><h2 id="h2-2">消息确认</h2><h3 id="h3-7">基本方案</h3><p>QueueConsumer需要记录待确认消息的数量，每个待确认消息的序号，所有序号以map的形式组织。当消息数量达到窗口大小后，将其放入busy队列；某个序号对应的消息被确认后，删除该序号，如果QueueConsumer在busy队列中，将其放回waiting队列。</p><p>ConsumerCluster中维护已被确认的消息序号，以序号块的形式组织为treeSet结构。有新的消息序号被确认时，如果该序号等于lastLocalSeqIdDelivered+1，则在服务器端进行consume，否则将其添加到treeSet中；同时更新QueueConsumer的状态（可通过Channel找到对应的QueueConsumer，因此需要多种方式维护QueueConsumer）。</p><h3 id="h3-8">处理长时间未确认的消息—超时机制</h3><p>Hedwig本身支持consume请求的重传，以保证可靠性，但在某些情况下，可能仍会发生消息长时间不被确认的情况（比如说，一个malicious consumer故意不发送确认请求）。</p><p>由于hedwig自身的特性，如果某条消息一直不被确认，则后面的所有消息无法被consume。在这种情况下，一旦发生故障切换，该消息之前的所有消息都要被重发。同时，服务器只有在某个序号之前的所有消息都被确认后，才能从Bookeeper中删除消息，回收存储空间。永远不会被consume的消息会导致可能磁盘存储空间的溢出。因此，应该防止这种情况发生。</p><h4 id="h4-1">超时控制</h4><p>每个未确认的消息序号对应一个时间戳，当缓存不足，或服务器未consume的消息过多时检查时间戳，配合客户端设置的超时值决定该如何处理。这里的超时控制，指的是超过规定时间未确认的消息可以但并不总是被视为处理失败。某些情况下服务器可强制确认，这会造成消息丢失，但是能够维持服务器的正常工作。</p><p>检查的时机：服务器端最早确认序号和最近确认序号相差过大时，首先在已确认序号块组成的树中，查找未确认的序号（优先处理靠前的序号），然后根据该序号找到其位置，如果超时，则进行处理。这种处理方式采用发送时间和序号值结合的方法确定重传的优先级，可能需要重传的消息并不是超时时间最长的消息，但一定是超时的消息，并且其序号在超时的消息中是最小的。</p><p>几种处理方式： <strong>不处理</strong>； <strong>放入重传队列</strong>； <strong>立刻重传</strong>； <strong>强制确认</strong>。</p><p>如果进行超时控制，客户端必须在一定时间内consume某条消息，在某种程度上限制了客户端的行为。但在服务器故障切换时，可以尽可能减少重发消息的数量。<br/>只使用超时机制，则为了避免故障切换时重发消息数过大，则超时值也不应该太大。</p><h4 id="h4-2">定时保存消费状态</h4><p>每隔一定时间就将保存消费状态。如果只写在本地磁盘，则只能支持服务器重启，无法支持服务器之间的切换，所以应该写入Zookeeper。异步写入Zookeepr，不要求可靠性，则不会影响效率服务器效率。</p><p>采用这种方法，在服务器发生故障切换或重启时，能够尽量减少已经consume但是被重发的消息的数量。</p><p>但消费状态持久化不能代替超时，因为该方案不能解决消息一直不被确认的问题，也就无法避免磁盘空间的溢出。</p><p>因此，该方法不能单独使用，只有在超时值非常大时，可作为一种辅助方案。而且效果有限。</p><p>可先实现超时机制。细节如下：</p><ol><li>如果busyConsumers中的一个消费者发生了超时，其中的消息被重传，导致未确认消息数量低于窗口值，这时并不把该消费者移动到waitingConsumers队列，因为它并没有成功处理该消息，也就不能接收更多的消息。</li><li>这里的超时控制并不是精确控制，因此可以尽量降低检查的频率，以提高整体的效率。</li><li>超时检查。为了尽量降低超时检测所占用的资源，可利用时间戳进行判断，方法如下：在发送流程的某个步骤，获取当前时间，与上一次获取的时间进行比较，如果其差值大于超时值，则检查每个消费者，如果有超时的消息，则进行相应的处理。（具体到代码：在deliverNextMessage中，第二条statement为对ConsumerCluster中方法checkTimeOut的调用。checkTimeOut方法中，会在满足一定时间间隔的条件下调用resendExpiredMessages方法。resendExpiredMessages方法会遍历所有这个ConsumerCluster中的consumer，从他们的unConsumedMsgSeqs这个根据时间戳排序的优先级队列中取出消息与时间戳的对，然后判定是否超时。若超时，则将消息从unConsumedMsgSeqs这个队列中移到retryMessageQueue中。）</li><li>如果某个客户端处理消息超时，并且在该消息被重传后发送了consume请求，则该请求仍然有效；这种情况下可能有两个客户端consume同一条消息，服务器处理先到的consume，丢弃后来的consume。</li></ol><h3 id="h3-9" style="color:blue">客户端重连时的状态继承</h3><p>ass的状态继承，可使消息队列工作得更好。当所有客户端退出队列时，如果有需要重传但尚未重传的消息，并且其后的消息已被consume，则新的客户端到来时，因</p><p>为重新创建了ass，服务器从所有被连续consume的消息之后的地方开始发送，导致消息重传（并没有发生服务器的重启或切换）。</p><p>如果新到的客户端能够使用原来的ass，或继承其状态，则更好。还会涉及到超时处理等问题。</p><p>客户端全部退出后，原来的ass并没有被删除，但如果新来的客户端原封不动地使用旧的ass，则会出现问题。留待以后考虑。</p><h2 id="h2-3">可靠性和效率</h2><p>正常情况下效率最大化，可靠性通过Bookeeper的持久化机制来保证。服务器重启时，可能会收到重复的消息，但不会丢失消息。</p><h2 id="h2-4" style="color:blue">服务器重启或发生切换时客户端的重连</h2><h3 id="h3-10">建立连接</h3><p>HegwigHub集群默认采用了VIP技术，即多个Hub共享同一个ip地址。客户端的connect请求首先发送到VIP服务器，VIP服务器将请求转交给后端一个随机的Hub服务器。连接成功后，客户端继续向该VIP发送消息请求，例如一个Pub请求，而VIP服务器将请求定向到刚刚选择的Hub服务器。</p><p>客户端没有提供建立连接的API，每次发送请求时，先检查连接是否可用，如果不可用则建立连接，连接成功后继续发送请求。如果第一次连接失败，客户端记录该服务器的地址，但是向相同的地址重新发送请求。如果连接同一个IP地址失败了两次，则调用客户端的回调函数operationFailed()，告诉用户请求发送失败，并且不再尝试建立连接。</p><p>在多个服务器共享一个VIP的情况下，第二次连接与第一次连接的IP地址相同，但连接请求会被VIP服务器定向到不同的服务器。如果第二个服务器是正常的，则连接成功；如果第二个服务器仍然是失效的，则连接失败，不再尝试建立连接。</p><h3 id="h3-11">连接断开时</h3><p>当连接断开时，客户端针对通道类型做不同的处理。对于非订阅通道，删除主题和服务器地址信息即可。在下次发送请求时（例如一个Pub请求），因为通道信息不存在，会首先建立连接。</p><p>也就是说，对于非订阅通道，下一次发送请求时执行重连。因为该通道不会接收来自服务器的消息。</p><p>如果是订阅通道发生连接中断，会检查客户端是否配置了重订阅选项。如果是，则按正常流程重新发送订阅请求，如果订阅成功，则恢复断开之前的状态；否则将连接断开的事件通知客户端即可。</p><p>因此，对于订阅信道，在连接断开后即尝试重连，以尽可能快地继续接收消息。</p><h3 id="h3-12">请求的重试</h3><p>对于一个请求，客户端在其失败之前至少发送两次。如果第一次发送失败，则将服务器地址写入失败服务器列表中，并重新发送。如果连续两次向同一个服务器发送失败，则调用operationFailed()，并不再发送请求。</p><h3 id="h3-13">集中改进方案</h3><p>关键是在不使用VIP的情况下，如何获取和更新可用的Hub地址。</p><ol><li>客户端重新从DNS获取Hub地址，优点是DNS服务提供了一些透明性，发生故障时，客户端只要刷新DNS缓存，然后重连同一个网址就可以了。缺点是DNS不知道Hub是否失效，可能返回无效的Hub，客户端只有不停地读取DNS，直到读到不同的Hub为止。如果多个Hub失效，则重试的期望次数会增加，在用户数多的时候可能造成通信拥塞；如果多个hedwig客户端轮流访问DNS，则可能造成某个客户端在一段时间内总是读到相同的无效ip地址，降低了服务的可用性。	如果客户端能从DNS服务器中读取到所有的Hub地址，保存在本地，在连接断开后尝试所有的服务器，包括刚刚断开连接的服务器，则</li><li>客户端直接通过Zookeeper获取Hub地址。可以维护一个Zookeeper地址列表，而地址列表可以从网站获取。Zookeeper本身被认为是高可用的，地址列表不会频繁更改。由于Zookeeper会随时更新Hub地址信息，客户端取得有效Hub地址所用的时间不会超过Zookeeper的tickTime。如果这个Zookeeper和hedwig内部使用的Zookeeper是相互独立的，则Hub需要同时在两个Zookeeper中进行注册。如果二者是相同的，则实现比较容易。</li><li>客户端维护hub地址列表。优点是实现简单，缺点是不够灵活，增加或减少Hub服务器时无法通知客户端。</li><li>客户端通过访问DNS获得有效Hub地址，并建立连接后，Hub服务器向其发送Hub服务器的地址列表，或Zookeeper地址列表，或二者。加入Hub服务器只发送Hub地址列表，那么当客户端建立连接时所有的可用服务器都失效后，重新连接的操作才会失败。如果hub服务器的拓扑结构发生变化，只要保证每次变化前后始终有一个Hub服务器是可用的即可。</li></ol><p>优点是无需引入冗余的服务器，也可以说是多机热备。缺点是Zookeeper地址暴露给用户，而以前对用户可见的只是Hub；要实现这一方案需要更改客户端代码。</p><p>为此，在连接建立后（第一次连接或重新连接后），发送一个请求，获取可用的Hub服务器列表，存放在客户端。当再次创建连接时，利用该服务器列表中的地址更新默认服务器的地址，然后重新建立连接。</p><h2 id="h2-5">消息队列配置文档</h2><p>CONSUMED_MESSAGES_BUFFER_SIZE 和 AUTO_SEND_CONSUME_MESSAGE_ENABLED只能用于发布订阅模式，客户端需要进行判断，使得消息队列模式不使用这两个配置项。</p><p>其他配置项都可为两种模式所共享。在实现消息队列时，可能需要针对选项做一些调整，以使得配置生效。暂时没有发现需要调整之处。</p><p>至于客户端自动重连，消息超时值等选项，可在创建队列时通过SubscriptionOptions指定，不需要更改客户端配置文档。</p><h2 id="h2-6">协议封装</h2><p>客户端可以指定任意的主题名，有以下几种方案：</p><ol><li>底层实现时自动加上t_或q_前缀。优点是不用改变协议，服务器可以根据topic名字判断其为主题还是队列，能够防止队列的消费者以主题订阅者的模式访问队列，或相反。缺点是每次涉及到topic时都要进行修正。</li><li>通过在请求中SubscribeRequest加入标志字段，或者扩展某些标志位来实现。优点是不用每次在客户端进行修正。缺点是只有在第一个消费者读取消息时，服务器才能根据接收者的请求内容判断topic是作为主题还是队列。</li></ol><p>实际使用第一种方案。</p><h2 id="stopServingSubscriber">stopServingSubscriber的调用</h2><p>会触发stopServingSubscriber的地方有四个：</p><ol><li>ReleaseOp(AbstractSubscriptionManager) 这个是在hub失去topic的所有权的时候会触发（客户端禁止claim选项）</li><li>CloseSubscriptionHandler 这个是在客户端发送CloseSubscription的请求时会调用（客户端调用CloseSubscription，发送请求，服务器删除一个消费者的信息，如果队列为空则删除订阅者信息）</li><li>UnsubscribeHandler 这个是客户端发送UnsubscribeHandler的请求时调用（客户端禁止发送UnsubscribeHandler请求）</li><li>FIFODeliveryManager中会在实现DeliveryCallback接口的permanentErrorOnSend方法中调用，这个实际上是在ChannelEndPoint里边的operationComplete方法中，ChannelEndPoint发送response失败了之后被调用。（服务器端禁止调用）</li></ol><h1 id="h1-3">实现方法</h1><h2 id="h2-8">删除队列</h2><p>原代码中提供的ZkMetadataManagerFactory::deleteTopicPersistenceInfo，只是删除topic节点下的ledgers子节点，并不删除topic本身，同时topic下还有hub和subscribers节点，及其子节点。</p><p>为了实现完整的删除操作，在创建FIFODeliveryManager时将Zookeeper对象传入，作为其一个成员，并在FIFODeliveryManager提供一个递归删除zNode的方法deleteTopicPersistenceInfoRecursive。当客户端发送unsub请求时，服务器除执行常规操作外，调用deleteTopicPersistenceInfoRecursive删除与topic相关的节点信息。</p><p>如果正在接收时执行unsubscribe，则执行成功后客户端不再接收消息。</p><p style="color:blue">目前deleteTopicPersistenceInfoRecursive是同步操作，权限控制不完善，无版本控制机制。</p><p style="color:blue">待实现：队列不为空时抛出异常，而不是删除。</p><h2 id="h2-9">查询主题或队列中的消息数</h2><h2 id="h2-10">添加新的请求类型</h2><h3 id="h3-14">客户端添加请求</h3><p>如果要在原有的客户端对象上添加，则首先在Subscriber或Publisher中添加方法，然后在HedwigSubscriber实现方法。以sub或unsub为例(省略打印debug信息的代码)。</p><pre><code>(org.apache.hedwig.client.netty. HedwigSubscriber)
+private void asyncSubUnsub(ByteString topic, ByteString subscriberId,
+                               Callback&lt;ResponseBody&gt; callback, Object context,
+                               OperationType operationType, SubscriptionOptions options) {
+    if (OperationType.SUBSCRIBE.equals(operationType)) {
+        if (options.getMessageBound() &lt;= 0 &amp;&amp;
+            cfg.getSubscriptionMessageBound() &gt; 0) {
+            SubscriptionOptions.Builder soBuilder =
+                SubscriptionOptions.newBuilder(options).setMessageBound(
+                    cfg.getSubscriptionMessageBound());
+            options = soBuilder.build();
+        }
+    }
+    PubSubData pubSubData = new PubSubData(topic, null, subscriberId, operationType,
+                                           options, callback, context);
+    channelManager.submitOp(pubSubData);
+}
+
+</code></pre><p>上面代码将请求封装成一个pubSubData类型，交给channelManager.submitOp()处理。首先跳转到AbstractHChannelManager的submitOp。</p><pre><code>(org.apache.hedwig.client.netty.impl. AbstractHChannelManager)
+@Override
+public void submitOp(PubSubData pubSubData) {
+	HChannel hChannel;
+	if (OperationType.PUBLISH.equals(pubSubData.operationType) ||
+	    OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)) {
+	    hChannel = getNonSubscriptionChannelByTopic(pubSubData.topic);
+	} else {
+	    TopicSubscriber ts = new TopicSubscriber(pubSubData.topic,
+	                                             pubSubData.subscriberId);
+	    hChannel = getSubscriptionChannelByTopicSubscriber(ts);
+	}
+	// no channel found to submit pubsub data
+	// choose the default server
+	if (null == hChannel) {
+	    hChannel = defaultServerChannel;
+	}
+	hChannel.submitOp(pubSubData);
+}
+
+</code></pre><p>对于某些特定类型的请求，需要使用特定的Channel来处理pubSubData。其他情况选择默认Channel。</p><p>最终在writePubSubRequest中将请求发送出去。</p><pre><code>(org.apache.hedwig.client.netty.impl. HChannelImpl)
+private void writePubSubRequest(PubSubData pubSubData, PubSubRequest pubSubRequest) {
+    if (closed || null == channel || State.CONNECTED != state) {
+        retryOrFailOp(pubSubData);
+        return;
+    }
+
+    // Before we do the write, store this information into the
+    // ResponseHandler so when the server responds, we know what
+    // appropriate Callback Data to invoke for the given txn ID.
+    try {
+        getHChannelHandlerFromChannel(channel)
+            .addTxn(pubSubData.txnId, pubSubData);
+    } catch (NoResponseHandlerException nrhe) {
+        logger.warn("No Channel Handler found for channel {} when writing request."
+                    + " It might already disconnect.", channel);
+        return;
+    }
+
+    // Finally, write the pub/sub request through the Channel.
+    logger.debug("Writing a {} request to host: {} for pubSubData: {}.",
+                 va(pubSubData.operationType, host, pubSubData));
+    ChannelFuture future = channel.write(pubSubRequest);
+    future.addListener(new WriteCallback(pubSubData, channelManager));
+}
+
+</code></pre><p>在发送请求之前，先将pubSubData存储起来，这样在收到服务器的回复后就能够找到相应的数据并进行正确的处理。在发送之后，还会将一个WriteCallback添加到future中，作为该操作的一个回调函数，该回调函数主要负责发送失败后的重试，或删除对应信息。</p><p>收到消息后，会调用HChannelHandler的messageReceived()进行处理，并且会导致SubscribeResponseHandler（或其他ResponseHandler）的调用。在messageReceived()中有一句<br/>respHandler = handlers.get(pubSubData.operationType);</p><p>可见也是通过操作类型来获取相应的相应处理函数。而这里的operationType，就是在发送请求时在客户端指定的。可见，在初始化时，会将各个ResponseHandler放入HChannelHandler的handlers中。而这些响应回调函数被添加的地方，是MultiplexSubscriptionChannelPipelineFactory，NonSubscriptionChannelPipelineFactory或SimpleSubscriptionChannelPipelineFactory中的createResponseHandlers()方法，不同的ChannelPipelineFactory负责添加不同的处理函数。</p><p>一切从HedwigClientImpl开始。</p><pre><code>(org.apache.hedwig.client.netty. HedwigClientImpl)
+protected HedwigClientImpl(ClientConfiguration cfg, ChannelFactory socketFactory) {
+    this.cfg = cfg;
+    this.socketFactory = socketFactory;
+    if (cfg.isSubscriptionChannelSharingEnabled()) {
+        channelManager = new MultiplexHChannelManager(cfg, socketFactory);
+    } else {
+        channelManager = new SimpleHChannelManager(cfg, socketFactory);
+    }
+    pub = new HedwigPublisher(this);
+    sub = new HedwigSubscriber(this);
+}
+</code></pre><p>MultiplexHChannelManager调用MultiplexSubscriptionChannelPipelineFactor，而SimpleHChannelManager调用SimpleSubscriptionChannelPipelineFactory，同时二者是AbstractHChannelManager的子类，而AbstractHChannelManager的构造函数会调用NonSubscriptionChannelPipelineFactory。</p><p>NonSubscriptionChannel和SubscriptionChannel的区别。客户端有四种操作类型：PUBLISH，UNSUBSCRIBE，SUBSCRIBE，CLOSESUBSCRIPTION，前两个类型对应NonSubscriptionChannel，后两个类型对应SubscriptionChannel。在连接断开时，需要根据不同的类型进行相应的处理，对于前两个类型，只是删除相应的信息即可；对于后两种类型，可能会执行重连操作。同时，在收到服务器的返回信息后，会判断其中是否包含消息，如果是，则需要调用SubscriptionChannel对应的方法来处理。</p><p>如果需要接受消息，但又不需要重连，则可在HChannelHandler的messageReceived()中进行特殊处理。</p><p>因此，为了在客户端添加一个新的请求，应该执行以下几步：</p><ol><li>创建新的操作类型，创建并实现对应的ResponseHandler类；</li><li>根据操作类型，在适当的位置（例如NonSubscriptionChannelPipelineFactory）将操作类型和ResponseHandler添加到handlers中；（需要注意的是，如果要写一个通用的请求，可能在ChannelPipelineFactory的派生类的createResponseHandlers()执行之前就要使用该ResponseHandler，则需要在一定被执行的地方添加该ResponseHandler，例如HChannelHandler的构造函数中，HChannelHandler是handlers的所在地。？）</li><li>添加并实现发送请求的接口，发送操作主要是创建PubSubData对象并利用channelManager.submitOp()发送对象。跟踪处理流程，做相应的处理。</li></ol><h3 id="handler">服务器端添加handler</h3><p>handler的创建在PubSubServer的initializeNettyHandlers中。</p><pre><code>(org.apache.hedwig.server.netty. PubSubServer)
+protected Map&lt;OperationType, Handler&gt; initializeNettyHandlers(
+           TopicManager tm, DeliveryManager dm,
+           PersistenceManager pm, SubscriptionManager sm,
+           SubscriptionChannelManager subChannelMgr) {
+    Map&lt;OperationType, Handler&gt; handlers = new HashMap&lt;OperationType, Handler&gt;();
+    handlers.put(OperationType.PUBLISH, new PublishHandler(tm, pm, conf));
+    handlers.put(OperationType.SUBSCRIBE,
+                 new SubscribeHandler(conf, tm, dm, pm, sm, subChannelMgr));
+    handlers.put(OperationType.UNSUBSCRIBE,
+                 new UnsubscribeHandler(conf, tm, sm, dm, subChannelMgr));
+    handlers.put(OperationType.CONSUME, new ConsumeHandler(tm, sm, conf));
+    handlers.put(OperationType.CLOSESUBSCRIPTION,
+                 new CloseSubscriptionHandler(conf, tm, sm, dm, subChannelMgr));
+    handlers = Collections.unmodifiableMap(handlers);
+    return handlers;
+}
+</code></pre><p>其中OperationType定义在org.apache.hedwig.protocol. PubSubProtocol中。</p><p>Handler的调用在org.apache.hedwig.server.netty.UmbrellaHandler的messageReceived()中。</p><pre><code>@Override
+public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+
+    if (!(e.getMessage() instanceof PubSubProtocol.PubSubRequest)) {
+        ctx.sendUpstream(e);
+        return;
+    }
+
+    PubSubProtocol.PubSubRequest request = (PubSubProtocol.PubSubRequest) e.getMessage();
+
+    Handler handler = handlers.get(request.getType());
+    Channel channel = ctx.getChannel();
+    long txnId = request.getTxnId();
+
+    if (handler == null) {
+        sendErrorResponseToMalformedRequest(channel, txnId, "Request type " + request.getType().getNumber() + " unknown");
+        return;
+    }
+
+    handler.handleRequest(request, channel);
+    ServerStats.getInstance().incrementRequestsReceived();
+}
+
+</code></pre><p>因此，在服务器端，需要做如下工作：</p><ol><li>创建新的操作类型；</li><li>在PubSubServer::initializeNettyHandlers中将OperationType和Handler的映射添加到PubSubServer的成员handlers中；</li><li>定义并实现Handler类；</li></ol><h3 id="h3-16">实例</h3><h4 id="h4-3">增加新的请求类型</h4><p>假设要发送一个请求，让客户端返回一个时间。在不改动PubSubProtocol.java源文件的情况下，暂时用OperationType.START_DELIVERY作为请求类型，在原代码中，客户端并不会向服务器发送这样的请求，但会在其他地方使用该类型，因此实际中应该使用自己新创建的类型，以避免冲突。</p><p>添加新的请求类型涉及到protobuf的使用。</p><h4 id="h4-4">客户端</h4><h5 id="h5-1">实现获取时间的接口</h5><p>在Subscriber中添加一个新方法:</p><pre><code>public void getRequestTime(ByteString topic, ByteString subscriberId,
+			Callback&lt;ResponseBody&gt; callback, Object context	);
+</code></pre><p>并在HedwigSubscriber中实现。为简单期间并未加入有效性检查等机制。</p><pre><code>public void getServerTime(ByteString topic, ByteString subscriberId,
+		Callback&lt;ResponseBody&gt; callback, Object context	) {		
+	PubSubData pubSubData = new PubSubData(topic, null, subscriberId,
+			OperationType.START_DELIVERY, null, callback, context);	
+	channelManager.submitOp(pubSubData);
+}
+</code></pre><p>因为是获取时间的请求，需要在该方法中得到服务器的响应。但submitOp是异步调用，要得到返回值，只能通过回调函数来实现。这里可以实现一个callback，传递给getServerTime，用于打印返回的信息，而context用于存放这些信息。如下：</p><pre><code>static class MyCallback&lt;T&gt; implements Callback&lt;T&gt; {
+	@Override
+	public void operationFailed(Object ctx, PubSubException exception) {
+		// no-op
+	}
+	public void operationFinished(Object ctx, T resultOfOperation) {
+		String message=(String)ctx;
+		System.out.println("Message received:");
+		System.out.println(message);			
+	}
+}
+</code></pre><p>在收到服务器的响应后，提取出时间信息，赋值给保存的PubSubData的context成员即可。</p><p>channelManager.submitOp()会将请求发送出去，发送新请求的大部分工作就完成了。但在AbstractHChannelManager:: submitOp()中，会根据请求类型选择合适的HChannel，因此这里需要加一些东西。如果该请求对应的需要在连接意外断开后能够重连，如同订阅者对连接的要求一样，则需要创建一个SubscriptionChannel，否则使用NonSubscriptionChannel即可。对于查询时间的请求，不需要维持连接，于是在获取HChannel时，将代码改成如下形式</p><pre><code>if (OperationType.PUBLISH.equals(pubSubData.operationType) ||
+    OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)
+    ||OperationType.START_DELIVERY.equals(pubSubData.operationType)) {
+    hChannel = getNonSubscriptionChannelByTopic(pubSubData.topic);
+}
+</code></pre><p>因为需要接受消息，但又不需要重连，所以需要在HChannelHandler的messageReceived()中做特殊处理。比如说，在开始的地方，添加如下逻辑（实际上可优化）</p><pre><code>PubSubResponse myResponse = (PubSubResponse) e.getMessage();
+PubSubData myPubSubData = txn2PubSubData.get(myResponse.getTxnId());
+if(myPubSubData.operationType.equals(OperationType.START_DELIVERY)) {
+	txn2PubSubData.remove(myResponse.getTxnId());
+	AbstractResponseHandler myRespHandler = handlers.get(myPubSubData.operationType);
+	myRespHandler.handleResponse(myResponse, myPubSubData, ctx.getChannel());
+	return;
+}
+</code></pre><p>此外还有其他一些处理流程，根据实际情况，可能需要做一些修改。这里没有改动。</p><h5 id="QueueResponseHandlerhandlers">创建一个QueueResponseHandler类，并添加到handlers中。</h5><p>为了保证该回调函数一定会被添加到handlers，在HChannelHandler的构造函数中，handlers初始化后，执行put操作。</p><pre><code>handlers.put(OperationType.START_DELIVERY, new StatsResponseHandler(cfg, channelManager));
+</code></pre><h5 id="QueueResponseHandler">实现QueueResponseHandler</h5><p>QueueResponseHandler类用于处理从服务器发回来的对请求的响应信息。该类的写法可以参考其他的QueueResponseHandler，比如SubscribeResponseHandler。当返回代码为SUCCESS时，做如下处理：</p><pre><code>case SUCCESS:
+	pubSubData.context=response.getMessage().getBody().toStringUtf8();
+	pubSubData.getCallback().operationFinished(pubSubData.context, null);
+	break;
+</code></pre><p>至此，客户端的代码就写完了。</p><h4 id="h4-5">服务端</h4><h5 id="handler2">添加handler</h5><p>假设服务器端的处理函数是QueueHandler，在PubSubServer::initializeNettyHandlers中，添加如下操作：</p><pre><code>handlers.put(OperationType.START_DELIVERY, new QueueHandler(conf, tm, dm, pm, sm, subChannelMgr));
+</code></pre><p>上述操作中，假设QueueHandler需要使用conf, tm, dm, pm, sm, subChannelMgr这些值。</p><h5 id="Handler">实现Handler</h5><p>创建一个QueueHandler类，实现可参考其他的Handler类。该类主要包括两部分，构造函数和处理函数。构造函数比较简单，简化的处理函数如下</p><pre><code>public void handleRequestAtOwner(final PubSubRequest request, final Channel channel) {	
+
+	String topic=request.getTopic().toStringUtf8();
+	
+	Date now = new Date();
+	DateFormat date = DateFormat.getDateTimeInstance(DateFormat.FULL,DateFormat.FULL); 
+    String serverTime= date.format(now);
+      
+	Message message = Message.newBuilder().setBody(
+			ByteString.copyFromUtf8("topic: "+ topic +"; Current time:"+serverTime)).build();
+	PubSubResponse response = PubSubResponse.newBuilder()
+			.setProtocolVersion(ProtocolVersion.VERSION_ONE)
+			.setStatusCode(StatusCode.SUCCESS).setTxnId(request.getTxnId()).setMessage(message)
+			.build();
+	
+	channel.write(response);		
+}
+
+</code></pre><p>处理函数首先获取请求相关的信息，然后执行请求，获取时间，将结果封装成PubSubResponse对象，最后通过Channel发送消息。</p><h2 id="h2-11">消息重传</h2><h3 id="h3-17">原代码读取消息的流程</h3><ul><li>FIFODeliveryManager.ActiveSubscriberState::deliverNextMessage() ActiveSubscriberState作为回调函数传给ScanRequest对象，然后调用persistenceMgr.scanSingleMessage(scanRequest)。</li><li>ReadAheadCache::scanSingleMessage() 构造ScanRequestWrapper对象并添加到队列</li><li>ScanRequestWrapper:: performRequest() 添加回调函数ActiveSubscriberState到cacheValue中。通过doReadAhead()创建RangeScanRequest对象，并通过</li><li>realPersistenceManager.scanMessages(readAheadRequest) 执行scan请求。doReadAhead()调用doReadAheadStartingFrom()，其第三个参数为预读的数量。 doReadAheadStartingFrom()中添加ReadAheadScanCallback到cacheValue。ReadAheadScanCallback负责installedStubs的相关处理，其工作之一是检查读出的消息是否是想要的。</li><li>BookkeeperPersistenceManager::scanMessages() 添加RangeScanOp到队列。会执行到会执行到RangeScanOp::runInternal() -&gt; RangeScanOp:: startReadingFrom() -&gt; RangeScanOp::read()。其中read()比较详细。</li></ul><h3 id="h3-18">重传的实现</h3><p>在原代码中，向cacheValue中添加ActiveSubscriberState（作为回调函数）的时候，如果消息已经存在，则直接调用ActiveSubscriberState的messageScanned()方法。由此可见，先查询cache后读取cache的逻辑在原代码中已经被实现了。</p><p>为实现队列消息的重发，需要做到以下几点：</p><h4 id="h4-6">重新读取消息</h4><p>原有的ActiveSubscriberState已实现了消息的读取和发送，可以在此基础上实现重新读取和重新发送。但是需要做一些修改，例如标记消息是否是重读的消息。</p><p>ActiveSubscriberState的messageScanned()方法有一个ctx参数，是在创建ScanRequest对象时传递给后者的，并且在原代码中默认为null。可对ScanRequest的构造函数进行修改，通过该参数指定消息是否是重读的消息。</p><p>另外，对于scan失败时会执行scanFailed()，ActiveSubscriberState失败时自动停止deliver，在延迟一段时间后重新启动。对于重传的消息，不需要进行重试，但需要知道（即使不是在这个时刻）是哪个消息scan失败了。scanFailed()也有一个参数ctx，同messageScanned()中的ctx来历相同。因此，在创建ScanRequest请求时，可将消息序号作为其ctx参数。</p><h4 id="h4-7">读取单条消息</h4><p>可在doReadAhead()中添加控制逻辑，如果是队列的重读请求，则将预读的数量设置为1，成功调用一次doReadAheadStartingFrom()即可。为了判断重读请求，可通过在ScanRequest中添加标志位进行说明，或通过检查ScanRequest的回调函数的成员变量，或通过检查ScanRequest的回调函数的类型来实现。通过前面的方案可知，重传的消息其ScanRequest的ctx变量不为空，所以可据此进行判断。</p><h2 id="h2-12">消息缓存管理</h2><p>如前所述。	</p><p>仍使用一个cache，但将二者进一步分类存储。为达到此目的，可考虑ReadAheadCache的两个用于索引的映射timeIndexOfAddition和orderedIndexOnSeqId。可使用两组timeIndexOfAddition进行索引，一组对应主题，一组对应队列，需要修改如下方法：timeIndexOfAddition在addMessageToCache(), removeMessageFromCache(), collectOldCacheEntries()中被使用。而orderedIndexOnSeqId在用于addMessageToCache(), removeMessageFromCache(), deliveredUntil()中被使用。二者的区别在于最后一个方法，timeIndexOfAddition以时间为基准对CacheKey进行索引，而orderedIndexOnSeqId以序号为基准对CacheKey进行索引。因此可添加一个时间索引，例如timeIndexOfAdditionForQueue，以达到对队列和主题分别进行索引的目的。</p><p>首先，将原有timeIndexOfAddition视为两部分：针对队列的和针对主题的，并且timeIndexOfAdditionForQueue共享timeIndexOfAddition相关的一些参数，例如removeMessageFromCache的maintainTimeIndex参数。对于队列缓存，还需要有一个参数presentCacheSizeForQueue，用于对缓存占用情况进行统计。</p><p>addMessageToCache()中，如果topic用于队列，则将索引添加到timeIndexOfAdditionForQueue中；否则，将索引添加到timeIndexOfAddition中；更新presentCacheSizeForQueue（原代码已更新了presentCacheSize）。</p><p>removeMessageFromCache()中，如果topic属于队列，则从timeIndexOfAdditionForQueue中删除索引，否则，从timeIndexOfAddition中删除；更新presentCacheSizeForQueue。</p><p>collectOldCacheEntries()中，分别对presentCacheSize和presentCacheSizeForQueue进行检查，视情况决定回收那些消息。删除消息后，要更新presentCacheSizeForQueue和timeIndexOfAddition。</p><p>在服务器端调用persistenceMgr.deliveredUntil(topic, nowMinSeqId)时，会导致cache中序号nowMinSeqId之前的所有消息都会被删除。为了更充分地使用cache，每条消息被consume之后直接删除其对应的cache。同时修改persistenceMgr.deliveredUntil()，对于消息队列，不再重复删除cache。</p><h2 id="h2-13">超时控制</h2><p>在每个QueueConsumer对象中，未确认消息的信息由两部分组成：消息序号和发送时间戳。当消息被确认后，需要通过序号找到该消息并删除，所以未确认消息必须以消息序号为查找的依据。以TreeSet的形式组织这些消息，实现时重载了TreeSet的compare()方法，序号相等即判定为元素相同，这样就可以只凭序号（时间戳任意）查找TreeSet中的元素。</p><p>但是，要准确地判断TreeSet中哪些消息发生了超时，就只能对该TreeSet结构进行遍历，降低了效率。</p><p>另一方面，对超时时间进行精确控制不是该机制的主要目的。超时控制的主要目的，是保证那些序号靠前的消息尽早得到处理，否则即使其他消息已经被确认，也无法在服务器端被consume。</p><p>因此，执行超时判断时，检查每个QueueConsumer对象的TreeSet中的最小序号，如果该序号未超时，则不再检查其他的消息，即使它们发生了超时。</p><p>消息发送时加时间戳。不管是正常传送的消息，因超时重传的消息，还是因客户端断开而重传的消息。</p><p>检查的时机：</p><ul><li>每次客户端发送了确认，但不能被服务器端consume时检查。这时被确认的序号增加，但服务器端却不能consume，说明有一个比较靠前的消息尚未被确认。检查该序号是否超时即可。</li></ul><p>但是，在没有客户端发来consume请求时，无法执行超时检查。假如此时服务器中没有消息可发送，但有一个处理速度快的客户端等待接收消息，而其他客户端发生了超时，超时的无法被重新发送。</p><ul><li>每次deliverNextMessage()之前都进行检查。检查时需要遍历所有的QueueConsumer，效率不高，并且不一定有超时的消息。因为有时间戳进行控制，所以只在必要时执行这些遍历操作。</li></ul><p>如果消息数量过少，可能一些客户端调用deliverNextMessage()时尚未发生超时，因为Bookeeper中没有消息而停止deliver，之后其他客户端发生了超时，但无法被重传。此时对业务造成的影响不大。</p><h2 id="Hub">客户端获取Hub服务器列表</h2><p>已实现。</p><h2 id="h2-15">异步的消息发送流程</h2><p>在实现消息队列时，最初在messageScanned()中判断窗口是否达到阈值，如果是，则停止发送消息(消息已经被确认)，但这样的话，控制逻辑会比较麻烦，而且有可能会使消息发送流程停止（这一点尚不确定）。</p><p>应该仿照发布订阅模式的流程，在deliverNextMessage()中判断是否还需要读取消息，只有不从bookeeper中读取消息，才能停止messageScanned()的调用。</p><p>由于使用了waitingConsumers和busyConsumers两个队列，二者的耦合性很强，并且被同时被多线程访问，因此必须进行同步。目前的实现是为每个集群设置一个同步锁，只有获得同步锁的线程才能对这两个队列进行访问。</p><h1 id="h1-4">测试</h1><h2 id="h2-16">消费者集群</h2><p>随时添加或移除consumer，看服务器是否工作正常，消息是否重复或丢失。</p><h2 id="h2-17">窗口控制</h2><p>设置不同的窗口大小，观察未consume的消息超过窗口值时客户端是否被移动到busyConsumers队列；新的consume到来后，如果对应的客户端在busyConsumers队列中，其是否被移动到waitingConsumers队列。</p><h2 id="h2-18">客户端断开时的序号移动</h2><p>客户端断开时未确认序号是否被移动到重传队列，其他客户端重新开始接收时，收到的消息序号和此前已经确认的消息序号是否具有连续性。</p><h2 id="cache3">删除cache的操作</h2><p>当consume请求到来时，跟踪服务器的响应流程，观察是否正常删除对应的cache。</p><h2 id="cache4">回收cache的操作</h2><p>当缓存的消息过大时，是否会调用collectOldCacheEntries()方法以及该方法的执行是否正常。为了测试这一功能，将maxCacheSizeForQueue设置为一个足够小的值，使其容易被溢出，通过debug跟踪流程，并打印presentCacheSizeForQueue信息。</p><h2 id="h2-21">连接断开时重传</h2><p>首先将maxCacheSizeForQueue设置为足够大，使得重传时服务器能从cache中找到消息；然后将maxCacheSizeForQueue设置为足够小，使得服务器重传时必须从Bookeeper中读取消息。跟踪流程，查看变量，判断是否正常。</p><h2 id="h2-22">消息超时后重传</h2><p>客户端不consume或延迟一定时间后consume某些消息，触发服务器端的超时处理。</p><h1 id="h1-5">问题</h1><h2 id="h2-23">服务器重启或切换时导致消息重发</h2><p>服务器端批量consume消息，如果服务器发生了重启，很可能一些客户端已经消费的消息尚未consume。于是导致消息的重新发送。</p><p>但不会出现消息丢失的情况。</p><h2 id="h2-24">客户端处理速度差别大导致重发消息数过多</h2><p>服务器端可consume的消息序号由处理速度最慢的客户端决定。该效应的一个直接影响是，服务器切换或重启时，已经consume的消息数取决于连接断开前处理速度最慢的客户端。</p><p>其中处理速度会受到客户端窗口的影响。</p><p>假设有两个客户端A和B，其中A的处理速度为s1，B的处理速度为s2，其中s1&lt;s2。当服务稳定后，所有消息中的s1/(s1+s2)被A处理并确认，s2/(s1+s2)被B处理并确认。假设所有客户端到服务器的连接断开时，已发但未被确认的消息总数为y，则A尚未确认y*s1/(s1+s2)之后的消息， B尚未确认y*s2/(s1+s2)之后的消息，则服务器的未确认序号由二者之间的小者，即y*s1/(s1+s2)决定。因此，已确认序号由x*s1/(s1+s2)决定。即使B确认了x*s1/(s1+s2)之后的消息，也不能使服务器consume这些消息。</p><p>假设s1&lt;&lt;s2，则可能导致B消费了很多消息，但不被服务器端consume。当服务重启后，会重发很多B已经处理过的消息。Right？</p><p>多个客户端的情况同理。</p><p>只在服务器切换或重启，并且消息尚未全部确认时会造成问题。客户端的数量不变时，处理速度越接近，该效应造成的影响越小。</p><h2 id="h2-25">连接建立阶段发送大量消息导致并发连接数过多</h2><p>客户端在发送消息时检查到连接尚未建立后，会首先创建连接，在异步发送时，后续发送请求不等前面的发送请求执行完就发送出去，此时前面的连接尚未被证明是可用的，因此客户端建立新的连接向服务器发消息。这导致初始期间并行连接数过大。再晚一点，当已有连接可用时，新的请求可以通过该连接发送，就不再增加新连接，而且很多已建立的连接由于没有被后面的请求使用也会被关闭，所以连接数维持在正常情况。</p><p>假如一个客户端在发送其第4个请求时，的前3个请求都尚未收到服务器端的回复，于是为请求4创建一个新的连接，此时总共有4个连接 c1,c2,c3,c4；随后，在发送第5个请求前，客户端收到请求2执行成功的返回信息，将可用连接的记录更新为c2；于是请求5其其后的请求都将通过c2发送。至于c1,c3,c4，据观察在服务端是被关闭了。客户端只需要一个可用的连接，所以即使再后来收到请求1，3，4执行成功的信息，也不会在晚些时候用c1,c3,c4替换。</p><h2 id="h2-26">重传逻辑不完善</h2><p>服务器上已无消息，且原有客户端处理超时的情况下，新的客户端无法接受消息，也不能使这些消息重传。</p><p>当有新消息到来，或某个客户端断开时，会导致超时的消息重传。</p><p>原因是，在deliverNextMessage停止的情况下，只有发生一些事件时才会再次触发deliverNextMessage。</p><p>还没有满意的解决方案。</p><h1 id="h1-6">发布订阅模式下的订阅者集群</h1><p>将消息队列模式下的消费者集群功能进行扩展，实现订阅者的集群。因此消息队列和发布订阅的一些代码可进一步合并。</p><h2 id="h2-27">配置文件</h2><p>不再支持订阅者的票批量确认，因此ClientConfiguration的isAutoSendConsumeMessageEnabled()总是返回false, getConsumedMessagesBufferSize()总是返回1。</p><h2 id="h2-28">消息确认和消息重传机制</h2><p>同消息队列。</p><h2 id="h2-29">缓存</h2><p>发布订阅模式和消息队列模式使用同一个缓存。缓存管理机制同消息队列。</p><h2 id="unsub">订阅者发送unsub请求时的处理</h2><p>如果使用原来的代码，只要有一个订阅者发送了unsub请求，则服务器端就会删除该订阅者id对应的订阅信息，而不管其他使用相同订阅者id的客户端状态。</p><p style="color:red">有待改进。</p><h2 id="h2-31">测试</h2><p>功能正常。</p><h1 id="h1-7">原系统中的一些机制</h1><h2 id="h2-32">订阅者（消费者）的订阅信息</h2><p>hedwig会为订阅者（消费者）维护两份订阅信息，一部分是在内存中，具体一点就是保存在程序的一个map中，另一部分是持久化到一个data source。</p><p>SubscriptionData类是在持久化的时候会使用到的类，它包含两个实例变量，一个是SubscriptionState类的实例，一个是SubscriptionPreferences的实例。SubscriptionState中实际使用的只有一个字段，MessageSeqId seqId，用来表示当前已经consume的最后一条消息的seqId。SubscriptionPreferences是一些针对这次订阅的配置信息，窗口大小（messageWindowSize）是一个比较重要的内容。当前的hedwig使用zookeeper作为数据的存储点。</p><p>InMemorySubscriptionState类包含一个订阅的所有信息，从名字即可看出它就是用来在内存中维护订阅信息的。这个类与SubscriptionData具体包含的内容基本是相同的（也有SubscriptionState和SubscriptionPreferences类的实例），只不过这个类中包含了更多方法，其中还包含直接从这个类装换到SubscriptionData类的方法，十分方便。</p><h3 id="h3-19">创建</h3><p>订阅信息是在订阅的时候创建的。AbstractSubscriptionManager会接受订阅请求，SubscriptionData，也就是持久化的信息会交给子类去完成。在完成新的订阅信息的持久化之后，AbstractSubscriptionManager会为这个订阅创建InMemorySubscriptionState，然后保存到上边提到过的top2sub2seq中。</p><h3 id="h3-20">更新</h3><p>更新动作发生在AbstractSubscriptionManager.setConsumeSeqIdForSubscriber异步方法中，它创建一个ConsumeOp然后返回。既然是名为consume，这个方法是服务端完成consume流程中的一部分。</p><p>在ConsumeOp中，会先更新InMemorySubscriptionState，如果发现当前consume的seqId的值减去已经持久化的seqId之后超过了一个值（consume_interval），将执行具体的持久化动作。</p><h3 id="h3-21">删除</h3><p>naturally，删除发生在AbstractSubscriptionManager.unsubscribe中，先执行删除持久化的数据，然后清理内存中的InMemorySubscriptionState。</p><h2 id="BK">让BK回收不会再使用的消息</h2><p>具体的实现代码是在BookkeeperPersistenceManager这个类中的consumeUntil方法。这个方法是一个异步方法，它借助于ConsumerUntilOp这个类。比较有趣的是，这个consumeUntil方法只会在AbstractSubscriptionManager.MessagesConsumedTask类中被调用。这个MessagesConsumedTask实现了TimerTask，会尝试从保存着所有订阅信息的ConcurrentHashMap&lt;ByteString, Map&lt;ByteString, InMemorySubscriptionState&gt;&gt; top2sub2seq中确定每个topic中被所有订阅者都消费了的最大的seqId，这样就能安全地交给PersistenceManager以便其进行空间的回收。</p><h2 id="ReadAheadCache">清理ReadAheadCache中缓存的消息</h2><p>RAC中的deliveredUntil是唯一一个用来清理缓存的方法，而且是将传入的seqId之前所有缓存的消息都从缓存中移除（缓存中具体如何保存消息，可以参见上文）。</p><p>唯一会触发ReadAheadCache中deliveredUntil方法的地方是在FIFODeliveryManager.moveDeliveryPtrForward方法中，这也是一个异步方法，它构造一个DeliveryPtrMove类来具体完成相关的操作。在FIFO中，追踪所有topic的所有订阅者的消费情况是通过Map&lt;ByteString, SortedMap&lt;Long, Set<ActiveSubscriberState>&gt;&gt; perTopicDeliveryPtrs来完成的。在DeliveryPtrMove中会对perTopicDeliveryPtrs进行一些增加删除的操作，之后会调用方法检测对比perTopicDeliveryPtrs中的seqId。如果发现某个topic的某（几）条消息被所有订阅者都消费了（具体情况请看代码，涉及了removeDeliveryPtr和getMinimumSeqId两个方法），将会调用deliveredUntil方法来清理缓存。</p><h2 id="ReadAheadCache2">消息进入缓存（ReadAheadCache）的时机</h2><p>消息进入缓存的操作都是在ReadAheadCache这个类中，会有两种情况会将消息放入缓存中，消息被发布到服务端和消息从bk中读取出来的时候，前一个步骤应该是优化的选择，后一种情况是这个类的本意所在。具体进行操作的方法是addMessageToCache，这个方法会完成将消息放入CacheValue中（有一些其他操作，具体见代码），然后更新orderedIndexOnSeqId和timeIndexOfAddition这两个追踪消息信息的集合。这个方法还负责触发空间回收的工作，当缓存大小超过设置的值的时候。</p><p>addMessageToCache这个方法只在一个地方被用到，ScanResponse，它是一个CacheRequest，类似于FIFODeliveryManager中的DeliveryManagerRequest。而这个ScanResponse方法在两个地方被用到，对应于上文提到的两种情况：</p><ol><li>PersistCallback.operationFinished，在完成消息持久化到bk之后被调用。</li><li>ReadAheadScanCallback.messageScanned方法，在预读完成之后被调用（会针对每一条消息被调用一次）。</li></ol><h2 id="h2-36">关于队列（主题）中当前的消息数量</h2><p>消息数量涉及两个边界：seqId最小的那一条消息，以及最近一条发布到（生产）的消息的seqId。</p><p>但是这里又存在着选择，是基于存储在Bookkeeper中消息，还是缓存中的消息信息来确定下界。但是查看原本的代码发现在BookkeeperPersistenceManager类中并没有真正获取最小seqId的方法。具体来说，这个类中有getMinSeqIdForTopic方法：</p><pre><code>public long getMinSeqIdForTopic(ByteString topic) {
+    TopicInfo topicInfo = topicInfos.get(topic);
+
+    if (topicInfo == null || topicInfo.messageBound == topicInfo.UNLIMITED) {
+        return Long.MIN_VALUE;
+    } else {
+        return (topicInfo.lastSeqIdPushed.getLocalComponent() - topicInfo.messageBound) + 1;
+    }
+}
+
+</code></pre><p>但是可以从代码中看到，当messageBound为UNLIMITED，实际值为0时，将返回Long.MIN_VALUE，而messageBound不为零时返回的值对我们这里的需求也没有太大的作用。</p><p>但是BookkeeperPersistenceManager这个类中的另一个方法是有用的：</p><pre><code>public MessageSeqId getCurrentSeqIdForTopic(ByteString topic) throws ServerNotResponsibleForTopicException {
+    TopicInfo topicInfo = topicInfos.get(topic);
+
+    if (topicInfo == null) {
+        throw new PubSubException.ServerNotResponsibleForTopicException("");
+    }
+
+    return topicInfo.lastSeqIdPushed;
+}
+
+</code></pre><p>它返回的是这个主题（队列）中最后被推送到BK中保存的消息，也就是最后一条发布的消息（的seqId）。</p><p>在ReadAheadCache中并没有具体的方法用以获取某个主题的消息数量相关的信息，但是它有一个用来追踪缓存的消息的结构可以利用：Map&lt;ByteString, SortedSet<Long>&gt; orderedIndexOnSeqId，前文也有提到。通过这个map，我们能拿到某个主题（队列）中被读入缓存，并且还没有被成功消费的所有消息的seqId，而且是顺序存储的。这样就能够很轻松的拿到指定主题在缓存中seqId最小的那一条消息（其实就能看做是当前主题或队列中的第一条消息），结合最后一条发布的消息，就能得到消息的数量。</p><p>但是我们还要考虑系统失效之后恢复之时的情况，</p><h2 id="Hubownership">Hub与主题的ownership</h2><p>首先要说明的是，hedwig中按照请求类型的不同实现了相应的handler，如PublishHandler、SubscribeHandler等。对handler的选择发生在UmbrellaHandler中，但是所有的handler都实现了BaseHandler，而BaseHandler实现了接口Handler，其关键方法是void handleRequest(final PubSubRequest request, final Channel channel) 。在这个handleRequest方法中，主要完成的工作是根据持久化的信息来判断本hub是否是请求中包含主题的owner，如果是，将开始请求的受理过程。如果不是owner，则会将owner的地址以ServerNotResponsibleForTopicException的形式响应给客户端。如果这个主题还没有owner，将会有尝试获取ownership的操作，通过versionized opertation来保证如果争抢出现，则先到先得。</p><p>下面具体描述代码流程：</p></body></html>

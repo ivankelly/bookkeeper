@@ -1,0 +1,9 @@
+Replace this text with your _textile_.
+
+bc.. 
+@Override
+public void setConsumeSeqIdForSubscriber(ByteString topic, ByteString subscriberId, MessageSeqId consumeSeqId,Callback<Void> callback, Object ctx) {
+	queuer.pushAndMaybeRun(topic, new ConsumeOp(topic, subscriberId, consumeSeqId, callback, ctx));
+}
+
+p. Replace this text with your _textile_.
