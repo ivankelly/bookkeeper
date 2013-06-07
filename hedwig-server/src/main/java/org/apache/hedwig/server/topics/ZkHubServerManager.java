@@ -303,4 +303,27 @@ class ZkHubServerManager implements HubServerManager {
                        dataCallback, child);
         }
     }
+    
+    /* msgbus add--> */
+    public void getAvailableHubs(final Callback<String> cb, Object ctx) {
+        // TODO Auto-generated method stub
+        zk.getChildren(hubNodesPath, false, new SafeAsyncZKCallback.ChildrenCallback() {
+            @Override
+            public void safeProcessResult(int rc, String path, Object ctx, List<String> children) {
+                if (rc != Code.OK.intValue()) {
+                    cb.operationFailed(ctx, new PubSubException.UnexpectedConditionException(
+                            "Could not get list of available hubs"));
+                    return;
+                }
+                String res="";
+                for(String str:children) {
+                    res+=str;
+                    res+=";";
+                }
+                cb.operationFinished(ctx, res);
+            }
+
+        }, null);
+    }
+    /* <--msgbus add */
 }

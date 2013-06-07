@@ -43,14 +43,14 @@ import org.apache.hedwig.client.api.Publisher;
 import org.apache.hedwig.client.conf.ClientConfiguration;
 import org.apache.hedwig.util.Callback;
 
-import org.apache.hedwig.server.HedwigHubTestBase;
+import org.apache.hedwig.server.HedwigHubTestBase1;
 import org.apache.hedwig.server.common.ServerConfiguration;
 
-public class MessageBoundedPersistenceTest extends HedwigHubTestBase {
+public class MessageBoundedPersistenceTest extends HedwigHubTestBase1 {
     protected static Logger logger = LoggerFactory.getLogger(MessageBoundedPersistenceTest.class);
 
     protected class SmallReadAheadServerConfiguration
-        extends HedwigHubTestBase.HubServerConfiguration {
+        extends HedwigHubTestBase1.HubServerConfiguration {
         SmallReadAheadServerConfiguration(int serverPort, int sslServerPort) {
             super(serverPort, sslServerPort);
         }

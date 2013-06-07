@@ -210,8 +210,10 @@ public abstract class AbstractHChannelManager implements HChannelManager {
     @Override
     public void submitOp(PubSubData pubSubData) {
         HChannel hChannel;
+        /* msgbus-->  add "OperationType.QUEUE_TOPIC_OP" <--msgbus */
         if (OperationType.PUBLISH.equals(pubSubData.operationType) ||
-            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)) {
+            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)
+            || OperationType.QUEUE_TOPIC_OP.equals(pubSubData.operationType)) {
             hChannel = getNonSubscriptionChannelByTopic(pubSubData.topic);
         } else {
             TopicSubscriber ts = new TopicSubscriber(pubSubData.topic,
@@ -231,8 +233,10 @@ public abstract class AbstractHChannelManager implements HChannelManager {
         logger.debug("Submit operation {} to host {}.",
                      va(pubSubData, host));
         HChannel hChannel;
+        /* msgbus--> add a type QUEUE_TOPIC_OP <--msgbus */
         if (OperationType.PUBLISH.equals(pubSubData.operationType) ||
-            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)) {
+            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)
+            || OperationType.QUEUE_TOPIC_OP.equals(pubSubData.operationType)) {
             hChannel = getNonSubscriptionChannel(host);
             if (null == hChannel) {
                 // create a channel to connect to specified host
@@ -257,8 +261,10 @@ public abstract class AbstractHChannelManager implements HChannelManager {
         logger.debug("Submit operation {} to thru channel {}.",
                      va(pubSubData, channel));
         HChannel hChannel;
+        /* msgbus--> add a type QUEUE_TOPIC_OP <--msgbus */
         if (OperationType.PUBLISH.equals(pubSubData.operationType) ||
-            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)) {
+            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)
+            || OperationType.QUEUE_TOPIC_OP.equals(pubSubData.operationType)) {
             hChannel = createAndStoreNonSubscriptionChannel(channel);
         } else {
             hChannel = createAndStoreSubscriptionChannel(channel);

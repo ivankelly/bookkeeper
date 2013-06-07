@@ -65,7 +65,8 @@ public class SubscriptionChannelManager implements ChannelDisconnectListener {
          * Act on a particular topicSubscriber being disconnected
          * @param topicSubscriber
          */
-        public void onSubChannelDisconnected(TopicSubscriber topicSubscriber);
+        /* msgbus modified, added a param */
+        public void onSubChannelDisconnected(TopicSubscriber topicSubscriber, Channel channel);
     }
 
     final ConcurrentHashMap<TopicSubscriber, Channel> sub2Channel;
@@ -99,7 +100,8 @@ public class SubscriptionChannelManager implements ChannelDisconnectListener {
                 // remove entry only currently mapped to given value.
                 sub2Channel.remove(topicSub, channel);
                 for (SubChannelDisconnectedListener listener : listeners) {
-                    listener.onSubChannelDisconnected(topicSub);
+                    /* msgbus modified, added a param */
+                    listener.onSubChannelDisconnected(topicSub, channel);
                 }
             }
         }
@@ -168,6 +170,14 @@ public class SubscriptionChannelManager implements ChannelDisconnectListener {
                         subSuccess = true;
                     }
                 }
+                /* msgbus added */
+                else {
+                    // Also treated it a success action, to support cluster of subscribers.
+                    // so subSuccess never becomes false.
+                    // need completing
+                    subSuccess = true;
+                }
+                /* msgbus added */
                 if (!subSuccess) {
                     logger.error("Error serving subscribe request for ({}) from ({}) since it already served on ({}).",
                                  va(topicSub, channel, oldChannel));

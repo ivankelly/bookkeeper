@@ -849,6 +849,8 @@ public class BookkeeperPersistenceManager implements PersistenceManagerWithRange
                         ledgerHandle.close();
                     } catch (InterruptedException ie) {
                         // the exception would never be thrown for a read only ledger handle.
+                        /* msgbus */
+                        logger.error("msgbus: InterruptedException");
                     } catch (BKException bke) {
                         // the exception would never be thrown for a read only ledger handle.
                     }

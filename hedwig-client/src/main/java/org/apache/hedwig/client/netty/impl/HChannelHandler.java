@@ -38,6 +38,7 @@ import org.apache.hedwig.client.data.PubSubData;
 import org.apache.hedwig.client.exceptions.NoResponseHandlerException;
 import org.apache.hedwig.client.netty.NetUtils;
 import org.apache.hedwig.client.handlers.AbstractResponseHandler;
+import org.apache.hedwig.client.handlers.QueueResponseHandler;
 import org.apache.hedwig.client.handlers.SubscribeResponseHandler;
 import org.apache.hedwig.exceptions.PubSubException.UncertainStateException;
 import org.apache.hedwig.exceptions.PubSubException.UnexpectedConditionException;
@@ -78,6 +79,10 @@ public class HChannelHandler extends SimpleChannelHandler {
         this.cfg = cfg;
         this.channelManager = channelManager;
         this.handlers = handlers;
+        
+        /* msgbus: Add general handler here */        
+        handlers.put(OperationType.QUEUE_TOPIC_OP, new QueueResponseHandler(cfg, channelManager));
+       
         subHandler = (SubscribeResponseHandler) handlers.get(OperationType.SUBSCRIBE);
     }
 

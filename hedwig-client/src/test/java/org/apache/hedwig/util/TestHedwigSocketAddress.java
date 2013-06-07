@@ -32,35 +32,35 @@ public class TestHedwigSocketAddress extends TestCase {
     private int invalidPort = -9999;
     private String COLON = ":";
 
-    @Test(timeout=60000)
+    @Test
     public void testCreateWithSSLPort() throws Exception {
         HedwigSocketAddress addr = new HedwigSocketAddress(hostname, port, sslPort);
         assertTrue(addr.getSocketAddress().equals(new InetSocketAddress(hostname, port)));
         assertTrue(addr.getSSLSocketAddress().equals(new InetSocketAddress(hostname, sslPort)));
     }
 
-    @Test(timeout=60000)
+    @Test
     public void testCreateWithNoSSLPort() throws Exception {
         HedwigSocketAddress addr = new HedwigSocketAddress(hostname, port);
         assertTrue(addr.getSocketAddress().equals(new InetSocketAddress(hostname, port)));
         assertTrue(addr.getSSLSocketAddress() == null);
     }
 
-    @Test(timeout=60000)
+    @Test
     public void testCreateFromStringWithSSLPort() throws Exception {
         HedwigSocketAddress addr = new HedwigSocketAddress(hostname+COLON+port+COLON+sslPort);
         assertTrue(addr.getSocketAddress().equals(new InetSocketAddress(hostname, port)));
         assertTrue(addr.getSSLSocketAddress().equals(new InetSocketAddress(hostname, sslPort)));
     }
 
-    @Test(timeout=60000)
+    @Test
     public void testCreateFromStringWithNoSSLPort() throws Exception {
         HedwigSocketAddress addr = new HedwigSocketAddress(hostname+COLON+port);
         assertTrue(addr.getSocketAddress().equals(new InetSocketAddress(hostname, port)));
         assertTrue(addr.getSSLSocketAddress() == null);
     }
 
-    @Test(timeout=60000)
+    @Test
     public void testCreateWithInvalidRegularPort() throws Exception {
         boolean success = false;
         try {
@@ -72,7 +72,7 @@ public class TestHedwigSocketAddress extends TestCase {
         assertTrue(success);
     }
 
-    @Test(timeout=60000)
+    @Test
     public void testCreateWithInvalidSSLPort() throws Exception {
         boolean success = false;
         try {
@@ -84,7 +84,7 @@ public class TestHedwigSocketAddress extends TestCase {
         assertTrue(success);
     }
 
-    @Test(timeout=60000)
+    @Test
     public void testToStringConversion() throws Exception {
         HedwigSocketAddress addr = new HedwigSocketAddress(hostname, port, sslPort);
         HedwigSocketAddress addr2 = new HedwigSocketAddress(addr.toString());
@@ -93,7 +93,7 @@ public class TestHedwigSocketAddress extends TestCase {
         addr.toString().equals(addr2.toString());
     }
 
-    @Test(timeout=60000)
+    @Test
     public void testIsSSLEnabledFlag() throws Exception {
         HedwigSocketAddress sslAddr = new HedwigSocketAddress(hostname, port, sslPort);
         assertTrue(sslAddr.isSSLEnabled());

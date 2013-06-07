@@ -26,44 +26,49 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
-import com.google.protobuf.ByteString;
 import org.apache.hedwig.client.api.MessageHandler;
-import org.apache.hedwig.client.conf.ClientConfiguration;
-import org.apache.hedwig.client.HedwigClient;
-import org.apache.hedwig.client.api.Publisher;
-import org.apache.hedwig.client.api.Subscriber;
 import org.apache.hedwig.exceptions.PubSubException;
 import org.apache.hedwig.exceptions.PubSubException.ClientNotSubscribedException;
+import org.apache.hedwig.filter.ClientMessageFilter;
+import org.apache.hedwig.filter.MessageFilterBase;
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
 import org.apache.hedwig.protocol.PubSubProtocol.MessageSeqId;
 import org.apache.hedwig.protocol.PubSubProtocol.PublishResponse;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscribeRequest.CreateOrAttach;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionEvent;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionOptions;
+import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionPreferences;
 import org.apache.hedwig.server.PubSubServerStandAloneTestBase;
 import org.apache.hedwig.util.Callback;
 import org.apache.hedwig.util.ConcurrencyUtils;
-import org.apache.hedwig.util.SubscriptionListener;
-import org.apache.hedwig.util.HedwigSocketAddress;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.protobuf.ByteString;
+import com.yonyou.msgbus.client.MsgBusClient;
+import com.yonyou.msgbus.client.PubSubClient;
 
 @RunWith(Parameterized.class)
 public class TestPubSubClient extends PubSubServerStandAloneTestBase {
-
+	protected static Logger logger = LoggerFactory
+			.getLogger(TestPubSubClient.class);
     private static final int RETENTION_SECS_VALUE = 10;
 
     // Client side variables
-    protected HedwigClient client;
-    protected Publisher publisher;
-    protected Subscriber subscriber;
+	// protected HedwigClient client;
+	// protected Publisher publisher;
+	// protected Subscriber subscriber;
+	protected MsgBusClient mbclient;
+	protected PubSubClient client;
 
-    protected class RetentionServerConfiguration extends StandAloneServerConfiguration {
+	protected class RetentionServerConfiguration extends
+			StandAloneServerConfiguration {
         @Override
         public boolean isStandalone() {
             return true;
@@ -78,30 +83,7 @@ public class TestPubSubClient extends PubSubServerStandAloneTestBase {
     // SynchronousQueues to verify async calls
     private final SynchronousQueue<Boolean> queue = new SynchronousQueue<Boolean>();
     private final SynchronousQueue<Boolean> consumeQueue = new SynchronousQueue<Boolean>();
-    private final SynchronousQueue<SubscriptionEvent> eventQueue =
-        new SynchronousQueue<SubscriptionEvent>();
-
-    class TestSubscriptionListener implements SubscriptionListener {
-        SynchronousQueue<SubscriptionEvent> eventQueue;
-        public TestSubscriptionListener() {
-            this.eventQueue = TestPubSubClient.this.eventQueue;
-        }
-        public TestSubscriptionListener(SynchronousQueue<SubscriptionEvent> queue) {
-            this.eventQueue = queue;
-        }
-        @Override
-        public void processEvent(final ByteString topic, final ByteString subscriberId,
-                                 final SubscriptionEvent event) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    logger.debug("Event {} received for subscription(topic:{}, subscriber:{})",
-                                 new Object[] { event, topic.toStringUtf8(), subscriberId.toStringUtf8() });
-                    ConcurrencyUtils.put(TestSubscriptionListener.this.eventQueue, event);
-                }
-            }).start();
-        }
-    }
+	private final SynchronousQueue<SubscriptionEvent> eventQueue = new SynchronousQueue<SubscriptionEvent>();
 
     // Test implementation of Callback for async client actions.
     class TestCallback implements Callback<Void> {
@@ -131,6 +113,46 @@ public class TestPubSubClient extends PubSubServerStandAloneTestBase {
     }
 
     // Test implementation of subscriber's message handler.
+	class TestMessageHandlerWithConsume implements MessageHandler {
+
+		private final SynchronousQueue<Boolean> consumeQueue;
+
+		public TestMessageHandlerWithConsume() {
+			this.consumeQueue = TestPubSubClient.this.consumeQueue;
+		}
+
+		public TestMessageHandlerWithConsume(
+				SynchronousQueue<Boolean> consumeQueue) {
+			this.consumeQueue = consumeQueue;
+		}
+
+		public void deliver(final ByteString topic,
+				final ByteString subscriberId, final Message msg,
+				Callback<Void> callback, Object context) {
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					logger.info("enter....................deliver");
+					logger.info(msg.getBody().toStringUtf8());
+					try {
+						client.consume(topic.toStringUtf8(),
+								subscriberId.toStringUtf8(), msg.getMsgId());
+						if (logger.isDebugEnabled())
+							logger.debug("Consume operation finished successfully!");
+						ConcurrencyUtils
+								.put(TestMessageHandlerWithConsume.this.consumeQueue,
+										true);
+					} catch (ClientNotSubscribedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+
+				}
+			}).start();
+			callback.operationFinished(context, null);
+		}
+	}
+
     class TestMessageHandler implements MessageHandler {
 
         private final SynchronousQueue<Boolean> consumeQueue;
@@ -143,14 +165,18 @@ public class TestPubSubClient extends PubSubServerStandAloneTestBase {
             this.consumeQueue = consumeQueue;
         }
 
-        public void deliver(ByteString topic, ByteString subscriberId, Message msg, Callback<Void> callback,
-                            Object context) {
+		public void deliver(final ByteString topic,
+				final ByteString subscriberId, final Message msg,
+				Callback<Void> callback, Object context) {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
+					logger.info("enter....................deliver");
+					logger.info(msg.getBody().toStringUtf8());
                     if (logger.isDebugEnabled())
                         logger.debug("Consume operation finished successfully!");
-                    ConcurrencyUtils.put(TestMessageHandler.this.consumeQueue, true);
+					ConcurrencyUtils.put(TestMessageHandler.this.consumeQueue,
+							true);
                 }
             }).start();
             callback.operationFinished(context, null);
@@ -172,125 +198,65 @@ public class TestPubSubClient extends PubSubServerStandAloneTestBase {
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        client = new HedwigClient(new ClientConfiguration() {
-            @Override
-            public HedwigSocketAddress getDefaultServerHedwigSocketAddress() {
-                return getDefaultHedwigAddress();
-            }
-
-            @Override
-            public boolean isSubscriptionChannelSharingEnabled() {
-                return TestPubSubClient.this.isSubscriptionChannelSharingEnabled;
-            }
-        });
-        publisher = client.getPublisher();
-        subscriber = client.getSubscriber();
+		mbclient = new MsgBusClient(this.getClass().getResource(
+				"/hw_client.conf"));
+		client = mbclient.getPubSubClient();
     }
 
     @Override
     @After
     public void tearDown() throws Exception {
-        client.close();
+		mbclient.close();
         super.tearDown();
     }
 
-    @Test(timeout=60000)
+	@Test(timeout = 60000)
     public void testSyncPublish() throws Exception {
+		logger.info("testSyncPublish...................");
         boolean publishSuccess = true;
         try {
-            publisher.publish(ByteString.copyFromUtf8("mySyncTopic"), Message.newBuilder().setBody(
-                                  ByteString.copyFromUtf8("Hello Sync World!")).build());
+			client.publish("mySyncTopic", "Hello Sync World!");
         } catch (Exception e) {
             publishSuccess = false;
         }
         assertTrue(publishSuccess);
     }
 
-    @Test(timeout=60000)
-    public void testSyncPublishWithResponse() throws Exception {
-        ByteString topic = ByteString.copyFromUtf8("testSyncPublishWithResponse");
-        ByteString subid = ByteString.copyFromUtf8("mysubid");
-
-        final String prefix = "SyncMessage-";
-        final int numMessages = 30;
-
-        final Map<String, MessageSeqId> publishedMsgs =
-            new HashMap<String, MessageSeqId>();
-
-        final AtomicInteger numReceived = new AtomicInteger(0);
-        final CountDownLatch receiveLatch = new CountDownLatch(1);
-        final Map<String, MessageSeqId> receivedMsgs =
-            new HashMap<String, MessageSeqId>();
-
-        subscriber.subscribe(topic, subid, CreateOrAttach.CREATE_OR_ATTACH);
-        subscriber.startDelivery(topic, subid, new MessageHandler() {
-            synchronized public void deliver(ByteString topic, ByteString subscriberId,
-                                             Message msg, Callback<Void> callback,
-                                             Object context) {
-                String str = msg.getBody().toStringUtf8();
-                receivedMsgs.put(str, msg.getMsgId()); 
-                if (numMessages == numReceived.incrementAndGet()) {
-                    receiveLatch.countDown();
-                }
-                callback.operationFinished(context, null);
-            }
-        });
-
-        for (int i=0; i<numMessages; i++) {
-            String str = prefix + i;
-            ByteString data = ByteString.copyFromUtf8(str);
-            Message msg = Message.newBuilder().setBody(data).build();
-            PublishResponse response = publisher.publish(topic, msg);
-            assertNotNull(response);
-            publishedMsgs.put(str, response.getPublishedMsgId());
-        }
-
-        assertTrue("Timed out waiting on callback for messages.",
-                   receiveLatch.await(30, TimeUnit.SECONDS));
-        assertEquals("Should be expected " + numMessages + " messages.",
-                     numMessages, numReceived.get());
-        assertEquals("Should be expected " + numMessages + " messages in map.",
-                     numMessages, receivedMsgs.size());
-
-        for (int i=0; i<numMessages; i++) {
-            final String str = prefix + i;
-            MessageSeqId pubId = publishedMsgs.get(str);
-            MessageSeqId revId = receivedMsgs.get(str);
-            assertTrue("Doesn't receive same message seq id for " + str,
-                       pubId.equals(revId));
-        }
-    }
-
-    @Test(timeout=60000)
+	@Test(timeout = 60000)
     public void testAsyncPublish() throws Exception {
-        publisher.asyncPublish(ByteString.copyFromUtf8("myAsyncTopic"), Message.newBuilder().setBody(
-                                   ByteString.copyFromUtf8("Hello Async World!")).build(), new TestCallback(), null);
+		logger.info("testAsyncPublish...................");
+		client.asyncPublish("myAsyncTopic", "Hello Async World!",
+				new TestCallback(), null);
         assertTrue(queue.take());
     }
 
-    @Test(timeout=60000)
+	@Test(timeout = 60000)
     public void testAsyncPublishWithResponse() throws Exception {
-        ByteString topic = ByteString.copyFromUtf8("testAsyncPublishWithResponse");
-        ByteString subid = ByteString.copyFromUtf8("mysubid");
+		logger.info("testAsyncPublishWithResponse...................");
+		String topic = "testAsyncPublishWithResponse";
+		String subid = "mysubid";
 
         final String prefix = "AsyncMessage-";
         final int numMessages = 30;
 
         final AtomicInteger numPublished = new AtomicInteger(0);
         final CountDownLatch publishLatch = new CountDownLatch(1);
-        final Map<String, MessageSeqId> publishedMsgs =
-            new HashMap<String, MessageSeqId>();
+		final Map<String, MessageSeqId> publishedMsgs = new HashMap<String, MessageSeqId>();
 
         final AtomicInteger numReceived = new AtomicInteger(0);
         final CountDownLatch receiveLatch = new CountDownLatch(1);
-        final Map<String, MessageSeqId> receivedMsgs =
-            new HashMap<String, MessageSeqId>();
+		final Map<String, MessageSeqId> receivedMsgs = new HashMap<String, MessageSeqId>();
 
-        subscriber.subscribe(topic, subid, CreateOrAttach.CREATE_OR_ATTACH);
-        subscriber.startDelivery(topic, subid, new MessageHandler() {
-            synchronized public void deliver(ByteString topic, ByteString subscriberId,
-                                             Message msg, Callback<Void> callback,
-                                             Object context) {
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
+				.setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
+
+		client.subscribe(topic, subid, options);
+		client.startDelivery(topic, subid, new MessageHandler() {
+			@Override
+			synchronized public void deliver(ByteString topic,
+					ByteString subscriberId, Message msg,
+					Callback<Void> callback, Object context) {
                 String str = msg.getBody().toStringUtf8();
                 receivedMsgs.put(str, msg.getMsgId()); 
                 if (numMessages == numReceived.incrementAndGet()) {
@@ -300,20 +266,24 @@ public class TestPubSubClient extends PubSubServerStandAloneTestBase {
             }
         });
 
-        for (int i=0; i<numMessages; i++) {
+		for (int i = 0; i < numMessages; i++) {
             final String str = prefix + i;
-            ByteString data = ByteString.copyFromUtf8(str);
-            Message msg = Message.newBuilder().setBody(data).build();
-            publisher.asyncPublishWithResponse(topic, msg, new Callback<PublishResponse>() {
+			// ByteString data = ByteString.copyFromUtf8(str);
+			// Message msg = Message.newBuilder().setBody(data).build();
+			client.asyncPublishWithResponse(topic, str,
+					new Callback<PublishResponse>() {
                 @Override
-                public void operationFinished(Object ctx, PublishResponse response) {
+						public void operationFinished(Object ctx,
+								PublishResponse response) {
                     publishedMsgs.put(str, response.getPublishedMsgId());
                     if (numMessages == numPublished.incrementAndGet()) {
                         publishLatch.countDown();
                     }
                 }
+
                 @Override
-                public void operationFailed(Object ctx, final PubSubException exception) {
+						public void operationFailed(Object ctx,
+								final PubSubException exception) {
                     publishLatch.countDown();
                 }
             }, null);
@@ -322,8 +292,8 @@ public class TestPubSubClient extends PubSubServerStandAloneTestBase {
                    publishLatch.await(10, TimeUnit.SECONDS));
         assertEquals("Should be expected " + numMessages + " publishes.",
                      numMessages, numPublished.get());
-        assertEquals("Should be expected " + numMessages + " publishe responses.",
-                     numMessages, publishedMsgs.size());
+		assertEquals("Should be expected " + numMessages
+				+ " publishe responses.", numMessages, publishedMsgs.size());
 
         assertTrue("Timed out waiting on callback for messages.",
                    receiveLatch.await(30, TimeUnit.SECONDS));
@@ -332,7 +302,7 @@ public class TestPubSubClient extends PubSubServerStandAloneTestBase {
         assertEquals("Should be expected " + numMessages + " messages in map.",
                      numMessages, receivedMsgs.size());
 
-        for (int i=0; i<numMessages; i++) {
+		for (int i = 0; i < numMessages; i++) {
             final String str = prefix + i;
             MessageSeqId pubId = publishedMsgs.get(str);
             MessageSeqId revId = receivedMsgs.get(str);
@@ -341,348 +311,243 @@ public class TestPubSubClient extends PubSubServerStandAloneTestBase {
         }
     }
 
-    @Test(timeout=60000)
-    public void testMultipleAsyncPublish() throws Exception {
-        ByteString topic1 = ByteString.copyFromUtf8("myFirstTopic");
-        ByteString topic2 = ByteString.copyFromUtf8("myNewTopic");
-
-        publisher.asyncPublish(topic1, Message.newBuilder().setBody(ByteString.copyFromUtf8("Hello World!")).build(),
-                               new TestCallback(), null);
-        assertTrue(queue.take());
-        publisher.asyncPublish(topic2, Message.newBuilder().setBody(ByteString.copyFromUtf8("Hello on new topic!"))
-                               .build(), new TestCallback(), null);
-        assertTrue(queue.take());
-        publisher.asyncPublish(topic1, Message.newBuilder().setBody(
-                                   ByteString.copyFromUtf8("Hello Again on old topic!")).build(), new TestCallback(), null);
-        assertTrue(queue.take());
-    }
-
-    @Test(timeout=60000)
+	@Test(timeout = 60000)
     public void testSyncSubscribe() throws Exception {
+		logger.info("testSyncSubscribe...................");
         boolean subscribeSuccess = true;
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
+				.setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
         try {
-            subscriber.subscribe(ByteString.copyFromUtf8("mySyncSubscribeTopic"), ByteString.copyFromUtf8("1"), CreateOrAttach.CREATE_OR_ATTACH);
+			client.subscribe("mySyncSubscribeTopic", "1", options);
         } catch (Exception e) {
             subscribeSuccess = false;
         }
         assertTrue(subscribeSuccess);
     }
 
-    @Test(timeout=60000)
+	@Test(timeout = 60000)
     public void testAsyncSubscribe() throws Exception {
-        subscriber.asyncSubscribe(ByteString.copyFromUtf8("myAsyncSubscribeTopic"), ByteString.copyFromUtf8("1"),
-                                  CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(), null);
+		logger.info("testAsyncSubscribe...................");
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
+				.setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
+		client.asyncSubscribe("myAsyncSubscribeTopic", "1", options,
+				new TestCallback(), null);
         assertTrue(queue.take());
     }
 
-    @Test(timeout=60000)
-    public void testStartDeliveryAfterCloseSub() throws Exception {
-        ByteString topic = ByteString.copyFromUtf8("testStartDeliveryAfterCloseSub");
-        ByteString subid = ByteString.copyFromUtf8("mysubid");
-        subscriber.subscribe(topic, subid, CreateOrAttach.CREATE_OR_ATTACH);
+	@Test(timeout = 60000)
+	public void testAsyncUnsubscribe() throws Exception {
+		logger.info("testAsyncUnsubscribe...................");
+		String topic = "myAsyncUnsubTopic";
+		String subscriberId = "1";
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
+				.setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
 
-        // Start delivery for the subscriber
-        subscriber.startDelivery(topic, subid, new TestMessageHandler());
-
-        // Now publish some messages for the topic to be consumed by the
-        // subscriber.
-        publisher.publish(topic, Message.newBuilder()
-                                .setBody(ByteString.copyFromUtf8("Message #1")).build());
-        assertTrue(consumeQueue.take());
-
-        // Close subscriber for the subscriber
-        subscriber.closeSubscription(topic, subid);
-
-        // subscribe again
-        subscriber.subscribe(topic, subid, CreateOrAttach.CREATE_OR_ATTACH);
-        subscriber.startDelivery(topic, subid, new TestMessageHandler());
-
-        publisher.publish(topic, Message.newBuilder()
-                                .setBody(ByteString.copyFromUtf8("Message #2")).build());
-        assertTrue(consumeQueue.take());
-    }
-
-    @Test(timeout=60000)
-    public void testSubscribeAndConsume() throws Exception {
-        ByteString topic = ByteString.copyFromUtf8("myConsumeTopic");
-        ByteString subscriberId = ByteString.copyFromUtf8("1");
-        subscriber.asyncSubscribe(topic, subscriberId, CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(), null);
+		client.asyncSubscribe(topic, subscriberId, options, new TestCallback(),
+				null);
         assertTrue(queue.take());
-
-        // Start delivery for the subscriber
-        subscriber.startDelivery(topic, subscriberId, new TestMessageHandler());
-
-        // Now publish some messages for the topic to be consumed by the
-        // subscriber.
-        publisher.asyncPublish(topic, Message.newBuilder().setBody(ByteString.copyFromUtf8("Message #1")).build(),
-                               new TestCallback(), null);
-        assertTrue(queue.take());
-        assertTrue(consumeQueue.take());
-        publisher.asyncPublish(topic, Message.newBuilder().setBody(ByteString.copyFromUtf8("Message #2")).build(),
-                               new TestCallback(), null);
-        assertTrue(queue.take());
-        assertTrue(consumeQueue.take());
-        publisher.asyncPublish(topic, Message.newBuilder().setBody(ByteString.copyFromUtf8("Message #3")).build(),
-                               new TestCallback(), null);
-        assertTrue(queue.take());
-        assertTrue(consumeQueue.take());
-        publisher.asyncPublish(topic, Message.newBuilder().setBody(ByteString.copyFromUtf8("Message #4")).build(),
-                               new TestCallback(), null);
-        assertTrue(queue.take());
-        assertTrue(consumeQueue.take());
-        publisher.asyncPublish(topic, Message.newBuilder().setBody(ByteString.copyFromUtf8("Message #5")).build(),
-                               new TestCallback(), null);
-        assertTrue(queue.take());
-        assertTrue(consumeQueue.take());
-    }
-
-    @Test(timeout=60000)
-    public void testAsyncSubscribeAndUnsubscribe() throws Exception {
-        ByteString topic = ByteString.copyFromUtf8("myAsyncUnsubTopic");
-        ByteString subscriberId = ByteString.copyFromUtf8("1");
-        subscriber.asyncSubscribe(topic, subscriberId, CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(), null);
-        assertTrue(queue.take());
-        subscriber.asyncUnsubscribe(topic, subscriberId, new TestCallback(), null);
+		client.asyncUnsubscribe(topic, subscriberId, new TestCallback(), null);
         assertTrue(queue.take());
     }
 
-    @Test(timeout=60000)
-    public void testSyncUnsubscribeWithoutSubscription() throws Exception {
-        boolean unsubscribeSuccess = false;
+	@Test(timeout = 60000)
+	public void testSyncUnsubscribe() throws Exception {
+		logger.info("testSyncUnsubscribe...................");
+		boolean unSubscribeSuccess = true;
+		String topic = "mySyncUnsubTopic";
+		String subscriberId = "1";
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
+				.setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
+
+		client.asyncSubscribe(topic, subscriberId, options, new TestCallback(),
+				null);
+		assertTrue(queue.take());
         try {
-            subscriber.unsubscribe(ByteString.copyFromUtf8("mySyncUnsubTopic"), ByteString.copyFromUtf8("1"));
-        } catch (ClientNotSubscribedException e) {
-            unsubscribeSuccess = true;
-        } catch (Exception ex) {
-            unsubscribeSuccess = false;
+			client.unsubscribe(topic, subscriberId);
+		} catch (Exception e) {
+			unSubscribeSuccess = false;
         }
-        assertTrue(unsubscribeSuccess);
+		assertTrue(unSubscribeSuccess);
     }
 
-    @Test(timeout=60000)
-    public void testAsyncSubscribeAndCloseSubscription() throws Exception {
-        ByteString topic = ByteString.copyFromUtf8("myAsyncSubAndCloseSubTopic");
-        ByteString subscriberId = ByteString.copyFromUtf8("1");
-        subscriber.asyncSubscribe(topic, subscriberId, CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(), null);
-        assertTrue(queue.take());
-        subscriber.closeSubscription(topic, subscriberId);
-        assertTrue(true);
-    }
-
-    @Test(timeout=60000)
-    public void testSubClosesubAndPublish() throws Exception {
-        ByteString topic = ByteString.copyFromUtf8("mySubClosesubAndPublish");
-        ByteString subid = ByteString.copyFromUtf8("mysub");
-        // to populate startServing/stopServing sequeuence
-        for (int i=0; i<5; i++) {
-            subscriber.subscribe(topic, subid, CreateOrAttach.CREATE_OR_ATTACH);
-            subscriber.closeSubscription(topic, subid);
-        }
-        subscriber.subscribe(topic, subid, CreateOrAttach.CREATE_OR_ATTACH);
-        subscriber.startDelivery(topic, subid, new TestMessageHandler());
-        for (int i=0; i<3; i++) {
-            publisher.asyncPublish(topic,
-                Message.newBuilder().setBody(ByteString.copyFromUtf8("Message #" + i)).build(),
-                new TestCallback(), null);
+	@Test(timeout = 60000)
+	public void testCloseSubscription() throws Exception {
+		logger.info("testCloseSubscription...................");
+		boolean closeSubscriptionSuccess = true;
+		String topic = "myCloseSubscriptionTopic";
+		String subscriberId = "1";
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
+				.setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
+		client.asyncSubscribe(topic, subscriberId, options, new TestCallback(),
+				null);
             assertTrue(queue.take());
-            assertTrue(consumeQueue.take());
+		try {
+			client.closeSubscription(topic, subscriberId);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			closeSubscriptionSuccess = false;
         }
+		assertTrue(closeSubscriptionSuccess);
     }
 
-    @Test(timeout=60000)
-    public void testSyncSubscribeWithListener() throws Exception {
-        ByteString topic = ByteString.copyFromUtf8("mySyncSubscribeWithListener");
-        ByteString subscriberId = ByteString.copyFromUtf8("mysub");
-        subscriber.addSubscriptionListener(new TestSubscriptionListener());
-        try {
-            SubscriptionOptions options =
-                SubscriptionOptions.newBuilder()
-                .setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
-                .setEnableResubscribe(false).build();
-            subscriber.subscribe(topic, subscriberId, options);
-        } catch (PubSubException.ServiceDownException e) {
-            fail("Should not reach here!");
-        }
-        subscriber.startDelivery(topic, subscriberId, new TestMessageHandler());
-        tearDownHubServer();
-        assertEquals(SubscriptionEvent.TOPIC_MOVED, eventQueue.take());
-    }
+	@Test(timeout = 60000)
+	public void testAsyncCloseSubscription() throws Exception {
+		logger.info("testAsyncCloseSubscription...................");
 
-    @Test(timeout=60000)
-    public void testAsyncSubscribeWithListener() throws Exception {
-        ByteString topic = ByteString.copyFromUtf8("myAsyncSubscribeWithListener");
-        ByteString subscriberId = ByteString.copyFromUtf8("mysub");
-        subscriber.addSubscriptionListener(new TestSubscriptionListener());
-        SubscriptionOptions options =
-            SubscriptionOptions.newBuilder()
+		String topic = "myAsyncCloseSubscriptionTopic";
+		String subscriberId = "1";
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
             .setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
-            .setEnableResubscribe(false).build();
-        subscriber.asyncSubscribe(topic, subscriberId, options,
-                                  new TestCallback(), null);
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
+		client.asyncSubscribe(topic, subscriberId, options, new TestCallback(),
+				null);
+		assertTrue(queue.take());
+		client.asyncCloseSubscription(topic, subscriberId, new TestCallback(),
+				null);
         assertTrue(queue.take());
-        subscriber.startDelivery(topic, subscriberId, new TestMessageHandler());
-        tearDownHubServer();
-        assertEquals(SubscriptionEvent.TOPIC_MOVED, eventQueue.take());
-    }
 
-    @Test(timeout=60000)
-    public void testSyncSubscribeForceAttach() throws Exception {
-        ByteString topic = ByteString.copyFromUtf8("mySyncSubscribeForceAttach");
-        ByteString subscriberId = ByteString.copyFromUtf8("mysub");
-        subscriber.addSubscriptionListener(new TestSubscriptionListener());
-        SubscriptionOptions options =
-            SubscriptionOptions.newBuilder()
-            .setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
-            .setForceAttach(true).setEnableResubscribe(false).build();
-        try {
-            subscriber.subscribe(topic, subscriberId, options);
-        } catch (PubSubException.ServiceDownException e) {
-            fail("Should not reach here!");
-        }
-        subscriber.startDelivery(topic, subscriberId, new TestMessageHandler());
-
-        // new a client
-        HedwigClient client2 = new HedwigClient(new ClientConfiguration() {
-                @Override
-                public HedwigSocketAddress getDefaultServerHedwigSocketAddress() {
-                    return getDefaultHedwigAddress();
-                }
-            });
-        Subscriber subscriber2 = client2.getSubscriber();
-        Publisher publisher2 = client2.getPublisher();
-        SynchronousQueue<SubscriptionEvent> eventQueue2 =
-            new SynchronousQueue<SubscriptionEvent>();
-        subscriber2.addSubscriptionListener(new TestSubscriptionListener(eventQueue2));
-        try {
-            subscriber2.subscribe(topic, subscriberId, options);
-        } catch (PubSubException.ServiceDownException e) {
-            fail("Should not reach here!");
         }
 
-        SynchronousQueue<Boolean> consumeQueue2 = new SynchronousQueue<Boolean>();
-        subscriber2.startDelivery(topic, subscriberId, new TestMessageHandler(consumeQueue2));
+	@Test(timeout = 60000)
+	public void testStartDelivery() throws Exception {
+		logger.info("testStartDelivery...................");
+		String topic = "testStartDelivery";
+		String subid = "mysubid";
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
+				.setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
 
-        assertEquals(SubscriptionEvent.SUBSCRIPTION_FORCED_CLOSED, eventQueue.take());
-        assertTrue(eventQueue2.isEmpty());
+		client.subscribe(topic, subid, options);
 
+		// Start delivery for the subscriber
+		client.startDelivery(topic, subid, new TestMessageHandler());
         // Now publish some messages for the topic to be consumed by the
         // subscriber.
-        publisher.asyncPublish(topic, Message.newBuilder().setBody(ByteString.copyFromUtf8("Message #1")).build(),
-                               new TestCallback(), null);
-        assertTrue(queue.take());
-        assertTrue(consumeQueue2.take());
-        assertTrue(consumeQueue.isEmpty());
+		client.publish(topic, "Message #1");
+		assertTrue(consumeQueue.take());
+	}
 
-        publisher2.asyncPublish(topic, Message.newBuilder().setBody(ByteString.copyFromUtf8("Message #2")).build(),
-                               new TestCallback(), null);
-        assertTrue(queue.take());
-        assertTrue(consumeQueue2.take());
-        assertTrue(consumeQueue.isEmpty());
+	@Test(timeout = 60000)
+	public void testStartDeliveryWithFilter() throws Exception {
+		logger.info("testStartDeliveryWithFilter...................");
+		String topic = "testStartDeliveryWithFilter";
+		String subid = "mysubid";
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
+				.setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
 
-        client2.close();
-    }
+		client.subscribe(topic, subid, options);
 
-    @Test(timeout=60000)
-    public void testSyncSubscribeWithListenerWhenReleasingTopic() throws Exception {
-        client.close();
+		// Start delivery for the subscriber
+		client.startDeliveryWithFilter(topic, subid, new TestMessageHandler(),
+				new ClientMessageFilter() {
 
-        tearDownHubServer();
-        startHubServer(new RetentionServerConfiguration());
-        client = new HedwigClient(new ClientConfiguration() {
             @Override
-            public HedwigSocketAddress getDefaultServerHedwigSocketAddress() {
-                return getDefaultHedwigAddress();
+					public MessageFilterBase setSubscriptionPreferences(
+							ByteString topic, ByteString subscriberId,
+							SubscriptionPreferences preferences) {
+						// TODO Auto-generated method stub
+						return null;
             }
 
             @Override
-            public boolean isSubscriptionChannelSharingEnabled() {
-                return TestPubSubClient.this.isSubscriptionChannelSharingEnabled;
+					public boolean testMessage(Message message) {
+						// TODO Auto-generated method stub
+						if (!message.getBody().toStringUtf8().endsWith("1")) {
+							logger.info(message.getBody().toStringUtf8()
+									+ "...................");
+							return false;
+						} else {
+							return true;
             }
-        });
-        publisher = client.getPublisher();
-        subscriber = client.getSubscriber();
-
-        ByteString topic = ByteString.copyFromUtf8("mySyncSubscribeWithListenerWhenReleasingTopic");
-        ByteString subscriberId = ByteString.copyFromUtf8("mysub");
-        subscriber.addSubscriptionListener(new TestSubscriptionListener());
-        SubscriptionOptions options =
-            SubscriptionOptions.newBuilder()
-            .setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
-            .setForceAttach(false).setEnableResubscribe(false).build();
-        try {
-            subscriber.subscribe(topic, subscriberId, options);
-        } catch (PubSubException.ServiceDownException e) {
-            fail("Should not reach here!");
         }
-        subscriber.startDelivery(topic, subscriberId, new TestMessageHandler());
 
-        publisher.asyncPublish(topic, Message.newBuilder().setBody(ByteString.copyFromUtf8("Message #1")).build(),
-                               new TestCallback(), null);
-        assertTrue(queue.take());
+				});
+		// Now publish some messages for the topic to be consumed by the
+		// subscriber.
+		client.publish(topic, "Message #1");
         assertTrue(consumeQueue.take());
-
-        Thread.sleep(RETENTION_SECS_VALUE * 2);
-        assertEquals(SubscriptionEvent.TOPIC_MOVED, eventQueue.take());
     }
 
-    @Test
-    public void testCloseSubscribeDuringResubscribe() throws Exception {
-        client.close();
+	@Test(timeout = 60000)
+	public void testStopDelivery() throws Exception {
+		logger.info("testStopDelivery...................");
+		String topic = "testStopDelivery";
+		String subid = "mysubid";
+		boolean StopDeliverySuccess = true;
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
+				.setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
 
-        final long reconnectWaitTime = 2000L;
-        client = new HedwigClient(new ClientConfiguration() {
-            @Override
-            public HedwigSocketAddress getDefaultServerHedwigSocketAddress() {
-                return getDefaultHedwigAddress();
+		client.subscribe(topic, subid, options);
+
+		// Start delivery for the subscriber
+		client.startDelivery(topic, subid, new TestMessageHandler());
+		// Now publish some messages for the topic to be consumed by the
+		// subscriber.
+		client.publish(topic, "Message #1");
+
+		try {
+			client.stopDelivery(topic, subid);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			StopDeliverySuccess = false;
+		}
+		assertTrue(StopDeliverySuccess);
             }
 
-            @Override
-            public boolean isSubscriptionChannelSharingEnabled() {
-                return TestPubSubClient.this.isSubscriptionChannelSharingEnabled;
-            }
-
-            @Override
-            public long getSubscribeReconnectRetryWaitTime() {
-                return reconnectWaitTime;
-            }
-        });
-
-        publisher = client.getPublisher();
-        subscriber = client.getSubscriber();
-
-        ByteString topic = ByteString.copyFromUtf8("testCloseSubscribeDuringResubscribe");
-        ByteString subscriberId = ByteString.copyFromUtf8("mysub");
-        subscriber.addSubscriptionListener(new TestSubscriptionListener());
-        SubscriptionOptions options =
-            SubscriptionOptions.newBuilder()
+	@Test(timeout = 60000)
+	public void testConsume() throws Exception {
+		logger.info("testConsume...................");
+		String topic = "myConsumeTopic";
+		String subscriberId = "1";
+		String prefix = "Message-";
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
             .setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
-            .setForceAttach(false).setEnableResubscribe(true).build();
-        subscriber.subscribe(topic, subscriberId, options);
-        logger.info("Subscribed topic {}, subscriber {}.", topic.toStringUtf8(),
-                    subscriberId.toStringUtf8());
-        subscriber.startDelivery(topic, subscriberId, new TestMessageHandler());
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
+		client.asyncSubscribe(topic, subscriberId, options, new TestCallback(),
+				null);
+		assertTrue(queue.take());
 
-        // tear down the hub server to let subscribe enter
-        tearDownHubServer();
-        logger.info("Tear down the hub server");
+		// Start delivery for the subscriber
+		client.startDelivery(topic, subscriberId,
+				new TestMessageHandlerWithConsume());
 
-        // wait for client enter to resubscribe logic
-        Thread.sleep(reconnectWaitTime / 2);
+		// Now publish some messages for the topic to be consumed by the
+		// subscriber.
+		for (int i = 0; i < 5; i++) {
+			String str = prefix + i;
+			client.asyncPublish(topic, str, new TestCallback(), null);
+			assertTrue(queue.take());
+			assertTrue(consumeQueue.take());
+		}
 
-        // close sub
-        subscriber.closeSubscription(topic, subscriberId);
+	}
 
-        // start the hub server again
-        startHubServer(conf);
+	@Test(timeout = 60000)
+	public void testCloseClient() throws Exception {
+		logger.info("testCloseClient...................");
+		boolean CloseClientSuccess = true;
+		String topic = "myCloseClientTopic";
+		String subscriberId = "1";
 
-        // publish a new message
-        publisher.asyncPublish(topic, Message.newBuilder().setBody(ByteString.copyFromUtf8("Message #1")).build(),
-                               new TestCallback(), null);
-        assertTrue(queue.take());
+		SubscriptionOptions options = SubscriptionOptions.newBuilder()
+				.setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
+				.setEnableResubscribe(false).setMessageWindowSize(50).build();
+		client.subscribe(topic, subscriberId, options);
 
-        // wait for another reconnect time period
-        assertNull("Should not receive any messages since the subscription has already been closed.",
-                   consumeQueue.poll(reconnectWaitTime + reconnectWaitTime / 2, TimeUnit.MILLISECONDS));
+		try {
+			mbclient.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			CloseClientSuccess = false;
     }
+		assertTrue(CloseClientSuccess);
 
+	}
 }

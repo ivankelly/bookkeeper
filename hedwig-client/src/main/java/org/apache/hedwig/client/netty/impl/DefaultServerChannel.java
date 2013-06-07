@@ -56,8 +56,10 @@ class DefaultServerChannel extends HChannelImpl {
         // for each pub/sub request sent to default hub server
         // we would establish a fresh connection for it
         ClientChannelPipelineFactory pipelineFactory;
+        /* msgbus modified */
         if (OperationType.PUBLISH.equals(pubSubData.operationType) ||
-            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)) {
+            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)||
+            OperationType.QUEUE_TOPIC_OP.equals(pubSubData.operationType)) {
             pipelineFactory = channelManager.getNonSubscriptionChannelPipelineFactory();
         } else {
             pipelineFactory = channelManager.getSubscriptionChannelPipelineFactory();

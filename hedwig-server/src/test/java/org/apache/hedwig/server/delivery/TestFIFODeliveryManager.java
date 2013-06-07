@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.hedwig.client.data.TopicSubscriber;
 import org.apache.hedwig.exceptions.PubSubException;
 import org.apache.hedwig.filter.PipelineFilter;
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
@@ -37,6 +38,7 @@ import org.apache.hedwig.protocol.PubSubProtocol.MessageSeqId;
 import org.apache.hedwig.protocol.PubSubProtocol.PubSubResponse;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionPreferences;
 import org.apache.hedwig.server.common.ServerConfiguration;
+import org.apache.hedwig.server.delivery.FIFODeliveryManager.ConsumerCluster;
 import org.apache.hedwig.server.persistence.PersistRequest;
 import org.apache.hedwig.server.persistence.PersistenceManager;
 import org.apache.hedwig.server.persistence.StubPersistenceManager;
@@ -59,6 +61,7 @@ public class TestFIFODeliveryManager {
         TestCallback(CountDownLatch l) {
             this.latch = l;
         }
+
         public void operationFailed(Object ctx, PubSubException exception) {
             logger.error("Persist operation failed", exception);
             latch.countDown();
@@ -110,8 +113,8 @@ public class TestFIFODeliveryManager {
 
     /**
      * Test that the FIFO delivery manager executes stopServing and startServing
-     * in the correct order
-     * {@link https://issues.apache.org/jira/browse/BOOKKEEPER-539}
+     * in the correct order {@link https
+     * ://issues.apache.org/jira/browse/BOOKKEEPER-539}
      */
     @Test
     public void testFIFODeliverySubCloseSubRace() throws Exception {
@@ -138,34 +141,36 @@ public class TestFIFODeliveryManager {
 
         final CountDownLatch oplatch = new CountDownLatch(3);
         fdm.start();
-        fdm.startServingSubscription(topic, subscriber, prefs, startId, dep, filter,
-                new Callback<Void>() {
+        fdm.startServingSubscription(topic, subscriber, prefs, startId, dep, filter, new Callback<Void>() {
                      @Override
                      public void operationFinished(Object ctx, Void result) {
                          oplatch.countDown();
                      }
+
                      @Override
                      public void operationFailed(Object ctx, PubSubException exception) {
                          oplatch.countDown();
                      }
                 }, null);
-        fdm.stopServingSubscriber(topic, subscriber, null,
-                new Callback<Void>() {
+
+        fdm.stopServingSubscriber(topic, subscriber, null, new Callback<Void>() {
                      @Override
                      public void operationFinished(Object ctx, Void result) {
                          oplatch.countDown();
                      }
+
                      @Override
                      public void operationFailed(Object ctx, PubSubException exception) {
                          oplatch.countDown();
                      }
                 }, null);
-        fdm.startServingSubscription(topic, subscriber, prefs, startId, dep, filter,
-                new Callback<Void>() {
+        ConsumerCluster cc1 = fdm.subscriberStates.get(new TopicSubscriber(topic, subscriber)).consumerCluster;
+        fdm.startServingSubscription(topic, subscriber, prefs, startId, dep, filter, new Callback<Void>() {
                      @Override
                      public void operationFinished(Object ctx, Void result) {
                          oplatch.countDown();
                      }
+
                      @Override
                      public void operationFailed(Object ctx, PubSubException exception) {
                          oplatch.countDown();
@@ -190,6 +195,11 @@ public class TestFIFODeliveryManager {
         assertNull("There should only be 2 responses", r);
     }
 
+    private void assertrue(String string, boolean b) {
+        // TODO Auto-generated method stub
+
+    }
+
     static class ExecutorDeliveryEndPoint implements DeliveryEndPoint {
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         AtomicInteger numDelivered = new AtomicInteger();
@@ -205,15 +215,13 @@ public class TestFIFODeliveryManager {
                         if (response.hasMessage()) {
                             MessageSeqId msgid = response.getMessage().getMsgId();
                             if ((msgid.getLocalComponent() % 2) == 1) {
-                                dm.messageConsumed(response.getTopic(),
-                                        response.getSubscriberId(),
-                                        response.getMessage().getMsgId());
+                            dm.messageConsumed(response.getTopic(), response.getSubscriberId(), response.getMessage()
+                                    .getMsgId());
                             } else {
                                 executor.schedule(new Runnable() {
                                         public void run() {
-                                            dm.messageConsumed(response.getTopic(),
-                                                    response.getSubscriberId(),
-                                                    response.getMessage().getMsgId());
+                                    dm.messageConsumed(response.getTopic(), response.getSubscriberId(), response
+                                            .getMessage().getMsgId());
                                         }
                                     }, 1, TimeUnit.SECONDS);
                             }
@@ -234,8 +242,9 @@ public class TestFIFODeliveryManager {
     }
 
     /**
-     * Test throttle race issue cause by messageConsumed and doDeliverNextMessage
-     * {@link https://issues.apache.org/jira/browse/BOOKKEEPER-503}
+     * Test throttle race issue cause by messageConsumed and
+     * doDeliverNextMessage {@link https
+     * ://issues.apache.org/jira/browse/BOOKKEEPER-503}
      */
     @Test
     public void testFIFODeliveryThrottlingRace() throws Exception {
@@ -278,6 +287,7 @@ public class TestFIFODeliveryManager {
                      @Override
                      public void operationFinished(Object ctx, Void result) {
                      }
+
                      @Override
                      public void operationFailed(Object ctx, PubSubException exception) {
                          // would not happened

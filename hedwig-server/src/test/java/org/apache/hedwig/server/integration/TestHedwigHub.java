@@ -18,25 +18,18 @@
 package org.apache.hedwig.server.integration;
 
 import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.concurrent.SynchronousQueue;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import com.google.protobuf.ByteString;
-import org.apache.hedwig.client.api.MessageHandler;
-import org.apache.hedwig.client.api.Subscriber;
-import org.apache.hedwig.client.conf.ClientConfiguration;
-import org.apache.hedwig.client.exceptions.InvalidSubscriberIdException;
-import org.apache.hedwig.client.exceptions.AlreadyStartDeliveryException;
+import org.apache.bookkeeper.test.PortManager;
 import org.apache.hedwig.client.HedwigClient;
 import org.apache.hedwig.client.api.Client;
+import org.apache.hedwig.client.api.MessageHandler;
 import org.apache.hedwig.client.api.Publisher;
 import org.apache.hedwig.client.api.Subscriber;
+import org.apache.hedwig.client.conf.ClientConfiguration;
+import org.apache.hedwig.client.exceptions.AlreadyStartDeliveryException;
+import org.apache.hedwig.client.exceptions.InvalidSubscriberIdException;
 import org.apache.hedwig.exceptions.PubSubException;
 import org.apache.hedwig.exceptions.PubSubException.ClientNotSubscribedException;
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
@@ -46,11 +39,12 @@ import org.apache.hedwig.protocol.PubSubProtocol.ProtocolVersion;
 import org.apache.hedwig.protocol.PubSubProtocol.PubSubRequest;
 import org.apache.hedwig.protocol.PubSubProtocol.PubSubResponse;
 import org.apache.hedwig.protocol.PubSubProtocol.StartDeliveryRequest;
-import org.apache.hedwig.protocol.PubSubProtocol.StopDeliveryRequest;
 import org.apache.hedwig.protocol.PubSubProtocol.StatusCode;
+import org.apache.hedwig.protocol.PubSubProtocol.StopDeliveryRequest;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscribeRequest.CreateOrAttach;
 import org.apache.hedwig.protoextensions.SubscriptionStateUtils;
 import org.apache.hedwig.server.HedwigHubTestBase;
+import org.apache.hedwig.server.LoggingExceptionHandler;
 import org.apache.hedwig.server.netty.WriteRecordingChannel;
 import org.apache.hedwig.server.proxy.HedwigProxy;
 import org.apache.hedwig.server.proxy.ProxyConfiguration;
@@ -58,8 +52,11 @@ import org.apache.hedwig.server.regions.HedwigHubClient;
 import org.apache.hedwig.util.Callback;
 import org.apache.hedwig.util.ConcurrencyUtils;
 import org.apache.hedwig.util.HedwigSocketAddress;
-import org.apache.bookkeeper.test.PortManager;
-import org.apache.hedwig.server.LoggingExceptionHandler;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.google.protobuf.ByteString;
 
 public abstract class TestHedwigHub extends HedwigHubTestBase {
 
@@ -69,8 +66,10 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
     protected Subscriber subscriber;
 
     // Common ByteStrings used in tests.
-    private final ByteString localSubscriberId = ByteString.copyFromUtf8("LocalSubscriber");
-    private final ByteString hubSubscriberId = ByteString.copyFromUtf8(SubscriptionStateUtils.HUB_SUBSCRIBER_PREFIX
+	private final ByteString localSubscriberId = ByteString
+			.copyFromUtf8("LocalSubscriber");
+	private final ByteString hubSubscriberId = ByteString
+			.copyFromUtf8(SubscriptionStateUtils.HUB_SUBSCRIBER_PREFIX
             + "HubSubcriber");
 
     enum Mode {
@@ -151,8 +150,8 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
             this.consumeQueue = consumeQueue;
         }
 
-        public void deliver(ByteString topic, ByteString subscriberId, final Message msg, Callback<Void> callback,
-                            Object context) {
+		public void deliver(ByteString topic, ByteString subscriberId,
+				final Message msg, Callback<Void> callback, Object context) {
             if (!consumedMessages.contains(msg.getMsgId())) {
                 // New message to consume. Add it to the Set of consumed
                 // messages.
@@ -160,7 +159,8 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
                 // Check that the msg seq ID is incrementing by 1 compared to
                 // the last consumed message. Don't do this check if this is the
                 // initial message being consumed.
-                if (largestMsgSeqIdConsumed >= 0 && msg.getMsgId().getLocalComponent() != largestMsgSeqIdConsumed + 1) {
+				if (largestMsgSeqIdConsumed >= 0
+						&& msg.getMsgId().getLocalComponent() != largestMsgSeqIdConsumed + 1) {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
@@ -184,7 +184,8 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
                 largestMsgSeqIdConsumed = msg.getMsgId().getLocalComponent();
             } else {
                 if (logger.isDebugEnabled())
-                    logger.debug("Consumed a message that we've processed already: " + msg);
+					logger.debug("Consumed a message that we've processed already: "
+							+ msg);
             }
             callback.operationFinished(context, null);
         }
@@ -246,7 +247,8 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
 
     // Helper function to generate Messages
     protected Message getMsg(int msgNum) {
-        return Message.newBuilder().setBody(ByteString.copyFromUtf8("Message" + msgNum)).build();
+		return Message.newBuilder()
+				.setBody(ByteString.copyFromUtf8("Message" + msgNum)).build();
     }
 
     // Helper function to generate Topics
@@ -254,42 +256,61 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         return ByteString.copyFromUtf8("Topic" + topicNum);
     }
 
-    protected void startDelivery(ByteString topic, ByteString subscriberId, MessageHandler handler) throws Exception {
+	protected void startDelivery(ByteString topic, ByteString subscriberId,
+			MessageHandler handler) throws Exception {
         startDelivery(subscriber, topic, subscriberId, handler);
     }
 
-    protected void startDelivery(Subscriber subscriber, ByteString topic, ByteString subscriberId,
-                                 MessageHandler handler) throws Exception {
+	protected void startDelivery(Subscriber subscriber, ByteString topic,
+			ByteString subscriberId, MessageHandler handler) throws Exception {
         subscriber.startDelivery(topic, subscriberId, handler);
         if (mode == Mode.PROXY) {
             WriteRecordingChannel channel = new WriteRecordingChannel();
-            PubSubRequest request = PubSubRequest.newBuilder().setProtocolVersion(ProtocolVersion.VERSION_ONE)
-                                    .setTopic(topic).setTxnId(0).setType(OperationType.START_DELIVERY).setStartDeliveryRequest(
-                                        StartDeliveryRequest.newBuilder().setSubscriberId(subscriberId)).build();
+			PubSubRequest request = PubSubRequest
+					.newBuilder()
+					.setProtocolVersion(ProtocolVersion.VERSION_ONE)
+					.setTopic(topic)
+					.setTxnId(0)
+					.setType(OperationType.START_DELIVERY)
+					.setStartDeliveryRequest(
+							StartDeliveryRequest.newBuilder().setSubscriberId(
+									subscriberId)).build();
             proxy.getStartDeliveryHandler().handleRequest(request, channel);
-            assertEquals(StatusCode.SUCCESS, ((PubSubResponse) channel.getMessagesWritten().get(0)).getStatusCode());
+			assertEquals(StatusCode.SUCCESS, ((PubSubResponse) channel
+					.getMessagesWritten().get(0)).getStatusCode());
         }
     }
 
-    protected void stopDelivery(ByteString topic, ByteString subscriberId) throws Exception {
+	protected void stopDelivery(ByteString topic, ByteString subscriberId)
+			throws Exception {
         stopDelivery(subscriber, topic, subscriberId);
     }
 
-    protected void stopDelivery(Subscriber subscriber, ByteString topic, ByteString subscriberId) throws Exception {
+	protected void stopDelivery(Subscriber subscriber, ByteString topic,
+			ByteString subscriberId) throws Exception {
         subscriber.stopDelivery(topic, subscriberId);
         if (mode == Mode.PROXY) {
-            PubSubRequest request = PubSubRequest.newBuilder().setProtocolVersion(ProtocolVersion.VERSION_ONE)
-                                    .setTopic(topic).setTxnId(1).setType(OperationType.STOP_DELIVERY).setStopDeliveryRequest(
-                                        StopDeliveryRequest.newBuilder().setSubscriberId(subscriberId)).build();
-            proxy.getStopDeliveryHandler().handleRequest(request, proxy.getChannelTracker().getChannel(topic, subscriberId));
-        }
-    }
+			PubSubRequest request = PubSubRequest
+					.newBuilder()
+					.setProtocolVersion(ProtocolVersion.VERSION_ONE)
+					.setTopic(topic)
+					.setTxnId(1)
+					.setType(OperationType.STOP_DELIVERY)
+					.setStopDeliveryRequest(
+							StopDeliveryRequest.newBuilder().setSubscriberId(
+									subscriberId)).build();
+			proxy.getStopDeliveryHandler().handleRequest(request,
+					proxy.getChannelTracker().getChannel(topic, subscriberId));
+		}
+	}
 
-    protected void publishBatch(int batchSize, boolean expected, boolean messagesToBeConsumed, int loop) throws Exception {
+	protected void publishBatch(int batchSize, boolean expected,
+			boolean messagesToBeConsumed, int loop) throws Exception {
         if (logger.isDebugEnabled())
             logger.debug("Publishing " + loop + " batch of messages.");
         for (int i = 0; i < batchSize; i++) {
-            publisher.asyncPublish(getTopic(i), getMsg(i + loop * batchSize), new TestCallback(queue), null);
+			publisher.asyncPublish(getTopic(i), getMsg(i + loop * batchSize),
+					new TestCallback(queue), null);
             assertTrue(expected == queue.take());
             if (messagesToBeConsumed)
                 assertTrue(consumeQueue.take());
@@ -300,14 +321,16 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         if (logger.isDebugEnabled())
             logger.debug("Subscribing to topics and starting delivery.");
         for (int i = 0; i < batchSize; i++) {
-            subscriber.asyncSubscribe(getTopic(i), localSubscriberId, CreateOrAttach.CREATE_OR_ATTACH,
-                                      new TestCallback(queue), null);
+			subscriber.asyncSubscribe(getTopic(i), localSubscriberId,
+					CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue),
+					null);
             assertTrue(queue.take());
         }
 
         // Start delivery for the subscriber
         for (int i = 0; i < batchSize; i++) {
-            startDelivery(getTopic(i), localSubscriberId, new TestMessageHandler(consumeQueue));
+			startDelivery(getTopic(i), localSubscriberId,
+					new TestMessageHandler(consumeQueue));
         }
     }
 
@@ -328,13 +351,15 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
-            logger.error("Thread was interrupted while sleeping after shutting down last server!", e);
+			logger.error(
+					"Thread was interrupted while sleeping after shutting down last server!",
+					e);
         }
     }
 
     // This tests out the manual sending of consume messages to the server
     // instead of relying on the automatic sending by the client lib for it.
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testManualConsumeClient() throws Exception {
         HedwigClient myClient = new HedwigClient(new TestClientConfiguration() {
             @Override
@@ -347,14 +372,16 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         Publisher myPublisher = myClient.getPublisher();
         ByteString myTopic = getTopic(0);
         // Subscribe to a topic and start delivery on it
-        mySubscriber.asyncSubscribe(myTopic, localSubscriberId, CreateOrAttach.CREATE_OR_ATTACH,
-                                    new TestCallback(queue), null);
+		mySubscriber.asyncSubscribe(myTopic, localSubscriberId,
+				CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue), null);
         assertTrue(queue.take());
-        startDelivery(mySubscriber, myTopic, localSubscriberId, new TestMessageHandler(consumeQueue));
+		startDelivery(mySubscriber, myTopic, localSubscriberId,
+				new TestMessageHandler(consumeQueue));
         // Publish some messages
         int batchSize = 10;
         for (int i = 0; i < batchSize; i++) {
-            myPublisher.asyncPublish(myTopic, getMsg(i), new TestCallback(queue), null);
+			myPublisher.asyncPublish(myTopic, getMsg(i),
+					new TestCallback(queue), null);
             assertTrue(queue.take());
             assertTrue(consumeQueue.take());
         }
@@ -362,8 +389,8 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         for (int i = 0; i < batchSize; i++) {
             boolean success = true;
             try {
-                mySubscriber.consume(myTopic, localSubscriberId, MessageSeqId.newBuilder().setLocalComponent(i + 1)
-                                     .build());
+				mySubscriber.consume(myTopic, localSubscriberId, MessageSeqId
+						.newBuilder().setLocalComponent(i + 1).build());
             } catch (ClientNotSubscribedException e) {
                 success = false;
             }
@@ -376,48 +403,54 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
-            logger.error("Thread was interrupted while waiting to stop client for manual consume test!!", e);
+			logger.error(
+					"Thread was interrupted while waiting to stop client for manual consume test!!",
+					e);
         }
         myClient.close();
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testAttachToSubscriptionSuccess() throws Exception {
         ByteString topic = getTopic(0);
-        subscriber.asyncSubscribe(topic, localSubscriberId, CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue),
-                                  null);
+		subscriber.asyncSubscribe(topic, localSubscriberId,
+				CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue), null);
         assertTrue(queue.take());
         // Close the subscription asynchronously
-        subscriber.asyncCloseSubscription(topic, localSubscriberId, new TestCallback(queue), null);
+		subscriber.asyncCloseSubscription(topic, localSubscriberId,
+				new TestCallback(queue), null);
         assertTrue(queue.take());
         // Now try to attach to the subscription
-        subscriber.asyncSubscribe(topic, localSubscriberId, CreateOrAttach.ATTACH, new TestCallback(queue), null);
+		subscriber.asyncSubscribe(topic, localSubscriberId,
+				CreateOrAttach.ATTACH, new TestCallback(queue), null);
         assertTrue(queue.take());
         // Start delivery and publish some messages. Make sure they are consumed
         // correctly.
-        startDelivery(topic, localSubscriberId, new TestMessageHandler(consumeQueue));
+		startDelivery(topic, localSubscriberId, new TestMessageHandler(
+				consumeQueue));
         int batchSize = 5;
         for (int i = 0; i < batchSize; i++) {
-            publisher.asyncPublish(topic, getMsg(i), new TestCallback(queue), null);
+			publisher.asyncPublish(topic, getMsg(i), new TestCallback(queue),
+					null);
             assertTrue(queue.take());
             assertTrue(consumeQueue.take());
         }
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testServerRedirect() throws Exception {
         int batchSize = 10;
         publishBatch(batchSize, true, false, 0);
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testSubscribeAndConsume() throws Exception {
         int batchSize = 10;
         subscribeToTopics(batchSize);
         publishBatch(batchSize, true, true, 0);
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testServerFailoverPublishOnly() throws Exception {
         int batchSize = 10;
         publishBatch(batchSize, true, false, 0);
@@ -425,7 +458,7 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         publishBatch(batchSize, true, false, 1);
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testServerFailover() throws Exception {
         int batchSize = 10;
         subscribeToTopics(batchSize);
@@ -434,18 +467,20 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         publishBatch(batchSize, true, true, 1);
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testUnsubscribe() throws Exception {
         ByteString topic = getTopic(0);
-        subscriber.asyncSubscribe(topic, localSubscriberId, CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue),
-                                  null);
+		subscriber.asyncSubscribe(topic, localSubscriberId,
+				CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue), null);
         assertTrue(queue.take());
-        startDelivery(topic, localSubscriberId, new TestMessageHandler(consumeQueue));
+		startDelivery(topic, localSubscriberId, new TestMessageHandler(
+				consumeQueue));
         publisher.asyncPublish(topic, getMsg(0), new TestCallback(queue), null);
         assertTrue(queue.take());
         assertTrue(consumeQueue.take());
         // Send an Unsubscribe request
-        subscriber.asyncUnsubscribe(topic, localSubscriberId, new TestCallback(queue), null);
+		subscriber.asyncUnsubscribe(topic, localSubscriberId, new TestCallback(
+				queue), null);
         assertTrue(queue.take());
         // Now publish a message and make sure it is not consumed by the client
         publisher.asyncPublish(topic, getMsg(1), new TestCallback(queue), null);
@@ -466,7 +501,7 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         assertFalse(consumeQueue.take());
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testSyncUnsubscribeWithoutSubscription() throws Exception {
         boolean unsubscribeSuccess = false;
         try {
@@ -479,24 +514,27 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         assertTrue(unsubscribeSuccess);
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testAsyncUnsubscribeWithoutSubscription() throws Exception {
-        subscriber.asyncUnsubscribe(getTopic(0), localSubscriberId, new TestCallback(queue), null);
+		subscriber.asyncUnsubscribe(getTopic(0), localSubscriberId,
+				new TestCallback(queue), null);
         assertFalse(queue.take());
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testCloseSubscription() throws Exception {
         ByteString topic = getTopic(0);
-        subscriber.asyncSubscribe(topic, localSubscriberId, CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue),
-                                  null);
+		subscriber.asyncSubscribe(topic, localSubscriberId,
+				CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue), null);
         assertTrue(queue.take());
-        startDelivery(topic, localSubscriberId, new TestMessageHandler(consumeQueue));
+		startDelivery(topic, localSubscriberId, new TestMessageHandler(
+				consumeQueue));
         publisher.asyncPublish(topic, getMsg(0), new TestCallback(queue), null);
         assertTrue(queue.take());
         assertTrue(consumeQueue.take());
         // Close the subscription asynchronously
-        subscriber.asyncCloseSubscription(topic, localSubscriberId, new TestCallback(queue), null);
+		subscriber.asyncCloseSubscription(topic, localSubscriberId,
+				new TestCallback(queue), null);
         assertTrue(queue.take());
         // Now publish a message and make sure it is not consumed by the client
         publisher.asyncPublish(topic, getMsg(1), new TestCallback(queue), null);
@@ -517,27 +555,30 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         assertFalse(consumeQueue.take());
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testStartDeliveryTwice() throws Exception {
         ByteString topic = getTopic(0);
-        subscriber.asyncSubscribe(topic, localSubscriberId, CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue),
-                                  null);
+		subscriber.asyncSubscribe(topic, localSubscriberId,
+				CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue), null);
         assertTrue(queue.take());
-        startDelivery(topic, localSubscriberId, new TestMessageHandler(consumeQueue));
+		startDelivery(topic, localSubscriberId, new TestMessageHandler(
+				consumeQueue));
         try {
-            startDelivery(topic, localSubscriberId, new TestMessageHandler(consumeQueue));
+			startDelivery(topic, localSubscriberId, new TestMessageHandler(
+					consumeQueue));
             fail("Should not reach here!");
         } catch (AlreadyStartDeliveryException e) {
         }
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testStopDelivery() throws Exception {
         ByteString topic = getTopic(0);
-        subscriber.asyncSubscribe(topic, localSubscriberId, CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue),
-                                  null);
+		subscriber.asyncSubscribe(topic, localSubscriberId,
+				CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue), null);
         assertTrue(queue.take());
-        startDelivery(topic, localSubscriberId, new TestMessageHandler(consumeQueue));
+		startDelivery(topic, localSubscriberId, new TestMessageHandler(
+				consumeQueue));
         publisher.asyncPublish(topic, getMsg(0), new TestCallback(queue), null);
         assertTrue(queue.take());
         assertTrue(consumeQueue.take());
@@ -547,7 +588,8 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         // the client
         int batchSize = 10;
         for (int i = 0; i < batchSize; i++) {
-            publisher.asyncPublish(topic, getMsg(i + 1), new TestCallback(queue), null);
+			publisher.asyncPublish(topic, getMsg(i + 1),
+					new TestCallback(queue), null);
             assertTrue(queue.take());
         }
         // Wait a little bit just in case the message handler is still active,
@@ -566,24 +608,27 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         assertFalse(consumeQueue.take());
         // Now start delivery again and verify that the queued up messages are
         // consumed
-        startDelivery(topic, localSubscriberId, new TestMessageHandler(consumeQueue));
+		startDelivery(topic, localSubscriberId, new TestMessageHandler(
+				consumeQueue));
         for (int i = 0; i < batchSize; i++) {
             assertTrue(consumeQueue.take());
         }
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testConsumedMessagesInOrder() throws Exception {
         ByteString topic = getTopic(0);
-        subscriber.asyncSubscribe(topic, localSubscriberId, CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue),
-                                  null);
+		subscriber.asyncSubscribe(topic, localSubscriberId,
+				CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue), null);
         assertTrue(queue.take());
-        startDelivery(topic, localSubscriberId, new TestMessageHandler(consumeQueue));
+		startDelivery(topic, localSubscriberId, new TestMessageHandler(
+				consumeQueue));
         // Now publish some messages and verify that they are delivered in order
         // to the subscriber
         int batchSize = 100;
         for (int i = 0; i < batchSize; i++) {
-            publisher.asyncPublish(topic, getMsg(i), new TestCallback(queue), null);
+			publisher.asyncPublish(topic, getMsg(i), new TestCallback(queue),
+					null);
         }
         // We've sent out all of the publish messages asynchronously,
         // now verify that they are consumed in the correct order.
@@ -593,49 +638,56 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         }
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testCreateSubscriptionFailure() throws Exception {
         ByteString topic = getTopic(0);
-        subscriber.asyncSubscribe(topic, localSubscriberId, CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue),
-                                  null);
+		subscriber.asyncSubscribe(topic, localSubscriberId,
+				CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue), null);
         assertTrue(queue.take());
         // Close the subscription asynchronously
-        subscriber.asyncCloseSubscription(topic, localSubscriberId, new TestCallback(queue), null);
+		subscriber.asyncCloseSubscription(topic, localSubscriberId,
+				new TestCallback(queue), null);
         assertTrue(queue.take());
         // Now try to create the subscription when it already exists
-        subscriber.asyncSubscribe(topic, localSubscriberId, CreateOrAttach.CREATE, new TestCallback(queue), null);
+		subscriber.asyncSubscribe(topic, localSubscriberId,
+				CreateOrAttach.CREATE, new TestCallback(queue), null);
         assertFalse(queue.take());
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testCreateSubscriptionSuccess() throws Exception {
         ByteString topic = getTopic(0);
-        subscriber.asyncSubscribe(topic, localSubscriberId, CreateOrAttach.CREATE, new TestCallback(queue), null);
+		subscriber.asyncSubscribe(topic, localSubscriberId,
+				CreateOrAttach.CREATE, new TestCallback(queue), null);
         assertTrue(queue.take());
-        startDelivery(topic, localSubscriberId, new TestMessageHandler(consumeQueue));
+		startDelivery(topic, localSubscriberId, new TestMessageHandler(
+				consumeQueue));
         int batchSize = 5;
         for (int i = 0; i < batchSize; i++) {
-            publisher.asyncPublish(topic, getMsg(i), new TestCallback(queue), null);
+			publisher.asyncPublish(topic, getMsg(i), new TestCallback(queue),
+					null);
             assertTrue(queue.take());
             assertTrue(consumeQueue.take());
         }
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testAttachToSubscriptionFailure() throws Exception {
         ByteString topic = getTopic(0);
-        subscriber.asyncSubscribe(topic, localSubscriberId, CreateOrAttach.ATTACH, new TestCallback(queue), null);
+		subscriber.asyncSubscribe(topic, localSubscriberId,
+				CreateOrAttach.ATTACH, new TestCallback(queue), null);
         assertFalse(queue.take());
     }
 
     // The following 4 tests are to make sure that the subscriberId validation
     // works when it is a local subscriber and we're expecting the subscriberId
     // to be in the "local" specific format.
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testSyncSubscribeWithInvalidSubscriberId() throws Exception {
         boolean subscribeSuccess = false;
         try {
-            subscriber.subscribe(getTopic(0), hubSubscriberId, CreateOrAttach.CREATE_OR_ATTACH);
+			subscriber.subscribe(getTopic(0), hubSubscriberId,
+					CreateOrAttach.CREATE_OR_ATTACH);
         } catch (InvalidSubscriberIdException e) {
             subscribeSuccess = true;
         } catch (Exception ex) {
@@ -644,14 +696,14 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         assertTrue(subscribeSuccess);
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testAsyncSubscribeWithInvalidSubscriberId() throws Exception {
-        subscriber.asyncSubscribe(getTopic(0), hubSubscriberId, CreateOrAttach.CREATE_OR_ATTACH,
-                                  new TestCallback(queue), null);
+		subscriber.asyncSubscribe(getTopic(0), hubSubscriberId,
+				CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue), null);
         assertFalse(queue.take());
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testSyncUnsubscribeWithInvalidSubscriberId() throws Exception {
         boolean unsubscribeSuccess = false;
         try {
@@ -664,22 +716,24 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         assertTrue(unsubscribeSuccess);
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testAsyncUnsubscribeWithInvalidSubscriberId() throws Exception {
-        subscriber.asyncUnsubscribe(getTopic(0), hubSubscriberId, new TestCallback(queue), null);
+		subscriber.asyncUnsubscribe(getTopic(0), hubSubscriberId,
+				new TestCallback(queue), null);
         assertFalse(queue.take());
     }
 
     // The following 4 tests are to make sure that the subscriberId validation
     // also works when it is a hub subscriber and we're expecting the
     // subscriberId to be in the "hub" specific format.
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testSyncHubSubscribeWithInvalidSubscriberId() throws Exception {
         Client hubClient = new HedwigHubClient(new HubClientConfiguration());
         Subscriber hubSubscriber = hubClient.getSubscriber();
         boolean subscribeSuccess = false;
         try {
-            hubSubscriber.subscribe(getTopic(0), localSubscriberId, CreateOrAttach.CREATE_OR_ATTACH);
+			hubSubscriber.subscribe(getTopic(0), localSubscriberId,
+					CreateOrAttach.CREATE_OR_ATTACH);
         } catch (InvalidSubscriberIdException e) {
             subscribeSuccess = true;
         } catch (Exception ex) {
@@ -689,18 +743,19 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         hubClient.close();
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testAsyncHubSubscribeWithInvalidSubscriberId() throws Exception {
         Client hubClient = new HedwigHubClient(new HubClientConfiguration());
         Subscriber hubSubscriber = hubClient.getSubscriber();
-        hubSubscriber.asyncSubscribe(getTopic(0), localSubscriberId, CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(
-                                         queue), null);
+		hubSubscriber.asyncSubscribe(getTopic(0), localSubscriberId,
+				CreateOrAttach.CREATE_OR_ATTACH, new TestCallback(queue), null);
         assertFalse(queue.take());
         hubClient.close();
     }
 
-    @Test(timeout=10000)
-    public void testSyncHubUnsubscribeWithInvalidSubscriberId() throws Exception {
+	@Test(timeout = 10000)
+	public void testSyncHubUnsubscribeWithInvalidSubscriberId()
+			throws Exception {
         Client hubClient = new HedwigHubClient(new HubClientConfiguration());
         Subscriber hubSubscriber = hubClient.getSubscriber();
         boolean unsubscribeSuccess = false;
@@ -715,16 +770,18 @@ public abstract class TestHedwigHub extends HedwigHubTestBase {
         hubClient.close();
     }
 
-    @Test(timeout=10000)
-    public void testAsyncHubUnsubscribeWithInvalidSubscriberId() throws Exception {
+	@Test(timeout = 10000)
+	public void testAsyncHubUnsubscribeWithInvalidSubscriberId()
+			throws Exception {
         Client hubClient = new HedwigHubClient(new HubClientConfiguration());
         Subscriber hubSubscriber = hubClient.getSubscriber();
-        hubSubscriber.asyncUnsubscribe(getTopic(0), localSubscriberId, new TestCallback(queue), null);
+		hubSubscriber.asyncUnsubscribe(getTopic(0), localSubscriberId,
+				new TestCallback(queue), null);
         assertFalse(queue.take());
         hubClient.close();
     }
 
-    @Test(timeout=10000)
+	@Test(timeout = 10000)
     public void testPublishWithBookKeeperError() throws Exception {
         int batchSize = 10;
         publishBatch(batchSize, true, false, 0);

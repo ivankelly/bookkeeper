@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.versioning.Version;
 import org.apache.bookkeeper.versioning.Versioned;
 import org.apache.hedwig.exceptions.PubSubException;
+import org.apache.hedwig.exceptions.PubSubException.ServerNotResponsibleForTopicException;
 import org.apache.hedwig.protocol.PubSubProtocol.MessageSeqId;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscribeRequest;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionData;
@@ -82,6 +84,9 @@ public abstract class AbstractSubscriptionManager implements SubscriptionManager
 
     protected final Callback<Void> noopCallback = new NoopCallback<Void>();
 
+    /* msgbus */
+    private final AtomicLong timeStampForTimerTask = new AtomicLong(0);    
+    
     static class NoopCallback<T> implements Callback<T> {
         @Override
         public void operationFailed(Object ctx, PubSubException exception) {
@@ -155,6 +160,70 @@ public abstract class AbstractSubscriptionManager implements SubscriptionManager
             }
         }
     }
+
+    /* msgbus add--> */
+    /**
+     * Get the approximate message count for the given topic.
+     * 
+     * @param topic
+     * @param callback
+     * @param ctx
+     * @author Zac , msgbus team, xy
+     */
+    public void queryMessagesForTopic(ByteString topic,
+            Callback<Long> callback, Object ctx) {
+        queuer.pushAndMaybeRun(topic, new QueryMessagesCountOp(topic, callback,
+                ctx));
+    }
+
+    /**
+     * Do the actual work, calculating the count.
+     * 
+     * @author Zac, msgbus team
+     */
+    private class QueryMessagesCountOp extends
+    TopicOpQueuer.AsynchronousOp<Long> {
+        public QueryMessagesCountOp(ByteString topic, Callback<Long> callback,
+                Object ctx) {
+            queuer.super(topic, callback, ctx);
+        }
+
+        @Override
+        public void run() {
+            Long minConsumedFromMap = topic2MinConsumedMessagesMap.get(topic);
+            logger.info("Last min consumed seqid from map: " + minConsumedFromMap);
+            long lastUpdate = timeStampForTimerTask.get(), lastMsgSeqId = 0;
+            try {
+                lastMsgSeqId = pm.getCurrentSeqIdForTopic(topic)
+                        .getLocalComponent();
+            } catch (ServerNotResponsibleForTopicException e) {
+                cb.operationFailed(ctx, e);
+            }
+            logger.info("last message published comes with seqid: " + lastMsgSeqId);
+            // Is 5s to0 small or to big? The tests have to say something.
+            if(System.currentTimeMillis() - lastUpdate <= 5000){
+                cb.operationFinished(ctx, lastMsgSeqId - minConsumedFromMap);
+            }
+            logger.info("Have to recalculate the min consumed seqid");
+            final Map<ByteString, InMemorySubscriptionState> topicSubscriptions = top2sub2seq
+                    .get(topic);
+            if (topicSubscriptions == null) {
+                cb.operationFinished(ctx, 0l);
+            }
+            long minConsumedMessage = Long.MAX_VALUE;
+            for (InMemorySubscriptionState curSubscription : topicSubscriptions
+                    .values()) {
+                if (curSubscription.getLastPersistedSeqId() < minConsumedMessage) {
+                    minConsumedMessage = curSubscription
+                            .getLastPersistedSeqId();
+                }
+            }
+            logger.info("So the min consumed seqid is " + minConsumedMessage);
+            logger.info("The message count for :" + topic + " is " + (lastMsgSeqId - minConsumedMessage));
+            cb.operationFinished(ctx, lastMsgSeqId - minConsumedMessage);
+        }
+    }
+    /* <--msgbus add */
 
     private class AcquireOp extends TopicOpQueuer.AsynchronousOp<Void> {
         public AcquireOp(ByteString topic, Callback<Void> callback, Object ctx) {
@@ -584,6 +653,14 @@ public abstract class AbstractSubscriptionManager implements SubscriptionManager
         }
     }
 
+    /* msgbus add--> */
+    public void addConsumeSeqIdForSubscriber(ByteString topic, ByteString subscriberId, MessageSeqId consumeSeqId,
+            Callback<Void> callback, Object ctx) {
+        
+        dm.addConsumeSeqForQueue(topic, subscriberId, consumeSeqId, this, callback, ctx);
+    }
+    /* <--msgbus add */
+    
     @Override
     public void setConsumeSeqIdForSubscriber(ByteString topic, ByteString subscriberId, MessageSeqId consumeSeqId,
             Callback<Void> callback, Object ctx) {

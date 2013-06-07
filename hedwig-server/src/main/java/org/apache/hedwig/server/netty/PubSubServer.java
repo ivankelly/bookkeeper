@@ -17,10 +17,9 @@
  */
 package org.apache.hedwig.server.netty;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,27 +29,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 
-import com.google.common.annotations.VisibleForTesting;
-import org.apache.bookkeeper.conf.ClientConfiguration;
-import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BKException;
+import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.commons.configuration.ConfigurationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
-import org.jboss.netty.bootstrap.ServerBootstrap;
-import org.jboss.netty.channel.group.ChannelGroup;
-import org.jboss.netty.channel.group.DefaultChannelGroup;
-import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
-import org.jboss.netty.channel.socket.ServerSocketChannelFactory;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
-import org.jboss.netty.logging.InternalLoggerFactory;
-import org.jboss.netty.logging.Log4JLoggerFactory;
-
 import org.apache.hedwig.exceptions.PubSubException;
 import org.apache.hedwig.protocol.PubSubProtocol.OperationType;
 import org.apache.hedwig.server.common.ServerConfiguration;
@@ -62,6 +44,7 @@ import org.apache.hedwig.server.handlers.ConsumeHandler;
 import org.apache.hedwig.server.handlers.Handler;
 import org.apache.hedwig.server.handlers.NettyHandlerBean;
 import org.apache.hedwig.server.handlers.PublishHandler;
+import org.apache.hedwig.server.handlers.QueueHandler;
 import org.apache.hedwig.server.handlers.SubscribeHandler;
 import org.apache.hedwig.server.handlers.SubscriptionChannelManager;
 import org.apache.hedwig.server.handlers.SubscriptionChannelManager.SubChannelDisconnectedListener;
@@ -78,8 +61,8 @@ import org.apache.hedwig.server.regions.HedwigHubClientFactory;
 import org.apache.hedwig.server.regions.RegionManager;
 import org.apache.hedwig.server.ssl.SslServerContextFactory;
 import org.apache.hedwig.server.subscriptions.InMemorySubscriptionManager;
-import org.apache.hedwig.server.subscriptions.SubscriptionManager;
 import org.apache.hedwig.server.subscriptions.MMSubscriptionManager;
+import org.apache.hedwig.server.subscriptions.SubscriptionManager;
 import org.apache.hedwig.server.topics.MMTopicManager;
 import org.apache.hedwig.server.topics.TopicManager;
 import org.apache.hedwig.server.topics.TrivialOwnAllTopicManager;
@@ -87,6 +70,23 @@ import org.apache.hedwig.server.topics.ZkTopicManager;
 import org.apache.hedwig.util.ConcurrencyUtils;
 import org.apache.hedwig.util.Either;
 import org.apache.hedwig.zookeeper.SafeAsyncCallback;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooKeeper;
+import org.jboss.netty.bootstrap.ServerBootstrap;
+import org.jboss.netty.channel.group.ChannelGroup;
+import org.jboss.netty.channel.group.DefaultChannelGroup;
+import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
+import org.jboss.netty.channel.socket.ServerSocketChannelFactory;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
+import org.jboss.netty.logging.InternalLoggerFactory;
+import org.jboss.netty.logging.Log4JLoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.annotations.VisibleForTesting;
 
 public class PubSubServer {
 
@@ -122,14 +122,15 @@ public class PubSubServer {
     PubSubServerBean jmxServerBean;
     final ThreadGroup tg;
 
-    protected PersistenceManager instantiatePersistenceManager(TopicManager topicMgr) throws IOException,
-        InterruptedException {
+	protected PersistenceManager instantiatePersistenceManager(
+			TopicManager topicMgr) throws IOException, InterruptedException {
 
         PersistenceManagerWithRangeScan underlyingPM;
 
         if (conf.isStandalone()) {
 
             underlyingPM = LocalDBPersistenceManager.instance();
+			logger.info("isStandalone...................realPersistenceManager is LocalDBPersistenceManager");
 
         } else {
             try {
@@ -140,7 +141,9 @@ public class PubSubServer {
                 logger.error("Could not instantiate bookkeeper client", e);
                 throw new IOException(e);
             }
-            underlyingPM = new BookkeeperPersistenceManager(bk, mm, topicMgr, conf, scheduler);
+			underlyingPM = new BookkeeperPersistenceManager(bk, mm, topicMgr,
+					conf, scheduler);
+			logger.info("isNotStandalone...................realPersistenceManager is BookkeeperPersistenceManager");
 
         }
 
@@ -153,8 +156,8 @@ public class PubSubServer {
         return pm;
     }
 
-    protected SubscriptionManager instantiateSubscriptionManager(TopicManager tm, PersistenceManager pm,
-                                                                 DeliveryManager dm) {
+	protected SubscriptionManager instantiateSubscriptionManager(
+			TopicManager tm, PersistenceManager pm, DeliveryManager dm) {
         if (conf.isStandalone()) {
             return new InMemorySubscriptionManager(conf, tm, pm, dm, scheduler);
         } else {
@@ -163,8 +166,10 @@ public class PubSubServer {
 
     }
 
-    protected RegionManager instantiateRegionManager(PersistenceManager pm, ScheduledExecutorService scheduler) {
-        return new RegionManager(pm, conf, zk, scheduler, new HedwigHubClientFactory(conf, clientConfiguration,
+	protected RegionManager instantiateRegionManager(PersistenceManager pm,
+			ScheduledExecutorService scheduler) {
+		return new RegionManager(pm, conf, zk, scheduler,
+				new HedwigHubClientFactory(conf, clientConfiguration,
                 clientChannelFactory));
     }
 
@@ -172,20 +177,28 @@ public class PubSubServer {
         if (!conf.isStandalone()) {
             final CountDownLatch signalZkReady = new CountDownLatch(1);
 
-            zk = new ZooKeeper(conf.getZkHost(), conf.getZkTimeout(), new Watcher() {
+			zk = new ZooKeeper(conf.getZkHost(), conf.getZkTimeout(),
+					new Watcher() {
                 @Override
                 public void process(WatchedEvent event) {
-                    if(Event.KeeperState.SyncConnected.equals(event.getState())) {
+							if (Event.KeeperState.SyncConnected.equals(event
+									.getState())) {
                         signalZkReady.countDown();
                     }
                 }
             });
             // wait until connection is effective
-            if (!signalZkReady.await(conf.getZkTimeout()*2, TimeUnit.MILLISECONDS)) {
-                logger.error("Could not establish connection with ZooKeeper after zk_timeout*2 = " +
-                             conf.getZkTimeout()*2 + " ms. (Default value for zk_timeout is 2000).");
-                throw new Exception("Could not establish connection with ZooKeeper after zk_timeout*2 = " +
-                                    conf.getZkTimeout()*2 + " ms. (Default value for zk_timeout is 2000).");
+			if (!signalZkReady.await(conf.getZkTimeout() * 2,
+					TimeUnit.MILLISECONDS)) {
+				logger.error("Could not establish connection with ZooKeeper after zk_timeout*2 = "
+						+ conf.getZkTimeout()
+						* 2
+						+ " ms. (Default value for zk_timeout is 2000).");
+				throw new Exception(
+						"Could not establish connection with ZooKeeper after zk_timeout*2 = "
+								+ conf.getZkTimeout()
+								* 2
+								+ " ms. (Default value for zk_timeout is 2000).");
             }
         }
     }
@@ -208,14 +221,19 @@ public class PubSubServer {
                     tm = new MMTopicManager(conf, zk, mm, scheduler);
                 } else {
                     if (!(mm instanceof ZkMetadataManagerFactory)) {
-                        throw new IOException("Uses " + mm.getClass().getName() + " to store hedwig metadata, "
+						throw new IOException(
+								"Uses "
+										+ mm.getClass().getName()
+										+ " to store hedwig metadata, "
                                             + "but uses zookeeper ephemeral znodes to store topic ownership. "
                                             + "Check your configuration as this could lead to scalability issues.");
                     }
                     tm = new ZkTopicManager(zk, conf, scheduler);
                 }
             } catch (PubSubException e) {
-                logger.error("Could not instantiate TopicOwnershipManager based topic manager", e);
+				logger.error(
+						"Could not instantiate TopicOwnershipManager based topic manager",
+						e);
                 throw new IOException(e);
             }
         }
@@ -223,18 +241,20 @@ public class PubSubServer {
     }
 
    protected Map<OperationType, Handler> initializeNettyHandlers(
-           TopicManager tm, DeliveryManager dm,
-           PersistenceManager pm, SubscriptionManager sm,
-           SubscriptionChannelManager subChannelMgr) {
+			TopicManager tm, DeliveryManager dm, PersistenceManager pm,
+			SubscriptionManager sm, SubscriptionChannelManager subChannelMgr) {
         Map<OperationType, Handler> handlers = new HashMap<OperationType, Handler>();
         handlers.put(OperationType.PUBLISH, new PublishHandler(tm, pm, conf));
-        handlers.put(OperationType.SUBSCRIBE,
-                     new SubscribeHandler(conf, tm, dm, pm, sm, subChannelMgr));
-        handlers.put(OperationType.UNSUBSCRIBE,
-                     new UnsubscribeHandler(conf, tm, sm, dm, subChannelMgr));
+		handlers.put(OperationType.SUBSCRIBE, new SubscribeHandler(conf, tm,
+				dm, pm, sm, subChannelMgr));
+		handlers.put(OperationType.UNSUBSCRIBE, new UnsubscribeHandler(conf,
+				tm, sm, dm, subChannelMgr));
         handlers.put(OperationType.CONSUME, new ConsumeHandler(tm, sm, conf));
         handlers.put(OperationType.CLOSESUBSCRIPTION,
                      new CloseSubscriptionHandler(conf, tm, sm, dm, subChannelMgr));
+		/* msgbus add */
+		handlers.put(OperationType.QUEUE_TOPIC_OP, new QueueHandler(conf, tm,
+				pm, dm, subChannelMgr, sm));
         handlers = Collections.unmodifiableMap(handlers);
         return handlers;
     }
@@ -245,11 +265,10 @@ public class PubSubServer {
         boolean isSSLEnabled = (sslFactory != null) ? true : false;
         InternalLoggerFactory.setDefaultFactory(new Log4JLoggerFactory());
         ServerBootstrap bootstrap = new ServerBootstrap(serverChannelFactory);
-        UmbrellaHandler umbrellaHandler =
-            new UmbrellaHandler(allChannels, handlers, subChannelMgr, isSSLEnabled);
-        PubSubServerPipelineFactory pipeline =
-            new PubSubServerPipelineFactory(umbrellaHandler, sslFactory,
-                                            conf.getMaximumMessageSize());
+		UmbrellaHandler umbrellaHandler = new UmbrellaHandler(allChannels,
+				handlers, subChannelMgr, isSSLEnabled);
+		PubSubServerPipelineFactory pipeline = new PubSubServerPipelineFactory(
+				umbrellaHandler, sslFactory, conf.getMaximumMessageSize());
 
         bootstrap.setPipelineFactory(pipeline);
         bootstrap.setOption("child.tcpNoDelay", true);
@@ -257,8 +276,9 @@ public class PubSubServer {
         bootstrap.setOption("reuseAddress", true);
 
         // Bind and start to accept incoming connections.
-        allChannels.add(bootstrap.bind(isSSLEnabled ? new InetSocketAddress(conf.getSSLServerPort())
-                                       : new InetSocketAddress(conf.getServerPort())));
+		allChannels.add(bootstrap.bind(isSSLEnabled ? new InetSocketAddress(
+				conf.getSSLServerPort()) : new InetSocketAddress(conf
+				.getServerPort())));
         logger.info("Going into receive loop");
     }
 
@@ -284,7 +304,8 @@ public class PubSubServer {
             try {
                 mm.shutdown();
             } catch (IOException ie) {
-                logger.error("Error while shutdown metadata manager factory!", ie);
+				logger.error("Error while shutdown metadata manager factory!",
+						ie);
             }
         }
 
@@ -319,7 +340,8 @@ public class PubSubServer {
             HedwigMBeanRegistry.getInstance().register(jmxServerBean, null);
             try {
                 jmxNettyBean = new NettyHandlerBean(subChannelMgr);
-                HedwigMBeanRegistry.getInstance().register(jmxNettyBean, jmxServerBean);
+				HedwigMBeanRegistry.getInstance().register(jmxNettyBean,
+						jmxServerBean);
             } catch (Exception e) {
                 logger.warn("Failed to register with JMX", e);
                 jmxNettyBean = null;
@@ -329,13 +351,13 @@ public class PubSubServer {
             jmxServerBean = null;
         }
         if (pm instanceof ReadAheadCache) {
-            ((ReadAheadCache)pm).registerJMX(jmxServerBean);
+			((ReadAheadCache) pm).registerJMX(jmxServerBean);
         }
     }
 
     protected void unregisterJMX() {
         if (pm != null && pm instanceof ReadAheadCache) {
-            ((ReadAheadCache)pm).unregisterJMX();
+			((ReadAheadCache) pm).unregisterJMX();
         }
         try {
             if (jmxNettyBean != null) {
@@ -365,7 +387,8 @@ public class PubSubServer {
      * @throws InterruptedException
      * @throws ConfigurationException
      */
-    public PubSubServer(final ServerConfiguration serverConfiguration,
+	public PubSubServer(
+			final ServerConfiguration serverConfiguration,
                         final org.apache.hedwig.client.conf.ClientConfiguration clientConfiguration,
                         final Thread.UncaughtExceptionHandler exceptionHandler)
             throws ConfigurationException {
@@ -402,16 +425,20 @@ public class PubSubServer {
                     // Since zk is needed by almost everyone,try to see if we
                     // need that first
                     scheduler = Executors.newSingleThreadScheduledExecutor();
-                    serverChannelFactory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(), Executors
+					serverChannelFactory = new NioServerSocketChannelFactory(
+							Executors.newCachedThreadPool(), Executors
                             .newCachedThreadPool());
-                    clientChannelFactory = new NioClientSocketChannelFactory(Executors.newCachedThreadPool(), Executors
+					clientChannelFactory = new NioClientSocketChannelFactory(
+							Executors.newCachedThreadPool(), Executors
                             .newCachedThreadPool());
 
                     instantiateZookeeperClient();
                     instantiateMetadataManagerFactory();
                     tm = instantiateTopicManager();
                     pm = instantiatePersistenceManager(tm);
-                    dm = new FIFODeliveryManager(pm, conf);
+					/* msgbus modified */
+					// dm = new FIFODeliveryManager(pm, conf);
+					dm = new FIFODeliveryManager(pm, zk, conf);
                     dm.start();
 
                     sm = instantiateSubscriptionManager(tm, pm, dm);
@@ -423,9 +450,10 @@ public class PubSubServer {
                     // UmbrellaHandler) once so they can be shared by
                     // both the SSL and non-SSL channels.
                     SubscriptionChannelManager subChannelMgr = new SubscriptionChannelManager();
-                    subChannelMgr.addSubChannelDisconnectedListener((SubChannelDisconnectedListener) dm);
-                    Map<OperationType, Handler> handlers =
-                        initializeNettyHandlers(tm, dm, pm, sm, subChannelMgr);
+					subChannelMgr
+							.addSubChannelDisconnectedListener((SubChannelDisconnectedListener) dm);
+					Map<OperationType, Handler> handlers = initializeNettyHandlers(
+							tm, dm, pm, sm, subChannelMgr);
                     // Initialize Netty for the regular non-SSL channels
                     initializeNetty(null, handlers, subChannelMgr);
                     if (conf.isSSLEnabled()) {
@@ -439,7 +467,8 @@ public class PubSubServer {
                     return;
                 }
 
-                ConcurrencyUtils.put(queue, Either.of(new Object(), (Exception) null));
+				ConcurrencyUtils.put(queue,
+						Either.of(new Object(), (Exception) null));
             }
 
         }).start();
@@ -450,13 +479,18 @@ public class PubSubServer {
         }
     }
 
-    public PubSubServer(ServerConfiguration serverConfiguration,
-                        org.apache.hedwig.client.conf.ClientConfiguration clientConfiguration) throws Exception {
-        this(serverConfiguration, clientConfiguration, new TerminateJVMExceptionHandler());
+	public PubSubServer(
+			ServerConfiguration serverConfiguration,
+			org.apache.hedwig.client.conf.ClientConfiguration clientConfiguration)
+			throws Exception {
+		this(serverConfiguration, clientConfiguration,
+				new TerminateJVMExceptionHandler());
     }
 
-    public PubSubServer(ServerConfiguration serverConfiguration) throws Exception {
-        this(serverConfiguration, new org.apache.hedwig.client.conf.ClientConfiguration());
+	public PubSubServer(ServerConfiguration serverConfiguration)
+			throws Exception {
+		this(serverConfiguration,
+				new org.apache.hedwig.client.conf.ClientConfiguration());
     }
 
     @VisibleForTesting
@@ -488,38 +522,48 @@ public class PubSubServer {
         logger.info("Attempting to start Hedwig");
         ServerConfiguration serverConfiguration = new ServerConfiguration();
         // The client configuration for the hedwig client in the region manager.
-        org.apache.hedwig.client.conf.ClientConfiguration regionMgrClientConfiguration
-                = new org.apache.hedwig.client.conf.ClientConfiguration();
-        if (args.length > 0) {
-            String confFile = args[0];
+		org.apache.hedwig.client.conf.ClientConfiguration regionMgrClientConfiguration = new org.apache.hedwig.client.conf.ClientConfiguration();
+		/*
+		 * if (args.length > 0) { String confFile = args[0]; try {
+		 * serverConfiguration.loadConf(new File(confFile).toURI().toURL()); }
+		 * catch (MalformedURLException e) { String msg =
+		 * "Could not open server configuration file: " + confFile;
+		 * errorMsgAndExit(msg, e, RC_INVALID_CONF_FILE); } catch
+		 * (ConfigurationException e) { String msg =
+		 * "Malformed server configuration file: " + confFile;
+		 * errorMsgAndExit(msg, e, RC_MISCONFIGURED); }
+		 * logger.info("Using configuration file " + confFile); } if
+		 * (args.length > 1) { // args[1] is the client configuration file.
+		 * String confFile = args[1]; try {
+		 * regionMgrClientConfiguration.loadConf(new
+		 * File(confFile).toURI().toURL()); } catch (MalformedURLException e) {
+		 * String msg = "Could not open client configuration file: " + confFile;
+		 * errorMsgAndExit(msg, e, RC_INVALID_CONF_FILE); } catch
+		 * (ConfigurationException e) { String msg =
+		 * "Malformed client configuration file: " + confFile;
+		 * errorMsgAndExit(msg, e, RC_MISCONFIGURED); } } try { new
+		 * PubSubServer(serverConfiguration,
+		 * regionMgrClientConfiguration).start(); } catch (Throwable t) {
+		 * errorMsgAndExit("Error during startup", t, RC_OTHER); }
+		 */
+
+		/* msgbus--> For the convenience of debugging in windows. */
             try {
-                serverConfiguration.loadConf(new File(confFile).toURI().toURL());
-            } catch (MalformedURLException e) {
-                String msg = "Could not open server configuration file: " + confFile;
-                errorMsgAndExit(msg, e, RC_INVALID_CONF_FILE);
-            } catch (ConfigurationException e) {
-                String msg = "Malformed server configuration file: " + confFile;
-                errorMsgAndExit(msg, e, RC_MISCONFIGURED);
-            }
-            logger.info("Using configuration file " + confFile);
+			URL serverConf = PubSubServer.class.getResource("/hw_server.conf");
+			ServerConfiguration conf = new ServerConfiguration();
+			if (serverConf != null) {
+				conf.loadConf(serverConf);
+
+			} else {
+				System.out.println("No configuration file!");
+				return;
         }
-        if (args.length > 1) {
-            // args[1] is the client configuration file.
-            String confFile = args[1];
-            try {
-                regionMgrClientConfiguration.loadConf(new File(confFile).toURI().toURL());
-            } catch (MalformedURLException e) {
-                String msg = "Could not open client configuration file: " + confFile;
-                errorMsgAndExit(msg, e, RC_INVALID_CONF_FILE);
-            } catch (ConfigurationException e) {
-                String msg = "Malformed client configuration file: " + confFile;
-                errorMsgAndExit(msg, e, RC_MISCONFIGURED);
-            }
-        }
-        try {
-            new PubSubServer(serverConfiguration, regionMgrClientConfiguration).start();
+			serverConfiguration.loadConf(serverConf);
+			new PubSubServer(serverConfiguration, regionMgrClientConfiguration)
+					.start();
         } catch (Throwable t) {
             errorMsgAndExit("Error during startup", t, RC_OTHER);
         }
+		/* For the convenience of debugging in windows. <--msgbus */
     }
 }

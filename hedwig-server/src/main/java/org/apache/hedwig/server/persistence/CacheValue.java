@@ -20,11 +20,10 @@ package org.apache.hedwig.server.persistence;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
 import org.apache.hedwig.server.common.UnexpectedError;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is NOT thread safe. It need not be thread-safe because our
@@ -56,18 +55,20 @@ public class CacheValue {
     }
 
     public void setMessageAndInvokeCallbacks(Message message, long currTime) {
-        if (this.message != null) {
-            // Duplicate read for the same message coming back
-            return;
-        }
+		// if (this.message != null) {
+		// // Duplicate read for the same message coming back
+		// return;
+		// }
 
         this.message = message;
         this.timeOfAddition = currTime;
 
-        logger.debug("Invoking {} callbacks for {} message added to cache", callbacks.size(), message);
+		logger.debug("Invoking {} callbacks for {} message added to cache",
+				callbacks.size(), message);
         for (ScanCallbackWithContext callbackWithCtx : callbacks) {
             if (null != callbackWithCtx) {
-                callbackWithCtx.getScanCallback().messageScanned(callbackWithCtx.getCtx(), message);
+				callbackWithCtx.getScanCallback().messageScanned(
+						callbackWithCtx.getCtx(), message);
             }
         }
     }
@@ -93,7 +94,8 @@ public class CacheValue {
     public void setErrorAndInvokeCallbacks(Exception exception) {
         for (ScanCallbackWithContext callbackWithCtx : callbacks) {
             if (null != callbackWithCtx) {
-                callbackWithCtx.getScanCallback().scanFailed(callbackWithCtx.getCtx(), exception);
+				callbackWithCtx.getScanCallback().scanFailed(
+						callbackWithCtx.getCtx(), exception);
             }
         }
     }

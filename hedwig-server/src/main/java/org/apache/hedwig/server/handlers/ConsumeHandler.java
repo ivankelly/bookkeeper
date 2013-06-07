@@ -27,6 +27,7 @@ import org.apache.hedwig.server.common.ServerConfiguration;
 import org.apache.hedwig.server.netty.ServerStats;
 import org.apache.hedwig.server.netty.UmbrellaHandler;
 import org.apache.hedwig.server.netty.ServerStats.OpStats;
+import org.apache.hedwig.server.subscriptions.AbstractSubscriptionManager;
 import org.apache.hedwig.server.subscriptions.SubscriptionManager;
 import org.apache.hedwig.server.topics.TopicManager;
 import org.apache.hedwig.util.Callback;
@@ -60,8 +61,10 @@ public class ConsumeHandler extends BaseHandler {
 
         ConsumeRequest consumeRequest = request.getConsumeRequest();
 
-        sm.setConsumeSeqIdForSubscriber(request.getTopic(), consumeRequest.getSubscriberId(),
-                                        consumeRequest.getMsgId(), noopCallback, null);
+        /* msgbus modified --> */
+        ((AbstractSubscriptionManager) sm).addConsumeSeqIdForSubscriber(request.getTopic(),
+                consumeRequest.getSubscriberId(), consumeRequest.getMsgId(), noopCallback, channel);
+        /* <-- msgbus modified */
 
     }
 

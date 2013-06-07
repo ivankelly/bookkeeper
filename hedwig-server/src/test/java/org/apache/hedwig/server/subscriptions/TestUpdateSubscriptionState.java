@@ -26,7 +26,7 @@ import org.apache.hedwig.client.api.Subscriber;
 import org.apache.hedwig.client.conf.ClientConfiguration;
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscribeRequest.CreateOrAttach;
-import org.apache.hedwig.server.HedwigHubTestBase;
+import org.apache.hedwig.server.HedwigHubTestBase1;
 import org.apache.hedwig.server.common.ServerConfiguration;
 import org.apache.hedwig.util.Callback;
 import org.apache.hedwig.util.ConcurrencyUtils;
@@ -37,7 +37,7 @@ import org.junit.Test;
 
 import com.google.protobuf.ByteString;
 
-public class TestUpdateSubscriptionState extends HedwigHubTestBase {
+public class TestUpdateSubscriptionState extends HedwigHubTestBase1 {
 
     private static final int RETENTION_SECS_VALUE = 100;
 

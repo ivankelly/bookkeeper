@@ -171,6 +171,7 @@ public class ServerConfiguration extends AbstractConfiguration {
      * 
      * @return long
      */
+
     public long getMaximumCacheSize() {
         // 2G or half of the maximum amount of memory the JVM uses
         return conf.getLong(CACHE_SIZE, Math.min(2 * 1024L * 1024L * 1024L, Runtime.getRuntime().maxMemory() / 2));

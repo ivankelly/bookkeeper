@@ -19,29 +19,26 @@ package org.apache.hedwig.server;
 
 import junit.framework.TestCase;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.junit.After;
-import org.junit.Before;
-
-import org.apache.bookkeeper.test.PortManager;
-
 import org.apache.hedwig.client.conf.ClientConfiguration;
-import org.apache.hedwig.server.LoggingExceptionHandler;
 import org.apache.hedwig.server.common.ServerConfiguration;
 import org.apache.hedwig.server.netty.PubSubServer;
 import org.apache.hedwig.util.HedwigSocketAddress;
+import org.junit.After;
+import org.junit.Before;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This is a base class for any tests that need a StandAlone PubSubServer setup.
  */
 public abstract class PubSubServerStandAloneTestBase extends TestCase {
 
-    protected static Logger logger = LoggerFactory.getLogger(PubSubServerStandAloneTestBase.class);
+	protected static Logger logger = LoggerFactory
+			.getLogger(PubSubServerStandAloneTestBase.class);
 
     protected class StandAloneServerConfiguration extends ServerConfiguration {
-        final int port = PortManager.nextFreePort();
-        final int sslPort = PortManager.nextFreePort();
+		final int port = /* PortManager.nextFreePort() */4080;
+		final int sslPort = /* PortManager.nextFreePort() */9876;
 
         @Override
         public boolean isStandalone() {
@@ -76,7 +73,6 @@ public abstract class PubSubServerStandAloneTestBase extends TestCase {
         logger.info("Standalone PubSubServer test setup finished");
     }
 
-
     @Override
     @After
     public void tearDown() throws Exception {
@@ -90,9 +86,10 @@ public abstract class PubSubServerStandAloneTestBase extends TestCase {
     }
 
     protected void startHubServer(ServerConfiguration conf) throws Exception {
-        defaultAddress = new HedwigSocketAddress("localhost", conf.getServerPort(),
-                                                 conf.getSSLServerPort());
-        server = new PubSubServer(conf, new ClientConfiguration(), new LoggingExceptionHandler());
+		defaultAddress = new HedwigSocketAddress("localhost",
+				conf.getServerPort(), conf.getSSLServerPort());
+		server = new PubSubServer(conf, new ClientConfiguration(),
+				new LoggingExceptionHandler());
         server.start();
     }
 

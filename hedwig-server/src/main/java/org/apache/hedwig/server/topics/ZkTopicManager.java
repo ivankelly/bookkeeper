@@ -337,4 +337,10 @@ public class ZkTopicManager extends AbstractTopicManager implements TopicManager
         super.stop();
     }
 
+    /* msgbus add--> */
+    public void getAvailableHubs(Callback<String> cb, Object ctx) {    
+        ((ZkHubServerManager)hubManager).getAvailableHubs(cb, ctx);  
+    }
+    /* <--msgbus add */
+
 }

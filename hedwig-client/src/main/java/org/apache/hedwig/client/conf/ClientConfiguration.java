@@ -85,7 +85,9 @@ public class ClientConfiguration extends AbstractConfiguration {
     // consume message to the server via the client library using its own
     // logic and policy.
     public boolean isAutoSendConsumeMessageEnabled() {
-        return conf.getBoolean(AUTO_SEND_CONSUME_MESSAGE_ENABLED, true);
+        //return conf.getBoolean(AUTO_SEND_CONSUME_MESSAGE_ENABLED, true);
+        /* msgbus--> Always return false, to support cluster of subscribers. <--magbus */
+        return false;
     }
 
     // This parameter is to set how many consumed messages we'll buffer up
@@ -93,6 +95,7 @@ public class ClientConfiguration extends AbstractConfiguration {
     // of the messages up to that point have been successfully consumed by
     // the client.
     public int getConsumedMessagesBufferSize() {
+        /* msgbus--> Always return false, to support cluster of subscribers. <--magbus */
         return conf.getInt(CONSUMED_MESSAGES_BUFFER_SIZE, 5);
     }
 

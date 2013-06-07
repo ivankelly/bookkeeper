@@ -28,14 +28,14 @@ import org.apache.hedwig.client.api.Publisher;
 import org.apache.hedwig.client.api.Subscriber;
 import org.apache.hedwig.exceptions.PubSubException;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscribeRequest.CreateOrAttach;
-import org.apache.hedwig.server.HedwigHubTestBase;
+import org.apache.hedwig.server.HedwigHubTestBase1;
 import org.apache.hedwig.util.Callback;
 import org.apache.hedwig.util.ConcurrencyUtils;
 import org.junit.Test;
 
 import com.google.protobuf.ByteString;
 
-public class TestConcurrentTopicAcquisition extends HedwigHubTestBase {
+public class TestConcurrentTopicAcquisition extends HedwigHubTestBase1 {
 
     // Client variables
     protected HedwigClient client;

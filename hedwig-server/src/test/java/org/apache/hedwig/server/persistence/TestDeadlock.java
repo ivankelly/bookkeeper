@@ -37,12 +37,12 @@ import org.apache.hedwig.client.conf.ClientConfiguration;
 import org.apache.hedwig.client.HedwigClient;
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscribeRequest.CreateOrAttach;
-import org.apache.hedwig.server.HedwigHubTestBase;
+import org.apache.hedwig.server.HedwigHubTestBase1;
 import org.apache.hedwig.server.common.ServerConfiguration;
 import org.apache.hedwig.util.Callback;
 import org.apache.hedwig.util.ConcurrencyUtils;
 
-public class TestDeadlock extends HedwigHubTestBase {
+public class TestDeadlock extends HedwigHubTestBase1 {
 
     protected static Logger logger = LoggerFactory.getLogger(TestDeadlock.class);
 

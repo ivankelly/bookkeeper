@@ -73,6 +73,8 @@ enum OperationType{
     // end for requests only used for hedwig proxy
 
     CLOSESUBSCRIPTION = 6;
+    // msgbus
+    QUEUE_TOPIC_OP = 7;
 }
 
 /* A PubSubRequest is just a union of the various request types, with
@@ -99,9 +101,23 @@ message PubSubRequest{
     optional StopDeliveryRequest stopDeliveryRequest = 56;
     optional StartDeliveryRequest startDeliveryRequest = 57;
     optional CloseSubscriptionRequest closeSubscriptionRequest = 58;
+    
+    // msgbus
+    optional QueueMgmtRequest queueMgmtRequest = 91;
 }
 
+// msgbus
+enum QueueOperationType {
+	CREATE = 1;
+	DELETE = 2;
+	QUERYHUBS = 3;
+	QUERY_MSG_CNT = 4; // query message count
+}
 
+// msgbus
+message QueueMgmtRequest {
+	required QueueOperationType type = 1;
+}
 
 message PublishRequest{
     required Message msg = 2;
@@ -231,10 +247,18 @@ message SubscribeResponse {
     optional SubscriptionPreferences preferences = 2;
 }
 
+// msgbus
+message QueueMgmtResponse {
+	optional string hubList = 4;
+	optional uint64 messageCount = 5;
+}
+
 message ResponseBody {
     optional PublishResponse publishResponse = 1;
     optional SubscribeResponse subscribeResponse = 2;
     optional SubscriptionEventResponse subscriptionEvent = 3;
+    // msgbus
+    optional QueueMgmtResponse queueMgmtResponse = 4;
 }
 
 

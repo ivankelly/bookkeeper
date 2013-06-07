@@ -63,6 +63,7 @@ public class ChannelEndPoint implements DeliveryEndPoint, ChannelFutureListener 
             callback.sendingFinished();
         } else {
             // treat all channel errors as permanent
+            /* msgbus modified, add a parameter*/
             callback.permanentErrorOnSend();
         }
 

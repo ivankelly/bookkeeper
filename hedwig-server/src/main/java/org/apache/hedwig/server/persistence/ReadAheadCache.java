@@ -17,11 +17,9 @@
  */
 package org.apache.hedwig.server.persistence;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
@@ -30,36 +28,33 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.hedwig.protocol.PubSubProtocol;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.protobuf.ByteString;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.OrderedSafeExecutor;
 import org.apache.bookkeeper.util.SafeRunnable;
 import org.apache.hedwig.exceptions.PubSubException;
 import org.apache.hedwig.exceptions.PubSubException.ServerNotResponsibleForTopicException;
+import org.apache.hedwig.protocol.PubSubProtocol;
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
 import org.apache.hedwig.protocol.PubSubProtocol.MessageSeqId;
 import org.apache.hedwig.protoextensions.MessageIdUtils;
 import org.apache.hedwig.server.common.ServerConfiguration;
-import org.apache.hedwig.server.common.UnexpectedError;
 import org.apache.hedwig.server.jmx.HedwigJMXService;
 import org.apache.hedwig.server.jmx.HedwigMBeanInfo;
 import org.apache.hedwig.server.jmx.HedwigMBeanRegistry;
-import org.apache.hedwig.server.persistence.ReadAheadCacheBean;
 import org.apache.hedwig.util.Callback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.protobuf.ByteString;
 
 public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
 
+	/* msgbus test */
+	Boolean col = false;
     static Logger logger = LoggerFactory.getLogger(ReadAheadCache.class);
 
     protected interface CacheRequest {
@@ -75,31 +70,29 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
     /**
      * The structure for the cache
      */
-    protected ConcurrentMap<CacheKey, CacheValue> cache =
-        new ConcurrentHashMap<CacheKey, CacheValue>();
+	protected ConcurrentMap<CacheKey, CacheValue> cache = new ConcurrentHashMap<CacheKey, CacheValue>();
 
     /**
      * We also want to track the entries in seq-id order so that we can clean up
      * entries after the last subscriber
      */
-    protected ConcurrentMap<ByteString, SortedSet<Long>> orderedIndexOnSeqId =
-        new ConcurrentHashMap<ByteString, SortedSet<Long>>();
+	protected ConcurrentMap<ByteString, SortedSet<Long>> orderedIndexOnSeqId = new ConcurrentHashMap<ByteString, SortedSet<Long>>();
 
     /**
-     * Partition Cache into Serveral Segments for simplify synchronization.
-     * Each segment maintains its time index and segment size.
+	 * Partition Cache into Serveral Segments for simplify synchronization. Each
+	 * segment maintains its time index and segment size.
      */
     static class CacheSegment {
 
         /**
-         * We want to keep track of when entries were added in the cache, so that we
-         * can remove them in a FIFO fashion
+		 * We want to keep track of when entries were added in the cache, so
+		 * that we can remove them in a FIFO fashion
          */
         protected SortedMap<Long, Set<CacheKey>> timeIndexOfAddition = new TreeMap<Long, Set<CacheKey>>();
 
         /**
-         * We maintain an estimate of the current size of each cache segment,
-         * so that the thread know when to evict entries from cache segment.
+		 * We maintain an estimate of the current size of each cache segment, so
+		 * that the thread know when to evict entries from cache segment.
          */
         protected AtomicLong presentSegmentSize = new AtomicLong(0);
 
@@ -119,8 +112,7 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
     /**
      * Cache segment for different threads
      */
-    protected final ThreadLocal<CacheSegment> cacheSegment =
-        new ThreadLocal<CacheSegment>() {
+	protected final ThreadLocal<CacheSegment> cacheSegment = new ThreadLocal<CacheSegment>() {
             @Override
             protected CacheSegment initialValue() {
                 return new CacheSegment();
@@ -157,7 +149,9 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
      *
      * @param realPersistenceManager
      */
-    public ReadAheadCache(PersistenceManagerWithRangeScan realPersistenceManager, ServerConfiguration cfg) {
+	public ReadAheadCache(
+			PersistenceManagerWithRangeScan realPersistenceManager,
+			ServerConfiguration cfg) {
         this.realPersistenceManager = realPersistenceManager;
         this.cfg = cfg;
         numCacheWorkers = cfg.getNumReadAheadCacheThreads();
@@ -186,11 +180,14 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
      * the real persistence manager.
      */
 
-    public long getSeqIdAfterSkipping(ByteString topic, long seqId, int skipAmount) {
-        return realPersistenceManager.getSeqIdAfterSkipping(topic, seqId, skipAmount);
+	public long getSeqIdAfterSkipping(ByteString topic, long seqId,
+			int skipAmount) {
+		return realPersistenceManager.getSeqIdAfterSkipping(topic, seqId,
+				skipAmount);
     }
 
-    public MessageSeqId getCurrentSeqIdForTopic(ByteString topic) throws ServerNotResponsibleForTopicException {
+	public MessageSeqId getCurrentSeqIdForTopic(ByteString topic)
+			throws ServerNotResponsibleForTopicException {
         return realPersistenceManager.getCurrentSeqIdForTopic(topic);
     }
 
@@ -208,8 +205,8 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
         // callback in the middle. Assign the original request as the context
         // for the callback.
 
-        PersistRequest newRequest = new PersistRequest(request.getTopic(), request.getMessage(),
-                persistCallbackInstance, request);
+		PersistRequest newRequest = new PersistRequest(request.getTopic(),
+				request.getMessage(), persistCallbackInstance, request);
         realPersistenceManager.persistMessage(newRequest);
     }
 
@@ -219,7 +216,8 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
      * the request queue to be handled serially by the cache maintainer thread.
      *
      */
-    public class PersistCallback implements Callback<PubSubProtocol.MessageSeqId> {
+	public class PersistCallback implements
+			Callback<PubSubProtocol.MessageSeqId> {
 
         /**
          * In case there is a failure in persisting, just pass it to the
@@ -227,7 +225,8 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
          */
         public void operationFailed(Object ctx, PubSubException exception) {
             PersistRequest originalRequest = (PersistRequest) ctx;
-            Callback<PubSubProtocol.MessageSeqId> originalCallback = originalRequest.getCallback();
+			Callback<PubSubProtocol.MessageSeqId> originalCallback = originalRequest
+					.getCallback();
             Object originalContext = originalRequest.getCtx();
             originalCallback.operationFailed(originalContext, exception);
         }
@@ -237,29 +236,36 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
          * success, and then opportunistically treat the message as if it just
          * came in through a scan
          */
-        public void operationFinished(Object ctx, PubSubProtocol.MessageSeqId resultOfOperation) {
+		public void operationFinished(Object ctx,
+				PubSubProtocol.MessageSeqId resultOfOperation) {
             PersistRequest originalRequest = (PersistRequest) ctx;
 
             // Lets call the original callback first so that the publisher can
             // hear success
-            originalRequest.getCallback().operationFinished(originalRequest.getCtx(), resultOfOperation);
+			originalRequest.getCallback().operationFinished(
+					originalRequest.getCtx(), resultOfOperation);
 
             // Original message that was persisted didn't have the local seq-id.
             // Lets add that in
-            Message messageWithLocalSeqId = MessageIdUtils.mergeLocalSeqId(originalRequest.getMessage(),
+			Message messageWithLocalSeqId = MessageIdUtils.mergeLocalSeqId(
+					originalRequest.getMessage(),
                                             resultOfOperation.getLocalComponent());
 
             // Now enqueue a request to add this newly persisted message to our
             // cache
-            CacheKey cacheKey = new CacheKey(originalRequest.getTopic(), resultOfOperation.getLocalComponent());
+			CacheKey cacheKey = new CacheKey(originalRequest.getTopic(),
+					resultOfOperation.getLocalComponent());
 
-            enqueueWithoutFailureByTopic(cacheKey.getTopic(),
-                    new ScanResponse(cacheKey, messageWithLocalSeqId));
+			// msgbus
+			// logger.info("operationFinished: Will add message {}"+cacheKey);
+			enqueueWithoutFailureByTopic(cacheKey.getTopic(), new ScanResponse(
+					cacheKey, messageWithLocalSeqId));
         }
 
     }
 
-    protected void enqueueWithoutFailureByTopic(ByteString topic, final CacheRequest obj) {
+	protected void enqueueWithoutFailureByTopic(ByteString topic,
+			final CacheRequest obj) {
         if (!keepRunning) {
             return;
         }
@@ -273,7 +279,9 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
                 }
             });
         } catch (RejectedExecutionException ree) {
-            logger.error("Failed to submit cache request for topic " + topic.toStringUtf8() + " : ", ree);
+			logger.error(
+					"Failed to submit cache request for topic "
+							+ topic.toStringUtf8() + " : ", ree);
         }
     }
 
@@ -285,6 +293,7 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
      */
     public void scanSingleMessage(ScanRequest request) {
         // Let the scan requests be serialized through the queue
+		logger.info("enter scanSingleMessage" + request.getStartSeqId());
         enqueueWithoutFailureByTopic(request.getTopic(),
                 new ScanRequestWrapper(request));
     }
@@ -350,11 +359,20 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
         ByteString topic = request.getTopic();
         Long seqId = request.getStartSeqId();
 
+		/* msgbus add--> */
+		// It's called for resending
+		if (request.getCtx() != null) {
+			logger.info("it is called for resending..............");
+			return doReadAheadStartingFrom(topic, seqId, 1);
+		}
+		/* <--msgbus add */
+
         int readAheadCount = cfg.getReadAheadCount();
         // To prevent us from getting screwed by bad configuration
         readAheadCount = Math.max(1, readAheadCount);
 
-        RangeScanRequest readAheadRequest = doReadAheadStartingFrom(topic, seqId, readAheadCount);
+		RangeScanRequest readAheadRequest = doReadAheadStartingFrom(topic,
+				seqId, readAheadCount);
 
         if (readAheadRequest != null) {
             return readAheadRequest;
@@ -362,9 +380,11 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
 
         // start key was already there in the cache so no readahead happened,
         // lets look a little beyond
-        seqId = realPersistenceManager.getSeqIdAfterSkipping(topic, seqId, readAheadCount / 2);
+		seqId = realPersistenceManager.getSeqIdAfterSkipping(topic, seqId,
+				readAheadCount / 2);
 
-        readAheadRequest = doReadAheadStartingFrom(topic, seqId, readAheadCount / 2);
+		readAheadRequest = doReadAheadStartingFrom(topic, seqId,
+				readAheadCount / 2);
 
         return readAheadRequest;
     }
@@ -378,7 +398,8 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
      * @param readAheadCount
      * @return The range read that should be issued
      */
-    protected RangeScanRequest doReadAheadStartingFrom(ByteString topic, long seqId, int readAheadCount) {
+	protected RangeScanRequest doReadAheadStartingFrom(ByteString topic,
+			long seqId, int readAheadCount) {
 
         long startSeqId = seqId;
         Queue<CacheKey> installedStubs = new LinkedList<CacheKey>();
@@ -395,14 +416,16 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
             }
             CacheValue cacheValue = new CacheValue();
             if (null != cache.putIfAbsent(cacheKey, cacheValue)) {
-                logger.warn("It is unexpected that more than one threads are adding message to cache key {}"
-                            +" at the same time.", cacheKey);
+				logger.warn(
+						"It is unexpected that more than one threads are adding message to cache key {}"
+								+ " at the same time.", cacheKey);
             }
 
             logger.debug("Adding cache stub for: {}", cacheKey);
             installedStubs.add(cacheKey);
 
-            seqId = realPersistenceManager.getSeqIdAfterSkipping(topic, seqId, 1);
+			seqId = realPersistenceManager.getSeqIdAfterSkipping(topic, seqId,
+					1);
         }
 
         // so how many did we decide to readahead
@@ -412,9 +435,10 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
         }
 
         long readAheadSizeLimit = cfg.getReadAheadSizeBytes();
-        ReadAheadScanCallback callback = new ReadAheadScanCallback(installedStubs, topic);
-        RangeScanRequest rangeScanRequest = new RangeScanRequest(topic, startSeqId, i, readAheadSizeLimit, callback,
-                null);
+		ReadAheadScanCallback callback = new ReadAheadScanCallback(
+				installedStubs, topic);
+		RangeScanRequest rangeScanRequest = new RangeScanRequest(topic,
+				startSeqId, i, readAheadSizeLimit, callback, null);
 
         return rangeScanRequest;
 
@@ -434,7 +458,8 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
          *            The list of stubs that were installed for this range scan
          * @param topic
          */
-        public ReadAheadScanCallback(Queue<CacheKey> installedStubs, ByteString topic) {
+		public ReadAheadScanCallback(Queue<CacheKey> installedStubs,
+				ByteString topic) {
             this.installedStubs = installedStubs;
             this.topic = topic;
         }
@@ -443,8 +468,12 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
 
             // Any message we read is potentially useful for us, so lets first
             // enqueue it
-            CacheKey cacheKey = new CacheKey(topic, message.getMsgId().getLocalComponent());
-            enqueueWithoutFailureByTopic(topic, new ScanResponse(cacheKey, message));
+			CacheKey cacheKey = new CacheKey(topic, message.getMsgId()
+					.getLocalComponent());
+			// msgbus
+			// logger.info("messageScanned: Will add message {}"+cacheKey);
+			enqueueWithoutFailureByTopic(topic, new ScanResponse(cacheKey,
+					message));
 
             // Now lets see if this message is the one we were expecting
             CacheKey expectedKey = installedStubs.peek();
@@ -466,9 +495,13 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
             // This means that we have wrong stubs installed in the cache. We
             // should remove them, so that whoever is waiting on them can retry.
             // This shouldn't be happening usually
-            logger.warn("Unexpected message seq-id: " + message.getMsgId().getLocalComponent() + " on topic: "
-                        + topic.toStringUtf8() + " from readahead scan, was expecting seq-id: " + expectedKey.seqId
-                        + " topic: " + expectedKey.topic.toStringUtf8() + " installedStubs: " + installedStubs);
+			logger.warn("Unexpected message seq-id: "
+					+ message.getMsgId().getLocalComponent() + " on topic: "
+					+ topic.toStringUtf8()
+					+ " from readahead scan, was expecting seq-id: "
+					+ expectedKey.seqId + " topic: "
+					+ expectedKey.topic.toStringUtf8() + " installedStubs: "
+					+ installedStubs);
             enqueueDeleteOfRemainingStubs(noSuchSeqIdExceptionInstance);
 
         }
@@ -498,7 +531,8 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
         }
     }
 
-    protected static class HashSetCacheKeyFactory implements Factory<Set<CacheKey>> {
+	protected static class HashSetCacheKeyFactory implements
+			Factory<Set<CacheKey>> {
         protected final static HashSetCacheKeyFactory instance = new HashSetCacheKeyFactory();
 
         public Set<CacheKey> newInstance() {
@@ -506,7 +540,8 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
         }
     }
 
-    protected static class TreeSetLongFactory implements Factory<SortedSet<Long>> {
+	protected static class TreeSetLongFactory implements
+			Factory<SortedSet<Long>> {
         protected final static TreeSetLongFactory instance = new TreeSetLongFactory();
 
         public SortedSet<Long> newInstance() {
@@ -532,7 +567,8 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
             cacheValue = new CacheValue();
             CacheValue oldValue = cache.putIfAbsent(cacheKey, cacheValue);
             if (null != oldValue) {
-                logger.warn("Weird! Should not have two threads adding message to cache key {} at the same time.",
+				logger.warn(
+						"Weird! Should not have two threads adding message to cache key {} at the same time.",
                             cacheKey);
                 cacheValue = oldValue;
             }
@@ -540,6 +576,11 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
 
         CacheSegment segment = cacheSegment.get();
         int size = message.getBody().size();
+
+		if (cacheValue.message != null) {
+			// Duplicate read for the same message coming back
+			return;
+		}
 
         // update the cache size
         segment.presentSegmentSize.addAndGet(size);
@@ -562,8 +603,8 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
         collectOldOrExpiredCacheEntries(segment);
     }
 
-    protected void removeMessageFromCache(final CacheKey cacheKey, Exception exception,
-                                          final boolean maintainTimeIndex,
+	protected void removeMessageFromCache(final CacheKey cacheKey,
+			Exception exception, final boolean maintainTimeIndex,
                                           final boolean maintainSeqIdIndex) {
         CacheValue cacheValue = cache.remove(cacheKey);
 
@@ -577,20 +618,22 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
         synchronized (cacheValue) {
             if (cacheValue.isStub()) {
                 cacheValue.setErrorAndInvokeCallbacks(exception);
-                // Stubs are not present in the indexes, so don't need to maintain
+				// Stubs are not present in the indexes, so don't need to
+				// maintain
                 // indexes here
                 return;
             }
 
             int size = 0 - cacheValue.getMessage().getBody().size();
             presentCacheSize.addAndGet(size);
+
             segment.presentSegmentSize.addAndGet(size);
             timeOfAddition = cacheValue.getTimeOfAddition();
         }
 
         if (maintainSeqIdIndex) {
-            MapMethods.removeFromMultiMap(orderedIndexOnSeqId, cacheKey.getTopic(),
-                                          cacheKey.getSeqId());
+			MapMethods.removeFromMultiMap(orderedIndexOnSeqId,
+					cacheKey.getTopic(), cacheKey.getSeqId());
         }
         if (maintainTimeIndex) {
             MapMethods.removeFromMultiMap(segment.timeIndexOfAddition,
@@ -605,6 +648,7 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
     protected void collectOldOrExpiredCacheEntries(CacheSegment segment) {
         if (cacheEntryTTL > 0) {
             // clear expired entries
+			logger.info("test cacheTTL>0.....................");
             while (!segment.timeIndexOfAddition.isEmpty()) {
                 Long earliestTime = segment.timeIndexOfAddition.firstKey();
                 if (MathUtils.now() - earliestTime < cacheEntryTTL) {
@@ -614,23 +658,38 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
             }
         }
 
-        while (segment.presentSegmentSize.get() > maxSegmentSize &&
-               !segment.timeIndexOfAddition.isEmpty()) {
+		while (segment.presentSegmentSize.get() > maxSegmentSize
+				&& !segment.timeIndexOfAddition.isEmpty()) {
+			logger.info("collectCacheEntries....................");
             Long earliestTime = segment.timeIndexOfAddition.firstKey();
             collectCacheEntriesAtTimestamp(segment, earliestTime);
         }
     }
 
-    private void collectCacheEntriesAtTimestamp(CacheSegment segment, long timestamp) {
-        Set<CacheKey> oldCacheEntries = segment.timeIndexOfAddition.get(timestamp);
+	private void collectCacheEntriesAtTimestamp(CacheSegment segment,
+			long timestamp) {
+		/* msgbus test--> */
+		if (!col) {
+			logger.info("collectCacheEntriesAtTimestamp.");
+			col = true;
+		}
+		/* <--msgbus test */
+
+		Set<CacheKey> oldCacheEntries = segment.timeIndexOfAddition
+				.get(timestamp);
 
         // Note: only concrete cache entries, and not stubs are in the time
         // index. Hence there can be no callbacks pending on these cache
         // entries. Hence safe to remove them directly.
-        for (Iterator<CacheKey> iter = oldCacheEntries.iterator(); iter.hasNext();) {
+		for (Iterator<CacheKey> iter = oldCacheEntries.iterator(); iter
+				.hasNext();) {
             final CacheKey cacheKey = iter.next();
 
-            logger.debug("Removing {} from cache because it's the oldest.", cacheKey);
+			logger.debug("Removing {} from cache because it's the oldest.",
+					cacheKey);
+			// msgbus
+			// logger.info("Removing {} from cache because it's the oldest.",
+			// cacheKey);
             removeMessageFromCache(cacheKey, readAheadExceptionInstance, //
                                    // maintainTimeIndex=
                                    false,
@@ -663,7 +722,10 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
          * on the callbacks registered for that stub, and delete the entry from
          * the cache
          */
+
         public void performRequest() {
+			// msgbus
+			// logger.info("Removing {} from cache for exception");
             removeMessageFromCache(cacheKey, exception,
                                    // maintainTimeIndex=
                                    true,
@@ -707,11 +769,13 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
                 return;
             }
 
-            CacheKey cacheKey = new CacheKey(request.getTopic(), request.getStartSeqId());
+			CacheKey cacheKey = new CacheKey(request.getTopic(),
+					request.getStartSeqId());
             CacheValue cacheValue = cache.get(cacheKey);
             if (null == cacheValue) {
                 // cache value is evicted
-                // so it's callback would be called, we don't need to worry about
+				// so it's callback would be called, we don't need to worry
+				// about
                 // cancel it. since it was treated as executed.
                 return;
             }
@@ -761,8 +825,11 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
                 Long seqId = iter.next();
                 CacheKey cacheKey = new CacheKey(topic, seqId);
 
-                logger.debug("Removing {} from cache because every subscriber has moved past",
+				logger.debug(
+						"Removing {} from cache because every subscriber has moved past",
                     cacheKey);
+				// msgbus
+				// logger.info("Removing {} from cache because every subscriber has moved past",cacheKey);
 
                 removeMessageFromCache(cacheKey, readAheadExceptionInstance, //
                                        // maintainTimeIndex=
@@ -801,23 +868,35 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
 
             // Read ahead must have installed at least a stub for us, so this
             // can't be null
-            CacheKey cacheKey = new CacheKey(request.getTopic(), request.getStartSeqId());
+			CacheKey cacheKey = new CacheKey(request.getTopic(),
+					request.getStartSeqId());
             CacheValue cacheValue = cache.get(cacheKey);
             if (null == cacheValue) {
-                logger.error("Cache key {} is removed after installing stub when scanning.", cacheKey);
+				logger.error(
+						"Cache key {} is removed after installing stub when scanning.",
+						cacheKey);
                 // reissue the request 
                 scanSingleMessage(request);
                 return;
             }
 
             synchronized (cacheValue) {
-                // Add our callback to the stub. If the cache value was already a
+				// Add our callback to the stub. If the cache value was already
+				// a
                 // concrete message, the callback will be called right away
                 cacheValue.addCallback(request.getCallback(), request.getCtx());
             }
 
             if (readAheadRequest != null) {
+				// msgbus
+				logger.info("Will scanMessages: "
+						+ readAheadRequest.getStartSeqId() + "to"
+						+ readAheadRequest.messageLimit);
                 realPersistenceManager.scanMessages(readAheadRequest);
+			} else {
+				logger.info("get the message "
+						+ cacheValue.getMessage().getBody().toStringUtf8()
+						+ " from cache...............");
             }
         }
     }

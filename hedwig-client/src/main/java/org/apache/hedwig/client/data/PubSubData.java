@@ -24,6 +24,7 @@ import org.apache.hedwig.client.netty.HChannel;
 import org.apache.hedwig.protocol.PubSubProtocol;
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
 import org.apache.hedwig.protocol.PubSubProtocol.OperationType;
+import org.apache.hedwig.protocol.PubSubProtocol.QueueOperationType;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionOptions;
 import org.apache.hedwig.util.Callback;
 
@@ -49,6 +50,9 @@ public class PubSubData {
     public final OperationType operationType;
     // Options for the subscription
     public final SubscriptionOptions options;
+
+    // msgbus: Type of queue operation
+    public final QueueOperationType queueOperationType;
 
     // These two variables are not final since we might override them
     // in the case of a Subscribe reconnect.
@@ -86,6 +90,7 @@ public class PubSubData {
     // Record the original channel for a resubscribe request
     private HChannel origChannel = null;
 
+    /* msgbus modified--> */
     // Constructor for all types of PubSub request data to send to the server
     public PubSubData(final ByteString topic, final Message msg, final ByteString subscriberId,
                       final OperationType operationType, final SubscriptionOptions options,
@@ -98,7 +103,23 @@ public class PubSubData {
         this.options = options;
         this.callback = callback;
         this.context = context;
+        this.queueOperationType = null;
     }
+    
+    public PubSubData(final ByteString topic, final Message msg, final ByteString subscriberId,
+            final OperationType operationType, final QueueOperationType queueOperationType,
+            final SubscriptionOptions options, final Callback<PubSubProtocol.ResponseBody> callback,
+            final Object context) {
+        this.topic = topic;
+        this.msg = msg;
+        this.subscriberId = subscriberId;
+        this.operationType = operationType;
+        this.options = options;
+        this.callback = callback;
+        this.context = context;
+        this.queueOperationType = queueOperationType;
+    }
+    /* <--msgbus modified */
 
     public void setCallback(Callback<PubSubProtocol.ResponseBody> callback) {
         this.callback = callback;

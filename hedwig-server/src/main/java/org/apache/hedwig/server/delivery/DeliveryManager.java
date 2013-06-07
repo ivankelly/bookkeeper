@@ -22,6 +22,7 @@ import org.apache.hedwig.protocol.PubSubProtocol.MessageSeqId;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionEvent;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionPreferences;
 import org.apache.hedwig.filter.ServerMessageFilter;
+import org.apache.hedwig.server.subscriptions.AbstractSubscriptionManager;
 import org.apache.hedwig.util.Callback;
 
 public interface DeliveryManager {
@@ -89,4 +90,14 @@ public interface DeliveryManager {
      * Stop delivery manager
      */
     public void stop();
+    
+    /* msgbus add --> */
+    void addConsumeSeqForQueue(ByteString topic, ByteString subscriberId, MessageSeqId consumeSeqId, AbstractSubscriptionManager sm,
+            Callback<Void> callback, Object ctx);
+    
+    //ctx is Channel an object
+    //void channelDisconnected(ByteString topic, ByteString subid, Channel channel);  
+
+    boolean deleteTopicPersistenceInfoRecursive(ByteString topic);
+    /* <--msgbus add */
 }
