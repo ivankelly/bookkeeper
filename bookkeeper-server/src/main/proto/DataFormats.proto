@@ -82,3 +82,20 @@ message LockDataFormat {
 message AuditorVoteFormat {
     optional string bookieId = 1;
 }
+
+message KeyValue {
+  optional bytes key = 1;
+  optional bytes value = 2;
+}
+
+message IndexEntry {
+  optional bytes key = 1;
+  optional int64 offset = 2;
+}
+
+message Metadata {
+  optional int32 version = 1;
+  optional int64 indexOffset = 2;
+  optional bytes lastKey = 3;
+  optional sint64 canary = 4; // if canary has been written, the file is complete
+}
