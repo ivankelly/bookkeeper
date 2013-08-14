@@ -26,6 +26,7 @@ import java.net.InetSocketAddress;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Enumeration;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -65,6 +66,8 @@ public class LedgerHandle {
     final DistributionSchedule distributionSchedule;
 
     final RateLimiter throttler;
+
+    private boolean handleClosed = false;
 
     /**
      * Invalid entry id. This value is returned from methods which
@@ -190,10 +193,9 @@ public class LedgerHandle {
         return distributionSchedule;
     }
 
-    void writeLedgerConfig(GenericCallback<Void> writeCb) {
-        LOG.debug("Writing metadata to ledger manager: {}, {}", this.ledgerId, metadata.getVersion());
-
-        bk.getLedgerManager().writeLedgerMetadata(ledgerId, metadata, writeCb);
+    void writeLedgerConfig(LedgerMetadata newMetadata, GenericCallback<LedgerMetadata> writeCb) {
+        LOG.debug("Writing metadata to ledger manager: {}, {}", this.ledgerId, newMetadata.getVersion());
+        bk.getLedgerManager().writeLedgerMetadata(ledgerId, newMetadata, writeCb);
     }
 
     /**
@@ -240,73 +242,65 @@ public class LedgerHandle {
      * @param rc
      */
     void asyncCloseInternal(final CloseCallback cb, final Object ctx, final int rc) {
+        LOG.info("IKDEBUG close called from ", new Exception());
         bk.mainWorkerPool.submitOrdered(ledgerId, new SafeRunnable() {
             @Override
             public void safeRun() {
-                final long prevLastEntryId;
-                final long prevLength;
-                final State prevState;
+
+                final LedgerMetadata origMetadata;
+                final LedgerMetadata newMetadata;
 
                 synchronized(LedgerHandle.this) {
-                    prevState = metadata.getState();
-                    prevLastEntryId = metadata.getLastEntryId();
-                    prevLength = metadata.getLength();
+                    origMetadata = metadata;
 
                     // synchronized on LedgerHandle.this to ensure that 
                     // lastAddPushed can not be updated after the metadata 
-                    // is closed. 
-                    metadata.setLength(length);
-
+                    // is closed.
                     // Close operation is idempotent, so no need to check if we are
                     // already closed
-                    metadata.close(lastAddConfirmed);
+                    LOG.info("IKDEBUG closing with len {} lac {}", length, lastAddConfirmed);
+                    LOG.info("IKDEBUG going to write {}", origMetadata);
+                    newMetadata = origMetadata.setLengthIK(length)
+                        .closeIK(lastAddConfirmed);
+                    handleClosed = true;
+                    
                     errorOutPendingAdds(rc);
                     lastAddPushed = lastAddConfirmed;
                 }
 
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("Closing ledger: " + ledgerId + " at entryId: "
-                              + metadata.getLastEntryId() + " with this many bytes: " + metadata.getLength());
+                    LOG.debug("Closing ledger: " + ledgerId
+                              + " at entryId: " + newMetadata.getLastEntryId()
+                              + " with this many bytes: " + newMetadata.getLength());
                 }
 
-                final class CloseCb extends OrderedSafeGenericCallback<Void> {
+                final class CloseCb extends OrderedSafeGenericCallback<LedgerMetadata> {
                     CloseCb() {
                         super(bk.mainWorkerPool, ledgerId);
                     }
 
                     @Override
-                    public void safeOperationComplete(final int rc, Void result) {
+                    public void safeOperationComplete(final int rc, LedgerMetadata newMeta) {
                         if (rc == BKException.Code.MetadataVersionException) {
                             rereadMetadata(new OrderedSafeGenericCallback<LedgerMetadata>(bk.mainWorkerPool,
                                                                                           ledgerId) {
                                 @Override
-                                public void safeOperationComplete(int newrc, LedgerMetadata newMeta) {
+                                public void safeOperationComplete(int newrc, LedgerMetadata readMeta) {
                                     if (newrc != BKException.Code.OK) {
                                         LOG.error("Error reading new metadata from ledger " + ledgerId
                                                   + " when closing, code=" + newrc);
                                         cb.closeComplete(rc, LedgerHandle.this, ctx);
                                     } else {
-                                        metadata.setState(prevState);
-                                        if (prevState.equals(State.CLOSED)) {
-                                            metadata.close(prevLastEntryId);
-                                        }
-
-                                        metadata.setLength(prevLength);
-                                        if (!metadata.isNewerThan(newMeta)
-                                                && !metadata.isConflictWith(newMeta)) {
-                                            // use the new metadata's ensemble, in case re-replication already
-                                            // replaced some bookies in the ensemble.
-                                            metadata.setEnsembles(newMeta.getEnsembles());
-                                            metadata.setVersion(newMeta.version);
-                                            metadata.setLength(length);
-                                            metadata.close(lastAddConfirmed);
-                                            writeLedgerConfig(new CloseCb());
-                                            return;
-                                        } else {
-                                            metadata.setLength(length);
-                                            metadata.close(lastAddConfirmed);
-                                            LOG.warn("Conditional update ledger metadata for ledger " + ledgerId + " failed.");
+                                        updateMetadata(metadata, readMeta);
+                                        if (origMetadata.isConflictWith(readMeta)) {
+                                            LOG.warn("Conditional update ledger metadata for ledger "
+                                                     + ledgerId + " failed.");
                                             cb.closeComplete(rc, LedgerHandle.this, ctx);
+                                        } else {
+                                            // something broken her
+                                            LedgerMetadata newMetadata = origMetadata.setLengthIK(length)
+                                                .closeIK(lastAddConfirmed);
+                                            writeLedgerConfig(newMetadata, new CloseCb());
                                         }
                                     }
                                 }
@@ -315,15 +309,27 @@ public class LedgerHandle {
                             LOG.error("Error update ledger metadata for ledger " + ledgerId + " : " + rc);
                             cb.closeComplete(rc, LedgerHandle.this, ctx);
                         } else {
+                            LOG.info("IKDEBUG wrote metadata {}", newMeta);
+                            updateMetadata(origMetadata, newMeta);
                             cb.closeComplete(BKException.Code.OK, LedgerHandle.this, ctx);
                         }
                     }
                 };
 
-                writeLedgerConfig(new CloseCb());
-
+                writeLedgerConfig(newMetadata, new CloseCb());
             }
         });
+    }
+
+    void updateMetadata(LedgerMetadata origMeta, LedgerMetadata newMeta) {
+        synchronized (metadata) {
+            if (metadata == origMeta) {
+                metadata = newMeta;
+                LOG.info("IKDEBUG metadata updated");
+            } else {
+                LOG.info("IKDEBUG metadata not updated");
+            }
+        }
     }
 
     /**
@@ -487,7 +493,7 @@ public class LedgerHandle {
             // synchronized on this to ensure that
             // the ledger isn't closed between checking and
             // updating lastAddPushed
-            if (metadata.isClosed()) {
+            if (handleClosed) {
                 LOG.warn("Attempt to add to closed ledger: " + ledgerId);
                 cb.addComplete(BKException.Code.LedgerClosedException,
                                LedgerHandle.this, INVALID_ENTRY_ID, ctx);
@@ -646,7 +652,7 @@ public class LedgerHandle {
 
     }
 
-    ArrayList<InetSocketAddress> replaceBookieInMetadata(final InetSocketAddress addr, final int bookieIndex)
+     LedgerMetadata replaceBookieInMetadata(final InetSocketAddress addr, final int bookieIndex)
             throws BKException.BKNotEnoughBookiesException {
         InetSocketAddress newBookie;
         LOG.info("Handling failure of bookie: {} index: {}", addr, bookieIndex);
@@ -660,35 +666,52 @@ public class LedgerHandle {
             newEnsemble.addAll(metadata.currentEnsemble);
             newEnsemble.set(bookieIndex, newBookie);
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Changing ensemble from: " + metadata.currentEnsemble
+            //if (LOG.isDebugEnabled()) {
+                LOG.info("Chdanging ensemble from: " + metadata.currentEnsemble
                         + " to: " + newEnsemble + " for ledger: " + ledgerId
                         + " starting at entry: " + (lastAddConfirmed + 1));
-            }
+                //}
 
-            metadata.addEnsemble(newEnsembleStartEntry, newEnsemble);
+            return metadata.addEnsembleIK(newEnsembleStartEntry, newEnsemble);
         }
-        return newEnsemble;
     }
 
+    protected HashSet<InetSocketAddress> replacing = new HashSet<InetSocketAddress>();
     void handleBookieFailure(final InetSocketAddress addr, final int bookieIndex) {
         blockAddCompletions.incrementAndGet();
-
+        
         synchronized (metadata) {
+            if (metadata.isClosed()) {
+                // all requests should have been failed (TODO think more)
+                return;
+            }
+            LOG.info("IKDEBUG replacing {}", addr);
             if (!metadata.currentEnsemble.get(bookieIndex).equals(addr)) {
+                LOG.info("IKDEBUG already replaced");
+                // the failed bookie has been replaced
                 // ensemble has already changed, failure of this addr is immaterial
                 LOG.warn("Write did not succeed to {}, bookieIndex {}, but we have already fixed it.",
                          addr, bookieIndex);
+
+                unsetSuccessAndSendWriteRequest(bookieIndex);
                 blockAddCompletions.decrementAndGet();
                 return;
             }
+            /*if (/replacing.contains(addr)) {
+                blockAddCompletions.decrementAndGet();
+                return;
+                }*/
 
             try {
-                ArrayList<InetSocketAddress> newEnsemble = replaceBookieInMetadata(addr, bookieIndex);
+                LOG.info("IKDEBUG replace {}", addr);
+                LedgerMetadata newMetadata = replaceBookieInMetadata(addr, bookieIndex);
+                LOG.info("IKDEBUG replaced {}", addr);
 
-                EnsembleInfo ensembleInfo = new EnsembleInfo(newEnsemble, bookieIndex,
-                                                             addr);
-                writeLedgerConfig(new ChangeEnsembleCb(ensembleInfo));
+                EnsembleInfo ensembleInfo = new EnsembleInfo(metadata, newMetadata,
+                                                             bookieIndex, addr);
+                LOG.info("IKDEBUG write metadata {}", addr);
+                replacing.add(addr);
+                writeLedgerConfig(newMetadata, new ChangeEnsembleCb(ensembleInfo));
             } catch (BKException.BKNotEnoughBookiesException e) {
                 LOG.error("Could not get additional bookie to "
                           + "remake ensemble, closing ledger: " + ledgerId);
@@ -700,13 +723,15 @@ public class LedgerHandle {
 
     // Contains newly reformed ensemble, bookieIndex, failedBookieAddress
     private static final class EnsembleInfo {
-        private final ArrayList<InetSocketAddress> newEnsemble;
+        private final LedgerMetadata origMeta;
+        private final LedgerMetadata newMeta;
         private final int bookieIndex;
         private final InetSocketAddress addr;
 
-        public EnsembleInfo(ArrayList<InetSocketAddress> newEnsemble,
-                int bookieIndex, InetSocketAddress addr) {
-            this.newEnsemble = newEnsemble;
+        public EnsembleInfo(LedgerMetadata origMeta, LedgerMetadata newMeta,
+                            int bookieIndex, InetSocketAddress addr) {
+            this.origMeta = origMeta;
+            this.newMeta = newMeta;
             this.bookieIndex = bookieIndex;
             this.addr = addr;
         }
@@ -717,7 +742,7 @@ public class LedgerHandle {
      * reformed ensemble. On MetadataVersionException, will reread latest
      * ledgerMetadata and act upon.
      */
-    private final class ChangeEnsembleCb extends OrderedSafeGenericCallback<Void> {
+    private final class ChangeEnsembleCb extends OrderedSafeGenericCallback<LedgerMetadata> {
         private final EnsembleInfo ensembleInfo;
 
         ChangeEnsembleCb(EnsembleInfo ensembleInfo) {
@@ -726,18 +751,24 @@ public class LedgerHandle {
         }
 
         @Override
-        public void safeOperationComplete(final int rc, Void result) {
+        public void safeOperationComplete(final int rc, LedgerMetadata newMeta) {
+            LOG.info("IKDEBUG changeensCB {}", rc);
             if (rc == BKException.Code.MetadataVersionException) {
-                rereadMetadata(new ReReadLedgerMetadataCb(rc,
+                rereadMetadata(new RereadLedgerMetadataCb(rc,
                                        ensembleInfo));
                 return;
             } else if (rc != BKException.Code.OK) {
                 LOG.error("Could not persist ledger metadata while "
                           + "changing ensemble to: "
-                          + ensembleInfo.newEnsemble
+                        //+ aensembleInfo.newEnsemble TODO, FIXME
                           + " , closing ledger");
                 handleUnrecoverableErrorDuringAdd(rc);
                 return;
+            }
+            LOG.info("IKDEBUG update metadata");
+            updateMetadata(ensembleInfo.origMeta, newMeta);
+            synchronized(metadata) {
+                replacing.remove(ensembleInfo.addr);
             }
             blockAddCompletions.decrementAndGet();
 
@@ -750,119 +781,41 @@ public class LedgerHandle {
      * Callback which is reading the ledgerMetadata present in zk. This will try
      * to resolve the version conflicts.
      */
-    private final class ReReadLedgerMetadataCb extends OrderedSafeGenericCallback<LedgerMetadata> {
+    private final class RereadLedgerMetadataCb extends OrderedSafeGenericCallback<LedgerMetadata> {
         private final int rc;
         private final EnsembleInfo ensembleInfo;
 
-        ReReadLedgerMetadataCb(int rc, EnsembleInfo ensembleInfo) {
+        RereadLedgerMetadataCb(int rc, EnsembleInfo ensembleInfo) {
             super(bk.mainWorkerPool, ledgerId);
             this.rc = rc;
             this.ensembleInfo = ensembleInfo;
         }
 
         @Override
-        public void safeOperationComplete(int newrc, LedgerMetadata newMeta) {
+        public void safeOperationComplete(int newrc, LedgerMetadata readMeta) {
             if (newrc != BKException.Code.OK) {
                 LOG.error("Error reading new metadata from ledger "
                         + "after changing ensemble, code=" + newrc);
                 handleUnrecoverableErrorDuringAdd(rc);
             } else {
-                if (!resolveConflict(newMeta)) {
-                    LOG.error("Could not resolve ledger metadata conflict "
+                if (ensembleInfo.newMeta.isConflictWith(readMeta)) {
+                    LOG.error("IKDEBUG conflict");
+                    /*LOG.error("Could not resolve ledger metadata conflict "
                             + "while changing ensemble to: "
                             + ensembleInfo.newEnsemble
                             + ", old meta data is \n"
                             + new String(metadata.serialize(), UTF_8)
                             + "\n, new meta data is \n"
                             + new String(newMeta.serialize(), UTF_8)
-                            + "\n ,closing ledger");
+                            + "\n ,closing ledger");*/
                     handleUnrecoverableErrorDuringAdd(rc);
+                } else {
+                    updateMetadata(metadata, readMeta);
+                    handleBookieFailure(ensembleInfo.addr, ensembleInfo.bookieIndex);
+                    blockAddCompletions.decrementAndGet();
                 }
             }
         }
-
-        /**
-         * Specific resolve conflicts happened when multiple bookies failures in same ensemble.
-         * <p>
-         * Resolving the version conflicts between local ledgerMetadata and zk
-         * ledgerMetadata. This will do the following:
-         * <ul>
-         * <li>
-         * check whether ledgerMetadata state matches of local and zk</li>
-         * <li>
-         * if the zk ledgerMetadata still contains the failed bookie, then
-         * update zookeeper with the newBookie otherwise send write request</li>
-         * </ul>
-         * </p>
-         */
-        private boolean resolveConflict(LedgerMetadata newMeta) {
-            // make sure the ledger isn't closed by other ones.
-            if (metadata.getState() != newMeta.getState()) {
-                return false;
-            }
-
-            // We should check number of ensembles since there are two kinds of metadata conflicts:
-            // - Case 1: Multiple bookies involved in ensemble change.
-            //           Number of ensembles should be same in this case.
-            // - Case 2: Recovery (Auto/Manually) replaced ensemble and ensemble changed.
-            //           The metadata changed due to ensemble change would have one more ensemble
-            //           than the metadata changed by recovery.
-            int diff = newMeta.getEnsembles().size() - metadata.getEnsembles().size();
-            if (0 != diff) {
-                if (-1 == diff) {
-                    // Case 1: metadata is changed by other ones (e.g. Recovery)
-                    return updateMetadataIfPossible(newMeta);
-                }
-                return false;
-            }
-
-            //
-            // Case 2:
-            //
-            // If the failed the bookie is still existed in the metadata (in zookeeper), it means that
-            // the ensemble change of the failed bookie is failed due to metadata conflicts. so try to
-            // update the ensemble change metadata again. Otherwise, it means that the ensemble change
-            // is already succeed, unset the success and re-adding entries.
-            if (newMeta.currentEnsemble.get(ensembleInfo.bookieIndex).equals(
-                    ensembleInfo.addr)) {
-                // If the in-memory data doesn't contains the failed bookie, it means the ensemble change
-                // didn't finish, so try to resolve conflicts with the metadata read from zookeeper and
-                // update ensemble changed metadata again.
-                if (!metadata.currentEnsemble.get(ensembleInfo.bookieIndex)
-                        .equals(ensembleInfo.addr)) {
-                    return updateMetadataIfPossible(newMeta);
-                }
-            } else {
-                // the failed bookie has been replaced
-                blockAddCompletions.decrementAndGet();
-                unsetSuccessAndSendWriteRequest(ensembleInfo.bookieIndex);
-            }
-            return true;
-        }
-
-        private boolean updateMetadataIfPossible(LedgerMetadata newMeta) {
-            // if the local metadata is newer than zookeeper metadata, it means that metadata is updated
-            // again when it was trying re-reading the metatada, re-kick the reread again
-            if (metadata.isNewerThan(newMeta)) {
-                rereadMetadata(this);
-                return true;
-            }
-            // make sure the metadata doesn't changed by other ones.
-            if (metadata.isConflictWith(newMeta)) {
-                return false;
-            }
-            LOG.info("Resolve ledger metadata conflict while changing ensemble to: {},"
-                    + " old meta data is \n {} \n, new meta data is \n {}.", new Object[] {
-                    ensembleInfo.newEnsemble, metadata, newMeta });
-            // update znode version
-            metadata.setVersion(newMeta.getVersion());
-            // merge ensemble infos from new meta except last ensemble
-            // since they might be modified by recovery tool.
-            metadata.mergeEnsembles(newMeta.getEnsembles());
-            writeLedgerConfig(new ChangeEnsembleCb(ensembleInfo));
-            return true;
-        }
-
     };
 
     void unsetSuccessAndSendWriteRequest(final int bookieIndex) {
@@ -892,25 +845,28 @@ public class LedgerHandle {
             return;
         }
 
-        metadata.markLedgerInRecovery();
+        final LedgerMetadata origMetadata = metadata;
+        final LedgerMetadata newMetadata = origMetadata.markLedgerInRecoveryIK();
 
-        writeLedgerConfig(new OrderedSafeGenericCallback<Void>(bk.mainWorkerPool, ledgerId) {
+        writeLedgerConfig(newMetadata,
+                new OrderedSafeGenericCallback<LedgerMetadata>(bk.mainWorkerPool, ledgerId) {
             @Override
-            public void safeOperationComplete(final int rc, Void result) {
+            public void safeOperationComplete(final int rc, LedgerMetadata newMeta) {
                 if (rc == BKException.Code.MetadataVersionException) {
                     rereadMetadata(new OrderedSafeGenericCallback<LedgerMetadata>(bk.mainWorkerPool,
                                                                                   ledgerId) {
                         @Override
-                        public void safeOperationComplete(int rc, LedgerMetadata newMeta) {
+                        public void safeOperationComplete(int rc, LedgerMetadata readMeta) {
                             if (rc != BKException.Code.OK) {
                                 cb.operationComplete(rc, null);
                             } else {
-                                metadata = newMeta;
+                                updateMetadata(metadata, readMeta);
                                 recover(cb);
                             }
                         }
                     });
                 } else if (rc == BKException.Code.OK) {
+                    updateMetadata(origMetadata, newMeta);
                     new LedgerRecoveryOp(LedgerHandle.this, cb).initiate();
                 } else {
                     LOG.error("Error writing ledger config " + rc + " of ledger " + ledgerId);

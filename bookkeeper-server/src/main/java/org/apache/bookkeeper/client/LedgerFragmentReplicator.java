@@ -329,6 +329,7 @@ public class LedgerFragmentReplicator {
                 ledgerFragmentsMcb.processResult(rc, null, null);
                 return;
             }
+            LOG.info("Updating metadata");
             updateEnsembleInfo(ledgerFragmentsMcb, fragmentStartId, lh,
                                         oldBookie, newBookie);
         }
@@ -343,13 +344,10 @@ public class LedgerFragmentReplicator {
          * Update the ledger metadata's ensemble info to point to the new
          * bookie.
          */
-        ArrayList<InetSocketAddress> ensemble = lh.getLedgerMetadata()
-                .getEnsembles().get(fragmentStartId);
-        int deadBookieIndex = ensemble.indexOf(oldBookie);
-        ensemble.remove(deadBookieIndex);
-        ensemble.add(deadBookieIndex, newBookie);
-        lh.writeLedgerConfig(new UpdateEnsembleCb(ensembleUpdatedCb,
-                fragmentStartId, lh, oldBookie, newBookie));
+        LedgerMetadata origMeta = lh.getLedgerMetadata();
+        LedgerMetadata newMeta = origMeta.replaceBookie(fragmentStartId, oldBookie, newBookie);
+        lh.writeLedgerConfig(newMeta, new UpdateEnsembleCb(origMeta, ensembleUpdatedCb,
+                                                           fragmentStartId, lh, oldBookie, newBookie));
     }
 
     /**
@@ -357,16 +355,19 @@ public class LedgerFragmentReplicator {
      * MetadataVersionException and update ensemble again. On successfull
      * updation, it will also notify to super call back
      */
-    private static class UpdateEnsembleCb implements GenericCallback<Void> {
+    private static class UpdateEnsembleCb implements GenericCallback<LedgerMetadata> {
+        final LedgerMetadata origMeta;
         final AsyncCallback.VoidCallback ensembleUpdatedCb;
         final LedgerHandle lh;
         final long fragmentStartId;
         final InetSocketAddress oldBookie;
         final InetSocketAddress newBookie;
 
-        public UpdateEnsembleCb(AsyncCallback.VoidCallback ledgerFragmentsMcb,
-                long fragmentStartId, LedgerHandle lh,
-                InetSocketAddress oldBookie, InetSocketAddress newBookie) {
+        public UpdateEnsembleCb(LedgerMetadata origMeta,
+                                AsyncCallback.VoidCallback ledgerFragmentsMcb,
+                                long fragmentStartId, LedgerHandle lh,
+                                InetSocketAddress oldBookie, InetSocketAddress newBookie) {
+            this.origMeta = origMeta;
             this.ensembleUpdatedCb = ledgerFragmentsMcb;
             this.lh = lh;
             this.fragmentStartId = fragmentStartId;
@@ -375,27 +376,24 @@ public class LedgerFragmentReplicator {
         }
 
         @Override
-        public void operationComplete(int rc, Void result) {
+        public void operationComplete(int rc, LedgerMetadata newMeta) {
             if (rc == BKException.Code.MetadataVersionException) {
                 LOG.warn("Two fragments attempted update at once; ledger id: "
                         + lh.getId() + " startid: " + fragmentStartId);
                 // try again, the previous success (with which this has
                 // conflicted) will have updated the stat other operations
                 // such as (addEnsemble) would update it too.
-                lh
-                        .rereadMetadata(new OrderedSafeGenericCallback<LedgerMetadata>(
+                lh.rereadMetadata(new OrderedSafeGenericCallback<LedgerMetadata>(
                                 lh.bk.mainWorkerPool, lh.getId()) {
                             @Override
                             public void safeOperationComplete(int rc,
-                                    LedgerMetadata newMeta) {
+                                                              LedgerMetadata readMeta) {
                                 if (rc != BKException.Code.OK) {
-                                    LOG
-                                            .error("Error reading updated ledger metadata for ledger "
+                                    LOG.error("Error reading updated ledger metadata for ledger "
                                                     + lh.getId());
-                                    ensembleUpdatedCb.processResult(rc, null,
-                                            null);
+                                    ensembleUpdatedCb.processResult(rc, null, null);
                                 } else {
-                                    lh.metadata = newMeta;
+                                    lh.updateMetadata(lh.getLedgerMetadata(), readMeta);
                                     updateEnsembleInfo(ensembleUpdatedCb,
                                             fragmentStartId, lh, oldBookie,
                                             newBookie);
@@ -407,6 +405,7 @@ public class LedgerFragmentReplicator {
                 LOG.error("Error updating ledger config metadata for ledgerId "
                         + lh.getId() + " : " + BKException.getMessage(rc));
             } else {
+                lh.updateMetadata(origMeta, newMeta);
                 LOG.info("Updated ZK for ledgerId: (" + lh.getId() + " : "
                         + fragmentStartId
                         + ") to point ledger fragments from old dead bookie: ("

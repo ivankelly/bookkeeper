@@ -71,7 +71,7 @@ class FlatLedgerManager extends AbstractZkLedgerManager {
     }
 
     @Override
-    public void createLedger(final LedgerMetadata metadata, final GenericCallback<Long> cb) {
+    public void createLedger(final LedgerMetadata metadata, final GenericCallback<LedgerMetadata> cb) {
         StringCallback scb = new StringCallback() {
             @Override
             public void processResult(int rc, String path, Object ctx,
@@ -82,10 +82,11 @@ class FlatLedgerManager extends AbstractZkLedgerManager {
                     cb.operationComplete(rc, null);
                 } else {
                     // update znode status
-                    metadata.setVersion(new ZkVersion(0));
                     try {
                         long ledgerId = getLedgerId(name);
-                        cb.operationComplete(rc, ledgerId);
+                        LedgerMetadata newMeta = metadata.setLedgerId(ledgerId)
+                            .setVersionIK(new ZkVersion(0));
+                        cb.operationComplete(rc, newMeta);
                     } catch (IOException ie) {
                         LOG.error("Could not extract ledger-id from path:" + name, ie);
                         cb.operationComplete(BKException.Code.ZKException, null);

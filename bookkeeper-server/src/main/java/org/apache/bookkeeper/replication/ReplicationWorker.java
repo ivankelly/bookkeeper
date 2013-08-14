@@ -201,6 +201,7 @@ public class ReplicationWorker implements Runnable {
         }
         
         fragments = getUnderreplicatedFragments(lh);
+        LOG.info("IKDEBUG underreplicated fragments {} {} ", fragments.size(), fragments);
         if (fragments.size() == 0) {
             LOG.info("Ledger replicated successfully. ledger id is: "
                     + ledgerIdToReplicate);

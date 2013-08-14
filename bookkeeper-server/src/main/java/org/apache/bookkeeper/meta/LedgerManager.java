@@ -50,7 +50,7 @@ public interface LedgerManager extends Closeable {
      *        {@link BKException.Code.ZKException} return code when can't generate
      *        or extract new ledger id
      */
-    public void createLedger(LedgerMetadata metadata, GenericCallback<Long> cb);
+    public void createLedger(LedgerMetadata metadata, GenericCallback<LedgerMetadata> cb);
 
     /**
      * Remove a specified ledger metadata by ledgerId and version.
@@ -91,7 +91,7 @@ public interface LedgerManager extends Closeable {
      *          {@link BKException.Code.MetadataVersionException} return code when version doesn't match,
      *          {@link BKException.Code.ZKException} return code when other issues happen.
      */
-    public void writeLedgerMetadata(long ledgerId, LedgerMetadata metadata, GenericCallback<Void> cb);
+    public void writeLedgerMetadata(long ledgerId, LedgerMetadata metadata, GenericCallback<LedgerMetadata> cb);
 
     /**
      * Loop to process all ledgers.

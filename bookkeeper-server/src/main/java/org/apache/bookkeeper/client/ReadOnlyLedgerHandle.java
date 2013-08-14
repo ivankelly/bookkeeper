@@ -89,8 +89,8 @@ class ReadOnlyLedgerHandle extends LedgerHandle {
                     blockAddCompletions.decrementAndGet();
                     return;
                 }
-
-                replaceBookieInMetadata(addr, bookieIndex);
+                // replace metadata now, close will write it to zk
+                metadata = replaceBookieInMetadata(addr, bookieIndex);
 
                 blockAddCompletions.decrementAndGet();
                 // the failed bookie has been replaced

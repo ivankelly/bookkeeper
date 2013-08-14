@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
  * Encapsulates asynchronous ledger create operation
  *
  */
-class LedgerCreateOp implements GenericCallback<Long> {
+class LedgerCreateOp implements GenericCallback<LedgerMetadata> {
 
     static final Logger LOG = LoggerFactory.getLogger(LedgerCreateOp.class);
 
@@ -103,7 +103,7 @@ class LedgerCreateOp implements GenericCallback<Long> {
         /*
          * Add ensemble to the configuration
          */
-        metadata.addEnsemble(0L, ensemble);
+        metadata = metadata.addEnsembleIK(0L, ensemble);
 
         // create a ledger with metadata
         bk.getLedgerManager().createLedger(metadata, this);
@@ -113,16 +113,16 @@ class LedgerCreateOp implements GenericCallback<Long> {
      * Callback when created ledger.
      */
     @Override
-    public void operationComplete(int rc, Long ledgerId) {
+    public void operationComplete(int rc, LedgerMetadata newMeta) {
         if (BKException.Code.OK != rc) {
             cb.createComplete(rc, null, this.ctx);
             return;
         }
 
         try {
-            lh = new LedgerHandle(bk, ledgerId, metadata, digestType, passwd);
+            lh = new LedgerHandle(bk, newMeta.getLedgerId(), newMeta, digestType, passwd);
         } catch (GeneralSecurityException e) {
-            LOG.error("Security exception while creating ledger: " + ledgerId, e);
+            LOG.error("Security exception while creating ledger: " + newMeta.getLedgerId(), e);
             cb.createComplete(BKException.Code.DigestNotInitializedException, null, this.ctx);
             return;
         } catch (NumberFormatException e) {

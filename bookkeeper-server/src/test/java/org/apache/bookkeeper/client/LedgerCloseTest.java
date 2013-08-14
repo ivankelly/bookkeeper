@@ -58,7 +58,7 @@ public class LedgerCloseTest extends BookKeeperClusterTestCase {
 
     @Test(timeout = 60000)
     public void testLedgerCloseDuringUnrecoverableErrors() throws Exception {
-        int numEntries = 3;
+        int numEntries = 1;
         LedgerHandle lh = bkc.createLedger(3, 3, 3, digestType, "".getBytes());
         verifyMetadataConsistency(numEntries, lh);
     }
@@ -149,6 +149,7 @@ public class LedgerCloseTest extends BookKeeperClusterTestCase {
         TimeUnit.SECONDS.sleep(5);
         // open the ledger again to make sure we ge the right last confirmed.
         LedgerHandle newLh = newBkc.openLedger(lh.getId(), digestType, "".getBytes());
+        LOG.info("IKDEBUG Lac {} {}", recoveredLh.getLastAddConfirmed(), newLh.getLastAddConfirmed());
         assertEquals("Metadata should be consistent across different opened ledgers",
                 recoveredLh.getLastAddConfirmed(), newLh.getLastAddConfirmed());
     }

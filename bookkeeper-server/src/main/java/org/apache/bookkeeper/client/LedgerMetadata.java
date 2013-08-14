@@ -77,9 +77,11 @@ public class LedgerMetadata {
     private boolean hasPassword = false;
     private LedgerMetadataFormat.DigestType digestType;
     private byte[] password;
+    private long ledgerId;
 
     public LedgerMetadata(int ensembleSize, int writeQuorumSize, int ackQuorumSize,
                           BookKeeper.DigestType digestType, byte[] password) {
+        this.ledgerId = 0;
         this.ensembleSize = ensembleSize;
         this.writeQuorumSize = writeQuorumSize;
         this.ackQuorumSize = ackQuorumSize;
@@ -103,6 +105,7 @@ public class LedgerMetadata {
      * Copy Constructor.
      */
     LedgerMetadata(LedgerMetadata other) {
+        this.ledgerId = other.ledgerId;
         this.ensembleSize = other.ensembleSize;
         this.writeQuorumSize = other.writeQuorumSize;
         this.ackQuorumSize = other.ackQuorumSize;
@@ -119,7 +122,7 @@ public class LedgerMetadata {
         for (Entry<Long, ArrayList<InetSocketAddress>> entry : other.ensembles.entrySet()) {
             long startEntryId = entry.getKey();
             ArrayList<InetSocketAddress> newEnsemble = new ArrayList<InetSocketAddress>(entry.getValue());
-            this.addEnsemble(startEntryId, newEnsemble);
+            addEnsemble(startEntryId, newEnsemble);
         }
     }
 
@@ -139,9 +142,9 @@ public class LedgerMetadata {
         return ensembles;
     }
 
-    void setEnsembles(SortedMap<Long, ArrayList<InetSocketAddress>> ensembles) {
+    /*void setEnsembles(SortedMap<Long, ArrayList<InetSocketAddress>> ensembles) {
         this.ensembles = ensembles;
-    }
+        }*/
 
     public int getEnsembleSize() {
         return ensembleSize;
@@ -153,6 +156,10 @@ public class LedgerMetadata {
 
     public int getAckQuorumSize() {
         return ackQuorumSize;
+    }
+    
+    public long getLedgerId() {
+        return ledgerId;
     }
 
     /**
@@ -185,8 +192,17 @@ public class LedgerMetadata {
         return length;
     }
 
-    void setLength(long length) {
-        this.length = length;
+
+    public LedgerMetadata setLedgerId(long ledgerId) {
+        LedgerMetadata newM = new LedgerMetadata(this);
+        newM.ledgerId = ledgerId;
+        return newM;
+    }
+
+    LedgerMetadata setLengthIK(long length) {
+        LedgerMetadata newM = new LedgerMetadata(this);
+        newM.length = length;
+        return newM;
     }
 
     public boolean isClosed() {
@@ -201,24 +217,43 @@ public class LedgerMetadata {
         return state;
     }
 
-    void setState(LedgerMetadataFormat.State state) {
+    private void setState(LedgerMetadataFormat.State state) {
         this.state = state;
     }
 
-    void markLedgerInRecovery() {
-        state = LedgerMetadataFormat.State.IN_RECOVERY;
+    LedgerMetadata markLedgerInRecoveryIK() {
+        LedgerMetadata newM = new LedgerMetadata(this);
+        newM.state = LedgerMetadataFormat.State.IN_RECOVERY;
+        return newM;
     }
 
-    void close(long entryId) {
-        lastEntryId = entryId;
-        state = LedgerMetadataFormat.State.CLOSED;
+    LedgerMetadata closeIK(long entryId) {
+        LedgerMetadata newM = new LedgerMetadata(this);
+        newM.lastEntryId = entryId;
+        newM.state = LedgerMetadataFormat.State.CLOSED;
+        return newM;
     }
 
-    void addEnsemble(long startEntryId, ArrayList<InetSocketAddress> ensemble) {
+    private void addEnsemble(long startEntryId, ArrayList<InetSocketAddress> ensemble) {
         assert ensembles.isEmpty() || startEntryId >= ensembles.lastKey();
-
         ensembles.put(startEntryId, ensemble);
         currentEnsemble = ensemble;
+    }
+
+    LedgerMetadata addEnsembleIK(long startEntryId, ArrayList<InetSocketAddress> ensemble) {
+        LedgerMetadata newM = new LedgerMetadata(this);
+        newM.addEnsemble(startEntryId, ensemble);
+        return newM;
+    }
+
+    LedgerMetadata replaceBookie(long fragmentStartId, InetSocketAddress oldBookie,
+                                 InetSocketAddress newBookie) {
+        LedgerMetadata newM = new LedgerMetadata(this);
+        ArrayList<InetSocketAddress> ensemble = newM.ensembles.get(fragmentStartId);
+        int deadBookieIndex = ensemble.indexOf(oldBookie);
+        ensemble.remove(deadBookieIndex);
+        ensemble.add(deadBookieIndex, newBookie);
+        return newM;
     }
 
     ArrayList<InetSocketAddress> getEnsemble(long entryId) {
@@ -423,8 +458,10 @@ public class LedgerMetadata {
      * 
      * @param v Version
      */
-    public void setVersion(Version v) {
-        this.version = v;
+    public LedgerMetadata setVersionIK(Version v) {
+        LedgerMetadata newM = new LedgerMetadata(this);
+        newM.version = v;
+        return newM;
     }
 
     /**
@@ -461,7 +498,7 @@ public class LedgerMetadata {
          *  if length & close have changed, then another client has
          *  opened the ledger, can't resolve this conflict.
          */
-
+        LOG.info("IKDEBUG {} {}", this, newMeta);
         if (metadataFormatVersion != newMeta.metadataFormatVersion ||
             ensembleSize != newMeta.ensembleSize ||
             writeQuorumSize != newMeta.writeQuorumSize ||
@@ -487,7 +524,7 @@ public class LedgerMetadata {
             // ensemble distribution should be same
             // we don't check the detail ensemble, since new bookie will be set
             // using recovery tool.
-            Iterator<Long> keyIter = ensembles.keySet().iterator();
+            /*Iterator<Long> keyIter = ensembles.keySet().iterator();
             Iterator<Long> newMetaKeyIter = newMeta.ensembles.keySet().iterator();
             for (int i=0; i<newMeta.ensembles.size(); i++) {
                 Long curKey = keyIter.next();
@@ -495,7 +532,7 @@ public class LedgerMetadata {
                 if (!curKey.equals(newMetaKey)) {
                     return true;
                 }
-            }
+                }*/
         }
         return false;
     }
@@ -507,7 +544,7 @@ public class LedgerMetadata {
         return sb.toString();
     }
 
-    void mergeEnsembles(SortedMap<Long, ArrayList<InetSocketAddress>> newEnsembles) {
+    private void mergeEnsembles(SortedMap<Long, ArrayList<InetSocketAddress>> newEnsembles) {
         // allow new metadata to be one ensemble less than current metadata
         // since ensemble change might kick in when recovery changed metadata
         int diff = ensembles.size() - newEnsembles.size();

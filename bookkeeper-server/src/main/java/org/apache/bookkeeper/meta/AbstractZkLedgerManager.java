@@ -164,7 +164,7 @@ abstract class AbstractZkLedgerManager implements LedgerManager {
 
     @Override
     public void writeLedgerMetadata(final long ledgerId, final LedgerMetadata metadata,
-                                    final GenericCallback<Void> cb) {
+                                    final GenericCallback<LedgerMetadata> cb) {
         Version v = metadata.getVersion();
         if (Version.NEW == v || !(v instanceof ZkVersion)) {
             cb.operationComplete(BKException.Code.MetadataVersionException, null);
@@ -180,8 +180,8 @@ abstract class AbstractZkLedgerManager implements LedgerManager {
                     cb.operationComplete(BKException.Code.MetadataVersionException, null);
                 } else if (KeeperException.Code.OK.intValue() == rc) {
                     // update metadata version
-                    metadata.setVersion(zv.setZnodeVersion(stat.getVersion()));
-                    cb.operationComplete(BKException.Code.OK, null);
+                    LedgerMetadata newMeta = metadata.setVersionIK(zv.setZnodeVersion(stat.getVersion()));
+                    cb.operationComplete(BKException.Code.OK, newMeta);
                 } else {
                     LOG.warn("Conditional update ledger metadata failed: ", KeeperException.Code.get(rc));
                     cb.operationComplete(BKException.Code.ZKException, null);

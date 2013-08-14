@@ -215,7 +215,7 @@ public class MSLedgerManagerFactory extends LedgerManagerFactory {
         }
 
         @Override
-        public void createLedger(final LedgerMetadata metadata, final GenericCallback<Long> ledgerCb) {
+        public void createLedger(final LedgerMetadata metadata, final GenericCallback<LedgerMetadata> ledgerCb) {
             ZkUtils.createFullPathOptimistic(zk, idGenPath, new byte[0], Ids.OPEN_ACL_UNSAFE,
                     CreateMode.EPHEMERAL_SEQUENTIAL, new StringCallback() {
                         @Override
@@ -253,8 +253,8 @@ public class MSLedgerManagerFactory extends LedgerManagerFactory {
                                     LOG.debug("Create ledger {} with version {} successfuly.", new Object[] { lid,
                                             version });
                                     // update version
-                                    metadata.setVersion(version);
-                                    ledgerCb.operationComplete(BKException.Code.OK, lid);
+                                    LedgerMetadata newMeta = metadata.setLedgerId(lid).setVersionIK(version);
+                                    ledgerCb.operationComplete(BKException.Code.OK, newMeta);
                                 }
                             };
 
@@ -343,7 +343,7 @@ public class MSLedgerManagerFactory extends LedgerManagerFactory {
 
         @Override
         public void writeLedgerMetadata(final long ledgerId, final LedgerMetadata metadata,
-                final GenericCallback<Void> cb) {
+                final GenericCallback<LedgerMetadata> cb) {
             Value data = new Value().setField(META_FIELD, metadata.serialize());
 
             LOG.debug("Writing ledger {} metadata, version {}", new Object[] { ledgerId, metadata.getVersion() });
@@ -353,6 +353,7 @@ public class MSLedgerManagerFactory extends LedgerManagerFactory {
                 @Override
                 public void complete(int rc, Version version, Object ctx) {
                     int bkRc;
+                    LedgerMetadata newMeta = null;
                     if (MSException.Code.BadVersion.getCode() == rc) {
                         LOG.info("Bad version provided to updat metadata for ledger {}", ledgerId);
                         bkRc = BKException.Code.MetadataVersionException;
@@ -360,7 +361,7 @@ public class MSLedgerManagerFactory extends LedgerManagerFactory {
                         LOG.warn("Ledger {} doesn't exist when writing its ledger metadata.", ledgerId);
                         bkRc = BKException.Code.NoSuchLedgerExistsException;
                     } else if (MSException.Code.OK.getCode() == rc) {
-                        metadata.setVersion(version);
+                        newMeta = metadata.setVersionIK(version);
                         bkRc = BKException.Code.OK;
                     } else {
                         LOG.warn("Conditional update ledger metadata failed: ",
@@ -368,7 +369,7 @@ public class MSLedgerManagerFactory extends LedgerManagerFactory {
                         bkRc = BKException.Code.MetaStoreException;
                     }
 
-                    cb.operationComplete(bkRc, null);
+                    cb.operationComplete(bkRc, newMeta);
                 }
             };
             ledgerTable.put(key, data, metadata.getVersion(), msCallback, null);

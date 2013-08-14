@@ -65,12 +65,12 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         final AtomicInteger expected = new AtomicInteger(numLedgers);
         for (int i=0; i<numLedgers; i++) {
             getLedgerManager().createLedger(new LedgerMetadata(1, 1, 1, DigestType.MAC, "".getBytes()),
-                new GenericCallback<Long>() {
+                new GenericCallback<LedgerMetadata>() {
                 @Override
-                public void operationComplete(int rc, Long ledgerId) {
+                public void operationComplete(int rc, LedgerMetadata newMeta) {
                     if (rc == BKException.Code.OK) {
-                        activeLedgers.put(ledgerId, true);
-                        createdLedgers.add(ledgerId);
+                        activeLedgers.put(newMeta.getLedgerId(), true);
+                        createdLedgers.add(newMeta.getLedgerId());
                     }
                     synchronized (expected) {
                         int num = expected.decrementAndGet();

@@ -44,8 +44,8 @@ public abstract class MultiLedgerManagerTestCase extends BookKeeperClusterTestCa
     public static Collection<Object[]> configs() {
         String[] ledgerManagers = new String[] {
             "org.apache.bookkeeper.meta.FlatLedgerManagerFactory",
-            "org.apache.bookkeeper.meta.HierarchicalLedgerManagerFactory",
-            "org.apache.bookkeeper.meta.MSLedgerManagerFactory",
+            //            "org.apache.bookkeeper.meta.HierarchicalLedgerManagerFactory",
+            //"org.apache.bookkeeper.meta.MSLedgerManagerFactory",
         };
         ArrayList<Object[]> cfgs = new ArrayList<Object[]>(ledgerManagers.length);
         for (String lm : ledgerManagers) {
