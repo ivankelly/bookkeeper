@@ -28,7 +28,7 @@ import org.apache.bookkeeper.proto.DataFormats.IndexEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SSTableImpl implements SSTable {
+public class SSTableImpl {
     private final static Logger LOG = LoggerFactory.getLogger(SSTableImpl.class);
 
     private static final long SSTABLE_CANARY = 0xDEADBEEFCAFEBABEL;
@@ -36,7 +36,7 @@ public class SSTableImpl implements SSTable {
     private static final int BLOCKSIZE = 128*1024; // think about this more
     private static final int FOOTERSIZE = 128*1024; // think about this more
 
-    static void store(File fn, Iterator<KeyValue> kvs) throws IOException {
+    static void store(File fn, KeyValueIterator kvs) throws IOException {
         FileOutputStream os = new FileOutputStream(fn);
         FileChannel fc = os.getChannel();
         Map<ByteString,Long> index = new HashMap<ByteString,Long>();
@@ -139,7 +139,7 @@ public class SSTableImpl implements SSTable {
     }
 
     KeyValueIterator iterator(final ByteString firstKey,
-                                 final ByteString lastKey) throws IOException {
+                              final ByteString lastKey) throws IOException {
         if (!mayContain(firstKey)) {
             return nullIterator;
         }
@@ -186,6 +186,15 @@ public class SSTableImpl implements SSTable {
             }
 
             @Override
+            public synchronized KeyValue peek() throws IOException {
+                KeyValue kv = curKV;
+                if (kv == null) {
+                    throw new IOException("No next entry");
+                }
+                return kv;
+            }
+
+            @Override
             public synchronized KeyValue next() throws IOException {
                 KeyValue kv = curKV;
                 if (kv == null) {
@@ -220,14 +229,22 @@ public class SSTableImpl implements SSTable {
     }
 
     private static final KeyValueIterator nullIterator = new KeyValueIterator() {
+            @Override
             public boolean hasNext() throws IOException {
                 return false;
             }
 
+            @Override
+            public KeyValue peek() throws IOException {
+                return next();
+            }
+
+            @Override
             public KeyValue next() throws IOException {
                 throw new IOException("Null iterator, there are no entries");
             }
 
+            @Override
             public void close() throws IOException {
             }
         };

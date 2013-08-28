@@ -87,7 +87,7 @@ public class TestSSTableImpl {
         Collections.sort(values, kvCompByKey);
 
         File f = new File("/tmp/testlsm.sst");
-        SSTableImpl.store(f, values.iterator());
+        SSTableImpl.store(f, new KeyValueIteratorWrapper(values.iterator()));
 
         SSTableImpl sst = SSTableImpl.open(f, keyComp);
         KeyValueIterator iterRead = sst.iterator();
