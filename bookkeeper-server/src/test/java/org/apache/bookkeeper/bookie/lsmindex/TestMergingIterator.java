@@ -48,10 +48,11 @@ public class TestMergingIterator {
                      .setValue(ByteString.copyFrom(Ints.toByteArray(i))).build());
         }
 
-        MergingIterator iter = new MergingIterator(keyComp,
-                new KeyValueIteratorWrapper(values.get(0).iterator()),
-                new KeyValueIteratorWrapper(values.get(1).iterator()),
-                new KeyValueIteratorWrapper(values.get(2).iterator()));
+        List<KeyValueIterator> iterators = new ArrayList<KeyValueIterator>();
+        iterators.add(new KeyValueIteratorWrapper(values.get(0).iterator()));
+        iterators.add(new KeyValueIteratorWrapper(values.get(1).iterator()));
+        iterators.add(new KeyValueIteratorWrapper(values.get(2).iterator()));
+        MergingIterator iter = new MergingIterator(keyComp, iterators);
         int i = 0;
         ByteString lastKey = null;
         while (iter.hasNext()) {
@@ -107,11 +108,12 @@ public class TestMergingIterator {
                 entriesAdded++;
             }
         }
+        List<KeyValueIterator> iterators = new ArrayList<KeyValueIterator>();
+        iterators.add(new KeyValueIteratorWrapper(values.get(0).iterator()));
+        iterators.add(new KeyValueIteratorWrapper(values.get(1).iterator()));
+        iterators.add(new KeyValueIteratorWrapper(values.get(2).iterator()));
 
-        MergingIterator iter = new MergingIterator(keyComp,
-                new KeyValueIteratorWrapper(values.get(0).iterator()),
-                new KeyValueIteratorWrapper(values.get(1).iterator()),
-                new KeyValueIteratorWrapper(values.get(2).iterator()));
+        MergingIterator iter = new MergingIterator(keyComp, iterators);
         int i = 0;
         KeyValue lastKV = null;
         while (iter.hasNext()) {

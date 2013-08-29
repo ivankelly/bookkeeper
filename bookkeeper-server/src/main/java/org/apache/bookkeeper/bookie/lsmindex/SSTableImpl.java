@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Comparator;
 import java.util.NavigableMap;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import java.io.IOException;
@@ -36,10 +37,11 @@ public class SSTableImpl {
     private static final int BLOCKSIZE = 128*1024; // think about this more
     private static final int FOOTERSIZE = 128*1024; // think about this more
 
-    static void store(File fn, KeyValueIterator kvs) throws IOException {
+    static SSTableImpl store(File fn, Comparator<ByteString> comparator,
+                             KeyValueIterator kvs) throws IOException {
         FileOutputStream os = new FileOutputStream(fn);
         FileChannel fc = os.getChannel();
-        Map<ByteString,Long> index = new HashMap<ByteString,Long>();
+        NavigableMap<ByteString,Long> index = new TreeMap<ByteString,Long>(comparator);
         try {
             ByteString lastKey = ByteString.EMPTY;
             long lastBlockStart = -1;
@@ -66,6 +68,7 @@ public class SSTableImpl {
                 .setLastKey(lastKey)
                 .setIndexOffset(indexOffset).build();
             writeFooter(os, md);
+            return new SSTableImpl(fn, md, index, comparator);
         } finally {
             os.close();
         }
@@ -216,7 +219,7 @@ public class SSTableImpl {
             && comparator.compare(key, getLastKey()) <= 0;
     }
 
-    private ByteString getFirstKey() {
+    ByteString getFirstKey() {
         if (index.size() > 0) {
             return index.firstKey();
         } else {
@@ -224,7 +227,7 @@ public class SSTableImpl {
         }
     }
 
-    private ByteString getLastKey() {
+    ByteString getLastKey() {
         return meta.getLastKey();
     }
 

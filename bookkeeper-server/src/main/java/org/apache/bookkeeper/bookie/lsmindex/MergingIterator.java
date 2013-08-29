@@ -5,13 +5,13 @@ import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import com.google.protobuf.ByteString;
 
 class MergingIterator implements KeyValueIterator {
     final List<KeyValueIterator> origOrder;
-    final KeyValueIterator[] iterators;
+    final List<KeyValueIterator> iterators;
     final Comparator<ByteString> keyComparator;
     
     boolean sorted = false;
@@ -47,11 +47,11 @@ class MergingIterator implements KeyValueIterator {
      * If two keys match, then the keys will be merged in the order that the iterator
      * that contains them was passed to the MergingIterator constructor
      */
-    MergingIterator(Comparator<ByteString> keyComparator, KeyValueIterator... iterators) {
-        if (iterators.length < 1) {
+    MergingIterator(Comparator<ByteString> keyComparator, List<KeyValueIterator> iterators) {
+        if (iterators.size() < 1) {
             throw new IllegalArgumentException("Must pass at least one iterator");
         }
-        this.origOrder = Arrays.asList(Arrays.copyOf(iterators, iterators.length));
+        this.origOrder = new ArrayList<KeyValueIterator>(iterators);
         this.iterators = iterators;
         this.keyComparator = keyComparator;
     }
@@ -59,14 +59,14 @@ class MergingIterator implements KeyValueIterator {
     @Override
     public synchronized boolean hasNext() throws IOException {
         if (!sorted) {
-            Arrays.sort(iterators, iteratorComp);
+            Collections.sort(iterators, iteratorComp);
             if (sortError != null) {
                 throw sortError;
             }
             sorted = true;
         }
 
-        return iterators[0].hasNext();
+        return iterators.get(0).hasNext();
     }
 
     @Override
@@ -74,7 +74,7 @@ class MergingIterator implements KeyValueIterator {
         if (!hasNext()) {
             throw new IOException("No next entry");
         }
-        return iterators[0].peek();
+        return iterators.get(0).peek();
     }
 
     @Override
@@ -83,7 +83,7 @@ class MergingIterator implements KeyValueIterator {
             throw new IOException("No next entry");
         }
         sorted = false;
-        return iterators[0].next();
+        return iterators.get(0).next();
     }
 
     @Override
