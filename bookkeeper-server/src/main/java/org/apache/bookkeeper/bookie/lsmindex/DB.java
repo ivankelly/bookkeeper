@@ -1,10 +1,17 @@
 package org.apache.bookkeeper.bookie.lsmindex;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.SortedSet;
+
 import java.io.File;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import com.google.protobuf.ByteString;
 import java.util.Comparator;
+import com.google.common.io.Closeables;
+
 
 public class DB {
     MemTable currentMem;
@@ -52,18 +59,38 @@ public class DB {
         }
     }
 
-    public ByteString get(ByteString key) {
-        // choose files based on keys
-        // add files to Iterator
-        // .next()
-        // return value
+    public ByteString get(ByteString key) throws IOException {
+        KeyValueIterator iter = scan(key, key);
+        if (iter.hasNext()) {
+            return iter.next().getValue();
+        }
         return null;
     }
 
-    public KeyValueIterator scan(ByteString from, ByteString to) {
-        // choose files based on keys
-        // add files to Iterator
-        return null;
+    public KeyValueIterator scan(ByteString from, ByteString to) throws IOException {
+        final List<KeyValueIterator> iterators = new ArrayList<KeyValueIterator>();
+        flushLock.readLock().lock();
+        try {
+            iterators.add(currentMem.scan(from, to));
+            iterators.add(flushingMem.scan(from, to));
+        } finally {
+            flushLock.readLock().unlock();
+        }
+
+        SortedSet<Manifest.Entry> entries = manifest.getEntriesForRange(from, to);
+        try {
+            for (Manifest.Entry e : entries) {
+                SSTableImpl t = SSTableImpl.open(e.getFile(), keyComparator);
+                iterators.add(t.iterator(from, to));
+                // t.close();
+            }
+        } catch (IOException ioe) {
+            for (KeyValueIterator i : iterators) {
+                Closeables.closeQuietly(i);
+            }
+            throw ioe;
+        }
+        return new MergingIterator(keyComparator, iterators);
     }
 
     // gaurantee that everything added has hit disk

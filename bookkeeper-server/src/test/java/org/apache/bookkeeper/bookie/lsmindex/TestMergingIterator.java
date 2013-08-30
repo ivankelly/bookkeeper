@@ -36,9 +36,7 @@ public class TestMergingIterator {
         Random r = new Random(0xdeadbeef);
         for (int i = 0; i < NUM_ENTRIES; i++) {
             values.get(r.nextInt(values.size()))
-                .add(KeyValue.newBuilder()
-                     .setKey(ByteString.copyFrom(Ints.toByteArray(i)))
-                     .setValue(ByteString.copyFrom(Ints.toByteArray(i))).build());
+                .add(Util.newKeyValue(i));
         }
 
         List<KeyValueIterator> iterators = new ArrayList<KeyValueIterator>();
@@ -74,30 +72,22 @@ public class TestMergingIterator {
             if ((i % 13) == 0) { // put in 2
                 int which = r.nextInt(values.size());
                 values.get(which)
-                    .add(KeyValue.newBuilder()
-                         .setKey(ByteString.copyFrom(Ints.toByteArray(i)))
-                         .setValue(ByteString.copyFrom(Ints.toByteArray(which))).build());
+                    .add(Util.newKeyValue(i, which));
                 which = (which + 1) % values.size();
                 values.get(which)
-                    .add(KeyValue.newBuilder()
-                         .setKey(ByteString.copyFrom(Ints.toByteArray(i)))
-                         .setValue(ByteString.copyFrom(Ints.toByteArray(which))).build());
+                    .add(Util.newKeyValue(i, which));
                 entriesAdded += 2;
             } else if ((i % 11) == 0) { // put in all 3
                 int which = r.nextInt(values.size());
                 for (int j = 0; j < values.size(); j++) {
                     which = (which + 1) % values.size();
                     values.get(which)
-                        .add(KeyValue.newBuilder()
-                             .setKey(ByteString.copyFrom(Ints.toByteArray(i)))
-                             .setValue(ByteString.copyFrom(Ints.toByteArray(which))).build());
+                        .add(Util.newKeyValue(i, which));
                     entriesAdded++;
                 }                
             } else {
                 values.get(r.nextInt(values.size()))
-                    .add(KeyValue.newBuilder()
-                         .setKey(ByteString.copyFrom(Ints.toByteArray(i)))
-                         .setValue(ByteString.copyFrom(Ints.toByteArray(i))).build());
+                    .add(Util.newKeyValue(i));
                 entriesAdded++;
             }
         }
@@ -115,8 +105,8 @@ public class TestMergingIterator {
 
             if (lastKV != null) {
                 if (keyComp.compare(lastKV.getKey(), kv.getKey()) == 0) {
-                    int lastVal = Ints.fromByteArray(lastKV.getValue().toByteArray());
-                    int curVal = Ints.fromByteArray(kv.getValue().toByteArray());
+                    int lastVal = Util.bsToInt(lastKV.getValue());
+                    int curVal = Util.bsToInt(kv.getValue());
                     Assert.assertTrue("Should be in the order of the iterators", lastVal < curVal);
                 } else {
                     Assert.assertTrue("Should be in order",

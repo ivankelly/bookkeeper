@@ -22,13 +22,7 @@ public class TestSSTableImpl {
         = LoggerFactory.getLogger(TestSSTableImpl.class);
 
     Comparator<ByteString> keyComp = KeyComparators.unsignedLexicographical();
-
-    Comparator<KeyValue> kvCompByKey = new Comparator<KeyValue>() {
-        @Override
-        public int compare(KeyValue k1, KeyValue k2) {
-            return keyComp.compare(k1.getKey(), k2.getKey());
-        }
-    };
+    Comparator<KeyValue> kvCompByKey = Util.keyValueComparator(keyComp);
 
     private void testIterator(SSTableImpl table, int firstKey, int lastKey,
                               int tableFirstKey, int tableLastKey)
@@ -36,8 +30,8 @@ public class TestSSTableImpl {
         int firstExpected = tableFirstKey > firstKey ? tableFirstKey : firstKey;
         int lastExpected = tableLastKey > lastKey ? lastKey : tableLastKey;
 
-        ByteString firstKeyBS = ByteString.copyFrom(Ints.toByteArray(firstExpected));
-        ByteString lastKeyBS = ByteString.copyFrom(Ints.toByteArray(lastExpected));
+        ByteString firstKeyBS = Util.intToBs(firstExpected);
+        ByteString lastKeyBS = Util.intToBs(lastExpected);
         int expectedNumKeys = (lastExpected - firstExpected) + 1;
         int numKeys = 0;
         long start = System.nanoTime();
@@ -73,9 +67,7 @@ public class TestSSTableImpl {
         int tableFirstKey = 100;
         int tableLastKey = 200000;
         for (int i = tableFirstKey; i <= tableLastKey; i++) {
-            values.add(KeyValue.newBuilder()
-                       .setKey(ByteString.copyFrom(Ints.toByteArray(i)))
-                       .setValue(ByteString.copyFrom(Ints.toByteArray(i))).build());
+            values.add(Util.newKeyValue(i));
         }
         Collections.sort(values, kvCompByKey);
 

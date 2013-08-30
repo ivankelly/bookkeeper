@@ -38,6 +38,7 @@ public class Bencher {
         db.start();
         int i = 0;
         OpTimer op = Stats.get().getOpTimer(Bencher.class.getName(), "put");
+
         while (true) {
             i++;
             ByteString key = ByteString.copyFrom(Ints.toByteArray(i));
