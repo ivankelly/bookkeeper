@@ -1,0 +1,5 @@
+* TODO Deletion of entries
+* TODO Deletion of old SSTables
+* TODO Testing compaction 
+* TODO Performance analysis on SSTableImpl
+* TODO Class interface cleanup
