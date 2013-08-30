@@ -90,7 +90,8 @@ public class DB {
             }
             throw ioe;
         }
-        return new MergingIterator(keyComparator, iterators);
+        return new DedupeIterator(keyComparator,
+                                  new MergingIterator(keyComparator, iterators));
     }
 
     // gaurantee that everything added has hit disk

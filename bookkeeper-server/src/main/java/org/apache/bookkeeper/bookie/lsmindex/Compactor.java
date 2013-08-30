@@ -106,8 +106,10 @@ public class Compactor implements Runnable {
             }
             MergingIterator merger = new MergingIterator(keyComparator,
                                                          iterators);
+            DedupeIterator dedupe = new DedupeIterator(keyComparator,
+                                                       merger);
             CompactingIterator iter = new CompactingIterator(keyComparator,
-                    merger, overlapsL2.iterator());
+                    dedupe, overlapsL2.iterator());
             SortedSet<Manifest.Entry> newEntries
                 = new TreeSet<Manifest.Entry>(manifest.entryComparator());
             while (iter.reallyHasNext()) {

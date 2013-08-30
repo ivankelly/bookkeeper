@@ -9,7 +9,7 @@ import com.google.protobuf.ByteString;
 class CompactingIterator implements KeyValueIterator {
 
     final Comparator<ByteString> keyComparator;
-    final MergingIterator iter;
+    final KeyValueIterator iter;
     final Iterator<Manifest.Entry> level2iter;
 
     Manifest.Entry level2cur = null;
@@ -19,7 +19,7 @@ class CompactingIterator implements KeyValueIterator {
     KeyValue curKV;
 
     CompactingIterator(Comparator<ByteString> keyComparator,
-                       MergingIterator iter, Iterator<Manifest.Entry> level2iter) {
+                       KeyValueIterator iter, Iterator<Manifest.Entry> level2iter) {
         this.iter = iter;
         this.level2iter = level2iter;
         this.keyComparator = keyComparator;
