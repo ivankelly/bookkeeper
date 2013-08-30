@@ -21,14 +21,7 @@ public class TestSSTableImpl {
     private final static Logger LOG
         = LoggerFactory.getLogger(TestSSTableImpl.class);
 
-    Comparator<ByteString> keyComp = new Comparator<ByteString>() {
-        Comparator<byte[]> byteComp = UnsignedBytes.lexicographicalComparator();
-
-        @Override
-        public int compare(ByteString k1, ByteString k2) {
-            return byteComp.compare(k1.toByteArray(), k2.toByteArray());
-        }
-    };
+    Comparator<ByteString> keyComp = KeyComparators.unsignedLexicographical();
 
     Comparator<KeyValue> kvCompByKey = new Comparator<KeyValue>() {
         @Override
@@ -74,7 +67,7 @@ public class TestSSTableImpl {
         Assert.assertEquals("Not enough values read", expectedNumKeys, numKeys);
     }
 
-    @Test
+    @Test(timeout=60000)
     public void testWritingAndReading() throws Exception {
         List<KeyValue> values = new ArrayList<KeyValue>();
         int tableFirstKey = 100;

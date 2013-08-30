@@ -79,7 +79,7 @@ public class SSTableImpl {
         for (Map.Entry<ByteString,Long> i : index.entrySet()) {
             IndexEntry e = IndexEntry.newBuilder().setKey(i.getKey())
                 .setOffset(i.getValue()).build();
-            LOG.info("Writing entry {} {}", e.getKey().toByteArray(), e.getOffset());
+            LOG.debug("Writing entry {} {}", e.getKey().toByteArray(), e.getOffset());
             e.writeDelimitedTo(os);
         }
     }

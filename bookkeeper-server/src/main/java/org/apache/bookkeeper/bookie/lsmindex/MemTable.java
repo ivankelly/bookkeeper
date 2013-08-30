@@ -11,6 +11,7 @@ import java.util.Map;
 import java.io.IOException;
 
 public class MemTable {
+    final static long MAX_MEMTABLE_SIZE = 1*1024*1024;
     final ConcurrentSkipListMap<ByteString,ByteString> map;
     final AtomicLong sizeAccum = new AtomicLong(0);
     final Comparator<ByteString> keyComparator;
