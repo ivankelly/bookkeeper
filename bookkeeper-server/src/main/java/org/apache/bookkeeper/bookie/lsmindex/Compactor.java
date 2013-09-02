@@ -77,17 +77,15 @@ public class Compactor implements Runnable {
     public void mergeEntries(int l, SortedSet<Manifest.Entry> toMerge,
                              SortedSet<Manifest.Entry> overlaps)
             throws IOException {
-        SortedSet<Manifest.Entry> overlapsL2
-            = new TreeSet<Manifest.Entry>(manifest.entryComparator());
-        if (manifest.hasLevel(l + 2)) {
-            ByteString firstKey = toMerge.first().getFirstKey();
-            ByteString lastKey = toMerge.last().getLastKey();
-            if (overlaps.size() > 0) {
-                firstKey = overlaps.first().getFirstKey();
-                lastKey = overlaps.last().getLastKey();
-            }
-            overlapsL2 = manifest.getEntriesForRange(l + 2, firstKey, lastKey);
+
+        ByteString firstKey = toMerge.first().getFirstKey();
+        ByteString lastKey = toMerge.last().getLastKey();
+        if (overlaps.size() > 0) {
+            firstKey = overlaps.first().getFirstKey();
+            lastKey = overlaps.last().getLastKey();
         }
+        SortedSet<Manifest.Entry> overlapsL2
+            = manifest.getEntriesForRange(l + 2, firstKey, lastKey);
 
         List<SSTableImpl> tables = new ArrayList<SSTableImpl>();
         List<KeyValueIterator> iterators = new ArrayList<KeyValueIterator>();
