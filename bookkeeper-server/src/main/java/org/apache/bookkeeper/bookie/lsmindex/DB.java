@@ -21,14 +21,15 @@ public class DB {
     final Compactor compactor;
     final Comparator<ByteString> keyComparator;
 
-    public DB(Comparator<ByteString> keyComparator, File tablesDir) {
+    public DB(Comparator<ByteString> keyComparator, File tablesDir)
+            throws IOException {
         this.keyComparator = keyComparator;
 
         currentMem = new MemTable(keyComparator);
         flushingMem = new MemTable(keyComparator);
         flushLock = new ReentrantReadWriteLock();
 
-        manifest = new Manifest(keyComparator);
+        manifest = new Manifest(keyComparator, tablesDir);
         compactor = new Compactor(manifest, keyComparator, tablesDir);
     }
 

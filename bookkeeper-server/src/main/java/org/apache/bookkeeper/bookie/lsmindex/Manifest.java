@@ -2,7 +2,12 @@ package org.apache.bookkeeper.bookie.lsmindex;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Closeable;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Comparator;
 import java.util.Set;
@@ -12,16 +17,23 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.ConcurrentModificationException;
 
+import org.apache.bookkeeper.proto.DataFormats.ManifestCurrent;
+
 import javax.xml.bind.DatatypeConverter;
 
+import com.google.common.io.Closeables;
 import com.google.protobuf.ByteString;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Manifest {
+public class Manifest implements Closeable {
     private final static Logger LOG
         = LoggerFactory.getLogger(Manifest.class);
+
+    final int MAX_TRANSFORMS_PER_LOG = 100000;
+    final String CURRENT_FILE = "MANIFEST.ptr";
+    final String MANIFEST_NAME = "MANIFEST";
 
     static class Entry {
         final int level;
@@ -69,31 +81,28 @@ public class Manifest {
     }
 
     final Comparator<ByteString> keyComparator;
-    final private Comparator<Entry> entryComp = new Comparator<Entry>() {
-            @Override
-            public int compare(Entry e1, Entry e2) {
-                if (e1.getLevel() == 0 && e2.getLevel() == 0) {
-                    // args inverted because we want newer first
-                    return Long.valueOf(e2.getCreationOrder())
-                        .compareTo(Long.valueOf(e1.getCreationOrder()));
-                }
-                if (e1.getLevel() != e2.getLevel()) {
-                    return e1.getLevel() - e2.getLevel();
-                }
-                int ret = keyComparator.compare(e1.getFirstKey(), e2.getFirstKey());
-                if (ret != 0) {
-                    return ret;
-                }
-                return keyComparator.compare(e1.getLastKey(), e2.getLastKey());
-            }
-        };
+    final Comparator<Entry> entryComp;
 
     final ConcurrentHashMap<Integer, SortedSet<Entry>> levels;
-    final AtomicLong fileIds = new AtomicLong(0);
+    final AtomicLong creationOrder = new AtomicLong(0);
+    final File manifestDir;
+    long appliedTransforms = 0;
+    ManifestLog manifestLog;
 
-    Manifest(Comparator<ByteString> keyComparator) {
+    Manifest(Comparator<ByteString> keyComparator, File manifestDir)
+            throws IOException {
         this.keyComparator = keyComparator;
+        this.entryComp = new ManifestEntryComparator(keyComparator);
         levels = new ConcurrentHashMap<Integer, SortedSet<Entry>>();
+
+        this.manifestDir = manifestDir;
+        replayManifestLog(manifestDir);
+        manifestLog = newManifestLog(manifestDir);
+    }
+
+    @Override
+    public void close() throws IOException {
+        manifestLog.close();
     }
 
     Comparator<Entry> entryComparator() {
@@ -101,7 +110,7 @@ public class Manifest {
     }
 
     long creationOrder() {
-        return fileIds.getAndIncrement();
+        return creationOrder.getAndIncrement();
     }
 
     int getNumLevels() {
@@ -184,7 +193,6 @@ public class Manifest {
         if (!hasLevel(level)) {
             newLevel(level);
         }
-        // log changes
         SortedSet<Entry> emptySet = new TreeSet<Entry>(entryComp);
         SortedSet<Entry> newSet = new TreeSet<Entry>(entryComp);
         newSet.add(newEntry);
@@ -192,7 +200,18 @@ public class Manifest {
         replaceInLevel(level, emptySet, newSet);
     }
 
-    void replaceInLevel(Integer level, SortedSet<Entry> oldSet, SortedSet<Entry> newSet)
+    synchronized void replaceInLevel(Integer level, SortedSet<Entry> oldSet, SortedSet<Entry> newSet)
+            throws IOException {
+        manifestLog.log(level, oldSet, newSet);
+        applyTransform(level, oldSet, newSet);
+
+        appliedTransforms++;
+        if (appliedTransforms > MAX_TRANSFORMS_PER_LOG) {
+            manifestLog = newManifestLog(manifestDir);
+        }
+    }
+
+    private void applyTransform(Integer level, SortedSet<Entry> oldSet, SortedSet<Entry> newSet)
             throws IOException {
         // log changes
         if (!hasLevel(level)) {
@@ -208,43 +227,31 @@ public class Manifest {
         SortedSet<Entry> newLevel = new TreeSet<Entry>(entryComp);
         newLevel.addAll(oldLevel);
         if (!oldLevel.containsAll(oldSet)) {
-            throw new ConcurrentModificationException("Should contain all previous entries");
+            throw new InvalidMutationException("Should contain all previous entries");
         }
         newLevel.removeAll(oldSet);
 
         if (level != 0) {
             for (Entry newEntry : newSet) {
                 if (newLevel.contains(newEntry)) {
-                    throw new IOException("Entry already exists in level, cant add " + newEntry);
+                    throw new InvalidMutationException("Entry already exists in level, cant add " + newEntry);
                 }
             }
         }
         newLevel.addAll(newSet);
         validateLevel(level, newLevel);
+
         if (!levels.replace(level, oldLevel, newLevel)) {
-            throw new ConcurrentModificationException(
+            throw new InvalidMutationException(
                     "Only one thread should be modifying the manifest at a time");
         }
     }
 
     void removeFromLevel(int level, SortedSet<Entry> oldSet)
             throws IOException {
-        // log changes
+        SortedSet<Entry> emptySet = new TreeSet<Entry>(entryComp);
 
-        SortedSet<Entry> oldLevel = levels.get(level);
-        SortedSet<Entry> newLevel = new TreeSet<Entry>(entryComp);
-        newLevel.addAll(oldLevel);
-
-        if (!oldLevel.containsAll(oldSet)) {
-            throw new ConcurrentModificationException("Should contain all previous entries");
-        }
-
-        newLevel.removeAll(oldSet);
-        validateLevel(level, newLevel);
-        if (!levels.replace(level, oldLevel, newLevel)) {
-            throw new ConcurrentModificationException(
-                    "Only one thread should be modifying the manifest at a time");
-        }
+        replaceInLevel(level, oldSet, emptySet);
     }
 
     void validateLevel(int level, SortedSet<Entry> levelSet) throws IOException {
@@ -259,14 +266,97 @@ public class Manifest {
                 LOG.debug("New level for {}", level);
                 dumpLevel(levelSet);
 
-                throw new IOException("Overlapping entries in level " + prevEntry.toString()
+                throw new InvalidMutationException("Overlapping entries in level " + prevEntry.toString()
                                       + " & " + e.toString());
             } else if (e.getLevel() != level) {
-                throw new IOException("Attempting to add entry to wrong level; " + e.toString()
+                throw new InvalidMutationException("Attempting to add entry to wrong level; " + e.toString()
                                       + " to level" + level);
             }
             prevEntry = e;
         }
+    }
+
+    void replayManifestLog(File manifestDir) throws IOException {
+        File curFile = new File(manifestDir, CURRENT_FILE);
+        if (!curFile.exists()) { // no current file, no database here
+            return;
+        }
+        FileInputStream is = new FileInputStream(curFile);
+        ManifestCurrent.Builder builder = ManifestCurrent.newBuilder();
+        builder.mergeDelimitedFrom(is);
+        ManifestCurrent header = builder.build();
+
+        final AtomicLong maxCreationOrder = new AtomicLong(0);
+        ManifestLog.replayLog(entryComp, new File(header.getCurrentManifest()),
+                new ManifestLog.LogScanner() {
+                    @Override
+                    public void apply(Integer level,
+                            SortedSet<Entry> oldSet, SortedSet<Entry> newSet)
+                            throws IOException {
+                        for (Entry e : oldSet) {
+                            if (e.getCreationOrder() > maxCreationOrder.get()) {
+                                maxCreationOrder.set(e.getCreationOrder());
+                            }
+                        }
+                        for (Entry e : newSet) {
+                            if (e.getCreationOrder() > maxCreationOrder.get()) {
+                                maxCreationOrder.set(e.getCreationOrder());
+                            }
+                        }
+                        try {
+                            LOG.info("IKDEBUG Applying transform to {}", level);
+                            applyTransform(level, oldSet, newSet);
+                        } catch (InvalidMutationException ime) {
+                            // no problem, we log before we validate
+                        }
+                    }
+                });
+        creationOrder.set(maxCreationOrder.get());
+        creationOrder.incrementAndGet();
+    }
+
+    ManifestLog newManifestLog(File manifestDir) throws IOException {
+        File curFile = new File(manifestDir, CURRENT_FILE);
+        File newManifestLog;
+        while (true) {
+            newManifestLog = new File(manifestDir,
+                    MANIFEST_NAME + "." + creationOrder.incrementAndGet());
+            LOG.info("Creating new manifest logfile: {}", newManifestLog);
+            if (newManifestLog.createNewFile()) {
+                break;
+            }
+        }
+        SortedSet<Entry> emptySet = new TreeSet<Entry>(entryComp);
+
+        // should check
+        List<Closeable> closeOnException = new ArrayList<Closeable>();
+        ManifestLog log = new ManifestLog(newManifestLog);
+        closeOnException.add(log);
+        try {
+            for (Integer k : levels.keySet()) {
+                log.log(k, emptySet, getLevel(k));
+            }
+
+            ManifestCurrent.Builder builder = ManifestCurrent.newBuilder();
+            builder.setCurrentManifest(newManifestLog.getCanonicalPath()); // TODO probably shouldn't use canonical
+            File tmpCur = File.createTempFile("cur", "tmp", manifestDir);
+            FileOutputStream os = new FileOutputStream(tmpCur);
+            closeOnException.add(os);
+            builder.build().writeDelimitedTo(os);
+            os.close();
+
+            if (!tmpCur.renameTo(curFile)) {
+                throw new IOException("Couldn't update current file");
+            }
+        } catch (IOException ioe) {
+            for (Closeable c : closeOnException) {
+                Closeables.closeQuietly(c);
+            }
+            throw ioe;
+        }
+        appliedTransforms = 0;
+
+        return log;
     }
 
     void dumpManifest() {
@@ -291,5 +381,35 @@ public class Manifest {
 
     static String dumpKey(ByteString key) {
         return DatatypeConverter.printHexBinary(key.toByteArray());
+    }
+
+    static class ManifestEntryComparator implements Comparator<Entry> {
+        final Comparator<ByteString> keyComparator;
+        ManifestEntryComparator(Comparator<ByteString> keyComparator) {
+            this.keyComparator = keyComparator;
+        }
+
+        @Override
+        public int compare(Entry e1, Entry e2) {
+            if (e1.getLevel() == 0 && e2.getLevel() == 0) {
+                // args inverted because we want newer first
+                return Long.valueOf(e2.getCreationOrder())
+                    .compareTo(Long.valueOf(e1.getCreationOrder()));
+            }
+            if (e1.getLevel() != e2.getLevel()) {
+                return e1.getLevel() - e2.getLevel();
+            }
+            int ret = keyComparator.compare(e1.getFirstKey(), e2.getFirstKey());
+            if (ret != 0) {
+                return ret;
+            }
+            return keyComparator.compare(e1.getLastKey(), e2.getLastKey());
+        }
+    }
+
+    static class InvalidMutationException extends IOException {
+        InvalidMutationException(String reason) {
+            super(reason);
+        }
     }
 }

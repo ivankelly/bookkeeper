@@ -99,3 +99,24 @@ message Metadata {
   optional bytes lastKey = 3;
   optional sint64 canary = 4; // if canary has been written, the file is complete
 }
+
+message ManifestMutation {
+  optional int32 level = 1;
+  repeated ManifestEntry removed = 2;
+  repeated ManifestEntry added = 3;
+}
+
+message ManifestEntry {
+  optional int32 level = 1;
+  optional string file = 2;
+  optional bytes firstKey = 3;
+  optional bytes lastKey = 4;
+  optional int64 creationOrder = 5;
+}
+
+message ManifestHeader {
+}
+
+message ManifestCurrent {
+  optional string currentManifest = 1;
+}

@@ -5260,6 +5260,2150 @@ public final class DataFormats {
     // @@protoc_insertion_point(class_scope:Metadata)
   }
   
+  public interface ManifestMutationOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+    
+    // optional int32 level = 1;
+    boolean hasLevel();
+    int getLevel();
+    
+    // repeated .ManifestEntry removed = 2;
+    java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry> 
+        getRemovedList();
+    org.apache.bookkeeper.proto.DataFormats.ManifestEntry getRemoved(int index);
+    int getRemovedCount();
+    java.util.List<? extends org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder> 
+        getRemovedOrBuilderList();
+    org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder getRemovedOrBuilder(
+        int index);
+    
+    // repeated .ManifestEntry added = 3;
+    java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry> 
+        getAddedList();
+    org.apache.bookkeeper.proto.DataFormats.ManifestEntry getAdded(int index);
+    int getAddedCount();
+    java.util.List<? extends org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder> 
+        getAddedOrBuilderList();
+    org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder getAddedOrBuilder(
+        int index);
+  }
+  public static final class ManifestMutation extends
+      com.google.protobuf.GeneratedMessage
+      implements ManifestMutationOrBuilder {
+    // Use ManifestMutation.newBuilder() to construct.
+    private ManifestMutation(Builder builder) {
+      super(builder);
+    }
+    private ManifestMutation(boolean noInit) {}
+    
+    private static final ManifestMutation defaultInstance;
+    public static ManifestMutation getDefaultInstance() {
+      return defaultInstance;
+    }
+    
+    public ManifestMutation getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestMutation_descriptor;
+    }
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestMutation_fieldAccessorTable;
+    }
+    
+    private int bitField0_;
+    // optional int32 level = 1;
+    public static final int LEVEL_FIELD_NUMBER = 1;
+    private int level_;
+    public boolean hasLevel() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    public int getLevel() {
+      return level_;
+    }
+    
+    // repeated .ManifestEntry removed = 2;
+    public static final int REMOVED_FIELD_NUMBER = 2;
+    private java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry> removed_;
+    public java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry> getRemovedList() {
+      return removed_;
+    }
+    public java.util.List<? extends org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder> 
+        getRemovedOrBuilderList() {
+      return removed_;
+    }
+    public int getRemovedCount() {
+      return removed_.size();
+    }
+    public org.apache.bookkeeper.proto.DataFormats.ManifestEntry getRemoved(int index) {
+      return removed_.get(index);
+    }
+    public org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder getRemovedOrBuilder(
+        int index) {
+      return removed_.get(index);
+    }
+    
+    // repeated .ManifestEntry added = 3;
+    public static final int ADDED_FIELD_NUMBER = 3;
+    private java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry> added_;
+    public java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry> getAddedList() {
+      return added_;
+    }
+    public java.util.List<? extends org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder> 
+        getAddedOrBuilderList() {
+      return added_;
+    }
+    public int getAddedCount() {
+      return added_.size();
+    }
+    public org.apache.bookkeeper.proto.DataFormats.ManifestEntry getAdded(int index) {
+      return added_.get(index);
+    }
+    public org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder getAddedOrBuilder(
+        int index) {
+      return added_.get(index);
+    }
+    
+    private void initFields() {
+      level_ = 0;
+      removed_ = java.util.Collections.emptyList();
+      added_ = java.util.Collections.emptyList();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+      
+      memoizedIsInitialized = 1;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeInt32(1, level_);
+      }
+      for (int i = 0; i < removed_.size(); i++) {
+        output.writeMessage(2, removed_.get(i));
+      }
+      for (int i = 0; i < added_.size(); i++) {
+        output.writeMessage(3, added_.get(i));
+      }
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt32Size(1, level_);
+      }
+      for (int i = 0; i < removed_.size(); i++) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(2, removed_.get(i));
+      }
+      for (int i = 0; i < added_.size(); i++) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(3, added_.get(i));
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+    
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestMutation parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestMutation parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestMutation parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestMutation parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestMutation parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestMutation parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestMutation parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestMutation parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestMutation parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestMutation parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.proto.DataFormats.ManifestMutation prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.bookkeeper.proto.DataFormats.ManifestMutationOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestMutation_descriptor;
+      }
+      
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestMutation_fieldAccessorTable;
+      }
+      
+      // Construct using org.apache.bookkeeper.proto.DataFormats.ManifestMutation.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+      
+      private Builder(BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          getRemovedFieldBuilder();
+          getAddedFieldBuilder();
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+      
+      public Builder clear() {
+        super.clear();
+        level_ = 0;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        if (removedBuilder_ == null) {
+          removed_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000002);
+        } else {
+          removedBuilder_.clear();
+        }
+        if (addedBuilder_ == null) {
+          added_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000004);
+        } else {
+          addedBuilder_.clear();
+        }
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.proto.DataFormats.ManifestMutation.getDescriptor();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestMutation getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.DataFormats.ManifestMutation.getDefaultInstance();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestMutation build() {
+        org.apache.bookkeeper.proto.DataFormats.ManifestMutation result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+      
+      private org.apache.bookkeeper.proto.DataFormats.ManifestMutation buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        org.apache.bookkeeper.proto.DataFormats.ManifestMutation result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestMutation buildPartial() {
+        org.apache.bookkeeper.proto.DataFormats.ManifestMutation result = new org.apache.bookkeeper.proto.DataFormats.ManifestMutation(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.level_ = level_;
+        if (removedBuilder_ == null) {
+          if (((bitField0_ & 0x00000002) == 0x00000002)) {
+            removed_ = java.util.Collections.unmodifiableList(removed_);
+            bitField0_ = (bitField0_ & ~0x00000002);
+          }
+          result.removed_ = removed_;
+        } else {
+          result.removed_ = removedBuilder_.build();
+        }
+        if (addedBuilder_ == null) {
+          if (((bitField0_ & 0x00000004) == 0x00000004)) {
+            added_ = java.util.Collections.unmodifiableList(added_);
+            bitField0_ = (bitField0_ & ~0x00000004);
+          }
+          result.added_ = added_;
+        } else {
+          result.added_ = addedBuilder_.build();
+        }
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.proto.DataFormats.ManifestMutation) {
+          return mergeFrom((org.apache.bookkeeper.proto.DataFormats.ManifestMutation)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(org.apache.bookkeeper.proto.DataFormats.ManifestMutation other) {
+        if (other == org.apache.bookkeeper.proto.DataFormats.ManifestMutation.getDefaultInstance()) return this;
+        if (other.hasLevel()) {
+          setLevel(other.getLevel());
+        }
+        if (removedBuilder_ == null) {
+          if (!other.removed_.isEmpty()) {
+            if (removed_.isEmpty()) {
+              removed_ = other.removed_;
+              bitField0_ = (bitField0_ & ~0x00000002);
+            } else {
+              ensureRemovedIsMutable();
+              removed_.addAll(other.removed_);
+            }
+            onChanged();
+          }
+        } else {
+          if (!other.removed_.isEmpty()) {
+            if (removedBuilder_.isEmpty()) {
+              removedBuilder_.dispose();
+              removedBuilder_ = null;
+              removed_ = other.removed_;
+              bitField0_ = (bitField0_ & ~0x00000002);
+              removedBuilder_ = 
+                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
+                   getRemovedFieldBuilder() : null;
+            } else {
+              removedBuilder_.addAllMessages(other.removed_);
+            }
+          }
+        }
+        if (addedBuilder_ == null) {
+          if (!other.added_.isEmpty()) {
+            if (added_.isEmpty()) {
+              added_ = other.added_;
+              bitField0_ = (bitField0_ & ~0x00000004);
+            } else {
+              ensureAddedIsMutable();
+              added_.addAll(other.added_);
+            }
+            onChanged();
+          }
+        } else {
+          if (!other.added_.isEmpty()) {
+            if (addedBuilder_.isEmpty()) {
+              addedBuilder_.dispose();
+              addedBuilder_ = null;
+              added_ = other.added_;
+              bitField0_ = (bitField0_ & ~0x00000004);
+              addedBuilder_ = 
+                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
+                   getAddedFieldBuilder() : null;
+            } else {
+              addedBuilder_.addAllMessages(other.added_);
+            }
+          }
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public final boolean isInitialized() {
+        return true;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              level_ = input.readInt32();
+              break;
+            }
+            case 18: {
+              org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder subBuilder = org.apache.bookkeeper.proto.DataFormats.ManifestEntry.newBuilder();
+              input.readMessage(subBuilder, extensionRegistry);
+              addRemoved(subBuilder.buildPartial());
+              break;
+            }
+            case 26: {
+              org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder subBuilder = org.apache.bookkeeper.proto.DataFormats.ManifestEntry.newBuilder();
+              input.readMessage(subBuilder, extensionRegistry);
+              addAdded(subBuilder.buildPartial());
+              break;
+            }
+          }
+        }
+      }
+      
+      private int bitField0_;
+      
+      // optional int32 level = 1;
+      private int level_ ;
+      public boolean hasLevel() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      public int getLevel() {
+        return level_;
+      }
+      public Builder setLevel(int value) {
+        bitField0_ |= 0x00000001;
+        level_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearLevel() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        level_ = 0;
+        onChanged();
+        return this;
+      }
+      
+      // repeated .ManifestEntry removed = 2;
+      private java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry> removed_ =
+        java.util.Collections.emptyList();
+      private void ensureRemovedIsMutable() {
+        if (!((bitField0_ & 0x00000002) == 0x00000002)) {
+          removed_ = new java.util.ArrayList<org.apache.bookkeeper.proto.DataFormats.ManifestEntry>(removed_);
+          bitField0_ |= 0x00000002;
+         }
+      }
+      
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.ManifestEntry, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder, org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder> removedBuilder_;
+      
+      public java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry> getRemovedList() {
+        if (removedBuilder_ == null) {
+          return java.util.Collections.unmodifiableList(removed_);
+        } else {
+          return removedBuilder_.getMessageList();
+        }
+      }
+      public int getRemovedCount() {
+        if (removedBuilder_ == null) {
+          return removed_.size();
+        } else {
+          return removedBuilder_.getCount();
+        }
+      }
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntry getRemoved(int index) {
+        if (removedBuilder_ == null) {
+          return removed_.get(index);
+        } else {
+          return removedBuilder_.getMessage(index);
+        }
+      }
+      public Builder setRemoved(
+          int index, org.apache.bookkeeper.proto.DataFormats.ManifestEntry value) {
+        if (removedBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureRemovedIsMutable();
+          removed_.set(index, value);
+          onChanged();
+        } else {
+          removedBuilder_.setMessage(index, value);
+        }
+        return this;
+      }
+      public Builder setRemoved(
+          int index, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder builderForValue) {
+        if (removedBuilder_ == null) {
+          ensureRemovedIsMutable();
+          removed_.set(index, builderForValue.build());
+          onChanged();
+        } else {
+          removedBuilder_.setMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      public Builder addRemoved(org.apache.bookkeeper.proto.DataFormats.ManifestEntry value) {
+        if (removedBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureRemovedIsMutable();
+          removed_.add(value);
+          onChanged();
+        } else {
+          removedBuilder_.addMessage(value);
+        }
+        return this;
+      }
+      public Builder addRemoved(
+          int index, org.apache.bookkeeper.proto.DataFormats.ManifestEntry value) {
+        if (removedBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureRemovedIsMutable();
+          removed_.add(index, value);
+          onChanged();
+        } else {
+          removedBuilder_.addMessage(index, value);
+        }
+        return this;
+      }
+      public Builder addRemoved(
+          org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder builderForValue) {
+        if (removedBuilder_ == null) {
+          ensureRemovedIsMutable();
+          removed_.add(builderForValue.build());
+          onChanged();
+        } else {
+          removedBuilder_.addMessage(builderForValue.build());
+        }
+        return this;
+      }
+      public Builder addRemoved(
+          int index, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder builderForValue) {
+        if (removedBuilder_ == null) {
+          ensureRemovedIsMutable();
+          removed_.add(index, builderForValue.build());
+          onChanged();
+        } else {
+          removedBuilder_.addMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      public Builder addAllRemoved(
+          java.lang.Iterable<? extends org.apache.bookkeeper.proto.DataFormats.ManifestEntry> values) {
+        if (removedBuilder_ == null) {
+          ensureRemovedIsMutable();
+          super.addAll(values, removed_);
+          onChanged();
+        } else {
+          removedBuilder_.addAllMessages(values);
+        }
+        return this;
+      }
+      public Builder clearRemoved() {
+        if (removedBuilder_ == null) {
+          removed_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000002);
+          onChanged();
+        } else {
+          removedBuilder_.clear();
+        }
+        return this;
+      }
+      public Builder removeRemoved(int index) {
+        if (removedBuilder_ == null) {
+          ensureRemovedIsMutable();
+          removed_.remove(index);
+          onChanged();
+        } else {
+          removedBuilder_.remove(index);
+        }
+        return this;
+      }
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder getRemovedBuilder(
+          int index) {
+        return getRemovedFieldBuilder().getBuilder(index);
+      }
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder getRemovedOrBuilder(
+          int index) {
+        if (removedBuilder_ == null) {
+          return removed_.get(index);  } else {
+          return removedBuilder_.getMessageOrBuilder(index);
+        }
+      }
+      public java.util.List<? extends org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder> 
+           getRemovedOrBuilderList() {
+        if (removedBuilder_ != null) {
+          return removedBuilder_.getMessageOrBuilderList();
+        } else {
+          return java.util.Collections.unmodifiableList(removed_);
+        }
+      }
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder addRemovedBuilder() {
+        return getRemovedFieldBuilder().addBuilder(
+            org.apache.bookkeeper.proto.DataFormats.ManifestEntry.getDefaultInstance());
+      }
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder addRemovedBuilder(
+          int index) {
+        return getRemovedFieldBuilder().addBuilder(
+            index, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.getDefaultInstance());
+      }
+      public java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder> 
+           getRemovedBuilderList() {
+        return getRemovedFieldBuilder().getBuilderList();
+      }
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.ManifestEntry, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder, org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder> 
+          getRemovedFieldBuilder() {
+        if (removedBuilder_ == null) {
+          removedBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
+              org.apache.bookkeeper.proto.DataFormats.ManifestEntry, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder, org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder>(
+                  removed_,
+                  ((bitField0_ & 0x00000002) == 0x00000002),
+                  getParentForChildren(),
+                  isClean());
+          removed_ = null;
+        }
+        return removedBuilder_;
+      }
+      
+      // repeated .ManifestEntry added = 3;
+      private java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry> added_ =
+        java.util.Collections.emptyList();
+      private void ensureAddedIsMutable() {
+        if (!((bitField0_ & 0x00000004) == 0x00000004)) {
+          added_ = new java.util.ArrayList<org.apache.bookkeeper.proto.DataFormats.ManifestEntry>(added_);
+          bitField0_ |= 0x00000004;
+         }
+      }
+      
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.ManifestEntry, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder, org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder> addedBuilder_;
+      
+      public java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry> getAddedList() {
+        if (addedBuilder_ == null) {
+          return java.util.Collections.unmodifiableList(added_);
+        } else {
+          return addedBuilder_.getMessageList();
+        }
+      }
+      public int getAddedCount() {
+        if (addedBuilder_ == null) {
+          return added_.size();
+        } else {
+          return addedBuilder_.getCount();
+        }
+      }
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntry getAdded(int index) {
+        if (addedBuilder_ == null) {
+          return added_.get(index);
+        } else {
+          return addedBuilder_.getMessage(index);
+        }
+      }
+      public Builder setAdded(
+          int index, org.apache.bookkeeper.proto.DataFormats.ManifestEntry value) {
+        if (addedBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureAddedIsMutable();
+          added_.set(index, value);
+          onChanged();
+        } else {
+          addedBuilder_.setMessage(index, value);
+        }
+        return this;
+      }
+      public Builder setAdded(
+          int index, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder builderForValue) {
+        if (addedBuilder_ == null) {
+          ensureAddedIsMutable();
+          added_.set(index, builderForValue.build());
+          onChanged();
+        } else {
+          addedBuilder_.setMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      public Builder addAdded(org.apache.bookkeeper.proto.DataFormats.ManifestEntry value) {
+        if (addedBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureAddedIsMutable();
+          added_.add(value);
+          onChanged();
+        } else {
+          addedBuilder_.addMessage(value);
+        }
+        return this;
+      }
+      public Builder addAdded(
+          int index, org.apache.bookkeeper.proto.DataFormats.ManifestEntry value) {
+        if (addedBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureAddedIsMutable();
+          added_.add(index, value);
+          onChanged();
+        } else {
+          addedBuilder_.addMessage(index, value);
+        }
+        return this;
+      }
+      public Builder addAdded(
+          org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder builderForValue) {
+        if (addedBuilder_ == null) {
+          ensureAddedIsMutable();
+          added_.add(builderForValue.build());
+          onChanged();
+        } else {
+          addedBuilder_.addMessage(builderForValue.build());
+        }
+        return this;
+      }
+      public Builder addAdded(
+          int index, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder builderForValue) {
+        if (addedBuilder_ == null) {
+          ensureAddedIsMutable();
+          added_.add(index, builderForValue.build());
+          onChanged();
+        } else {
+          addedBuilder_.addMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      public Builder addAllAdded(
+          java.lang.Iterable<? extends org.apache.bookkeeper.proto.DataFormats.ManifestEntry> values) {
+        if (addedBuilder_ == null) {
+          ensureAddedIsMutable();
+          super.addAll(values, added_);
+          onChanged();
+        } else {
+          addedBuilder_.addAllMessages(values);
+        }
+        return this;
+      }
+      public Builder clearAdded() {
+        if (addedBuilder_ == null) {
+          added_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000004);
+          onChanged();
+        } else {
+          addedBuilder_.clear();
+        }
+        return this;
+      }
+      public Builder removeAdded(int index) {
+        if (addedBuilder_ == null) {
+          ensureAddedIsMutable();
+          added_.remove(index);
+          onChanged();
+        } else {
+          addedBuilder_.remove(index);
+        }
+        return this;
+      }
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder getAddedBuilder(
+          int index) {
+        return getAddedFieldBuilder().getBuilder(index);
+      }
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder getAddedOrBuilder(
+          int index) {
+        if (addedBuilder_ == null) {
+          return added_.get(index);  } else {
+          return addedBuilder_.getMessageOrBuilder(index);
+        }
+      }
+      public java.util.List<? extends org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder> 
+           getAddedOrBuilderList() {
+        if (addedBuilder_ != null) {
+          return addedBuilder_.getMessageOrBuilderList();
+        } else {
+          return java.util.Collections.unmodifiableList(added_);
+        }
+      }
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder addAddedBuilder() {
+        return getAddedFieldBuilder().addBuilder(
+            org.apache.bookkeeper.proto.DataFormats.ManifestEntry.getDefaultInstance());
+      }
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder addAddedBuilder(
+          int index) {
+        return getAddedFieldBuilder().addBuilder(
+            index, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.getDefaultInstance());
+      }
+      public java.util.List<org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder> 
+           getAddedBuilderList() {
+        return getAddedFieldBuilder().getBuilderList();
+      }
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.bookkeeper.proto.DataFormats.ManifestEntry, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder, org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder> 
+          getAddedFieldBuilder() {
+        if (addedBuilder_ == null) {
+          addedBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
+              org.apache.bookkeeper.proto.DataFormats.ManifestEntry, org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder, org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder>(
+                  added_,
+                  ((bitField0_ & 0x00000004) == 0x00000004),
+                  getParentForChildren(),
+                  isClean());
+          added_ = null;
+        }
+        return addedBuilder_;
+      }
+      
+      // @@protoc_insertion_point(builder_scope:ManifestMutation)
+    }
+    
+    static {
+      defaultInstance = new ManifestMutation(true);
+      defaultInstance.initFields();
+    }
+    
+    // @@protoc_insertion_point(class_scope:ManifestMutation)
+  }
+  
+  public interface ManifestEntryOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+    
+    // optional int32 level = 1;
+    boolean hasLevel();
+    int getLevel();
+    
+    // optional string file = 2;
+    boolean hasFile();
+    String getFile();
+    
+    // optional bytes firstKey = 3;
+    boolean hasFirstKey();
+    com.google.protobuf.ByteString getFirstKey();
+    
+    // optional bytes lastKey = 4;
+    boolean hasLastKey();
+    com.google.protobuf.ByteString getLastKey();
+    
+    // optional int64 creationOrder = 5;
+    boolean hasCreationOrder();
+    long getCreationOrder();
+  }
+  public static final class ManifestEntry extends
+      com.google.protobuf.GeneratedMessage
+      implements ManifestEntryOrBuilder {
+    // Use ManifestEntry.newBuilder() to construct.
+    private ManifestEntry(Builder builder) {
+      super(builder);
+    }
+    private ManifestEntry(boolean noInit) {}
+    
+    private static final ManifestEntry defaultInstance;
+    public static ManifestEntry getDefaultInstance() {
+      return defaultInstance;
+    }
+    
+    public ManifestEntry getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestEntry_descriptor;
+    }
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestEntry_fieldAccessorTable;
+    }
+    
+    private int bitField0_;
+    // optional int32 level = 1;
+    public static final int LEVEL_FIELD_NUMBER = 1;
+    private int level_;
+    public boolean hasLevel() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    public int getLevel() {
+      return level_;
+    }
+    
+    // optional string file = 2;
+    public static final int FILE_FIELD_NUMBER = 2;
+    private java.lang.Object file_;
+    public boolean hasFile() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    public String getFile() {
+      java.lang.Object ref = file_;
+      if (ref instanceof String) {
+        return (String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        String s = bs.toStringUtf8();
+        if (com.google.protobuf.Internal.isValidUtf8(bs)) {
+          file_ = s;
+        }
+        return s;
+      }
+    }
+    private com.google.protobuf.ByteString getFileBytes() {
+      java.lang.Object ref = file_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8((String) ref);
+        file_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    
+    // optional bytes firstKey = 3;
+    public static final int FIRSTKEY_FIELD_NUMBER = 3;
+    private com.google.protobuf.ByteString firstKey_;
+    public boolean hasFirstKey() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    public com.google.protobuf.ByteString getFirstKey() {
+      return firstKey_;
+    }
+    
+    // optional bytes lastKey = 4;
+    public static final int LASTKEY_FIELD_NUMBER = 4;
+    private com.google.protobuf.ByteString lastKey_;
+    public boolean hasLastKey() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    public com.google.protobuf.ByteString getLastKey() {
+      return lastKey_;
+    }
+    
+    // optional int64 creationOrder = 5;
+    public static final int CREATIONORDER_FIELD_NUMBER = 5;
+    private long creationOrder_;
+    public boolean hasCreationOrder() {
+      return ((bitField0_ & 0x00000010) == 0x00000010);
+    }
+    public long getCreationOrder() {
+      return creationOrder_;
+    }
+    
+    private void initFields() {
+      level_ = 0;
+      file_ = "";
+      firstKey_ = com.google.protobuf.ByteString.EMPTY;
+      lastKey_ = com.google.protobuf.ByteString.EMPTY;
+      creationOrder_ = 0L;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+      
+      memoizedIsInitialized = 1;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeInt32(1, level_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeBytes(2, getFileBytes());
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeBytes(3, firstKey_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeBytes(4, lastKey_);
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        output.writeInt64(5, creationOrder_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt32Size(1, level_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(2, getFileBytes());
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(3, firstKey_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(4, lastKey_);
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(5, creationOrder_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+    
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestEntry parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestEntry parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestEntry parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestEntry parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestEntry parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestEntry parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestEntry parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestEntry parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestEntry parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestEntry parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.proto.DataFormats.ManifestEntry prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.bookkeeper.proto.DataFormats.ManifestEntryOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestEntry_descriptor;
+      }
+      
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestEntry_fieldAccessorTable;
+      }
+      
+      // Construct using org.apache.bookkeeper.proto.DataFormats.ManifestEntry.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+      
+      private Builder(BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+      
+      public Builder clear() {
+        super.clear();
+        level_ = 0;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        file_ = "";
+        bitField0_ = (bitField0_ & ~0x00000002);
+        firstKey_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000004);
+        lastKey_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000008);
+        creationOrder_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000010);
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.proto.DataFormats.ManifestEntry.getDescriptor();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntry getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.DataFormats.ManifestEntry.getDefaultInstance();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntry build() {
+        org.apache.bookkeeper.proto.DataFormats.ManifestEntry result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+      
+      private org.apache.bookkeeper.proto.DataFormats.ManifestEntry buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        org.apache.bookkeeper.proto.DataFormats.ManifestEntry result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestEntry buildPartial() {
+        org.apache.bookkeeper.proto.DataFormats.ManifestEntry result = new org.apache.bookkeeper.proto.DataFormats.ManifestEntry(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.level_ = level_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.file_ = file_;
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.firstKey_ = firstKey_;
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        result.lastKey_ = lastKey_;
+        if (((from_bitField0_ & 0x00000010) == 0x00000010)) {
+          to_bitField0_ |= 0x00000010;
+        }
+        result.creationOrder_ = creationOrder_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.proto.DataFormats.ManifestEntry) {
+          return mergeFrom((org.apache.bookkeeper.proto.DataFormats.ManifestEntry)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(org.apache.bookkeeper.proto.DataFormats.ManifestEntry other) {
+        if (other == org.apache.bookkeeper.proto.DataFormats.ManifestEntry.getDefaultInstance()) return this;
+        if (other.hasLevel()) {
+          setLevel(other.getLevel());
+        }
+        if (other.hasFile()) {
+          setFile(other.getFile());
+        }
+        if (other.hasFirstKey()) {
+          setFirstKey(other.getFirstKey());
+        }
+        if (other.hasLastKey()) {
+          setLastKey(other.getLastKey());
+        }
+        if (other.hasCreationOrder()) {
+          setCreationOrder(other.getCreationOrder());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public final boolean isInitialized() {
+        return true;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              level_ = input.readInt32();
+              break;
+            }
+            case 18: {
+              bitField0_ |= 0x00000002;
+              file_ = input.readBytes();
+              break;
+            }
+            case 26: {
+              bitField0_ |= 0x00000004;
+              firstKey_ = input.readBytes();
+              break;
+            }
+            case 34: {
+              bitField0_ |= 0x00000008;
+              lastKey_ = input.readBytes();
+              break;
+            }
+            case 40: {
+              bitField0_ |= 0x00000010;
+              creationOrder_ = input.readInt64();
+              break;
+            }
+          }
+        }
+      }
+      
+      private int bitField0_;
+      
+      // optional int32 level = 1;
+      private int level_ ;
+      public boolean hasLevel() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      public int getLevel() {
+        return level_;
+      }
+      public Builder setLevel(int value) {
+        bitField0_ |= 0x00000001;
+        level_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearLevel() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        level_ = 0;
+        onChanged();
+        return this;
+      }
+      
+      // optional string file = 2;
+      private java.lang.Object file_ = "";
+      public boolean hasFile() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      public String getFile() {
+        java.lang.Object ref = file_;
+        if (!(ref instanceof String)) {
+          String s = ((com.google.protobuf.ByteString) ref).toStringUtf8();
+          file_ = s;
+          return s;
+        } else {
+          return (String) ref;
+        }
+      }
+      public Builder setFile(String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000002;
+        file_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearFile() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        file_ = getDefaultInstance().getFile();
+        onChanged();
+        return this;
+      }
+      void setFile(com.google.protobuf.ByteString value) {
+        bitField0_ |= 0x00000002;
+        file_ = value;
+        onChanged();
+      }
+      
+      // optional bytes firstKey = 3;
+      private com.google.protobuf.ByteString firstKey_ = com.google.protobuf.ByteString.EMPTY;
+      public boolean hasFirstKey() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      public com.google.protobuf.ByteString getFirstKey() {
+        return firstKey_;
+      }
+      public Builder setFirstKey(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000004;
+        firstKey_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearFirstKey() {
+        bitField0_ = (bitField0_ & ~0x00000004);
+        firstKey_ = getDefaultInstance().getFirstKey();
+        onChanged();
+        return this;
+      }
+      
+      // optional bytes lastKey = 4;
+      private com.google.protobuf.ByteString lastKey_ = com.google.protobuf.ByteString.EMPTY;
+      public boolean hasLastKey() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      public com.google.protobuf.ByteString getLastKey() {
+        return lastKey_;
+      }
+      public Builder setLastKey(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000008;
+        lastKey_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearLastKey() {
+        bitField0_ = (bitField0_ & ~0x00000008);
+        lastKey_ = getDefaultInstance().getLastKey();
+        onChanged();
+        return this;
+      }
+      
+      // optional int64 creationOrder = 5;
+      private long creationOrder_ ;
+      public boolean hasCreationOrder() {
+        return ((bitField0_ & 0x00000010) == 0x00000010);
+      }
+      public long getCreationOrder() {
+        return creationOrder_;
+      }
+      public Builder setCreationOrder(long value) {
+        bitField0_ |= 0x00000010;
+        creationOrder_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearCreationOrder() {
+        bitField0_ = (bitField0_ & ~0x00000010);
+        creationOrder_ = 0L;
+        onChanged();
+        return this;
+      }
+      
+      // @@protoc_insertion_point(builder_scope:ManifestEntry)
+    }
+    
+    static {
+      defaultInstance = new ManifestEntry(true);
+      defaultInstance.initFields();
+    }
+    
+    // @@protoc_insertion_point(class_scope:ManifestEntry)
+  }
+  
+  public interface ManifestHeaderOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+  }
+  public static final class ManifestHeader extends
+      com.google.protobuf.GeneratedMessage
+      implements ManifestHeaderOrBuilder {
+    // Use ManifestHeader.newBuilder() to construct.
+    private ManifestHeader(Builder builder) {
+      super(builder);
+    }
+    private ManifestHeader(boolean noInit) {}
+    
+    private static final ManifestHeader defaultInstance;
+    public static ManifestHeader getDefaultInstance() {
+      return defaultInstance;
+    }
+    
+    public ManifestHeader getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestHeader_descriptor;
+    }
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestHeader_fieldAccessorTable;
+    }
+    
+    private void initFields() {
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+      
+      memoizedIsInitialized = 1;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+    
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestHeader parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestHeader parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestHeader parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestHeader parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestHeader parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestHeader parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestHeader parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestHeader parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestHeader parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestHeader parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.proto.DataFormats.ManifestHeader prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.bookkeeper.proto.DataFormats.ManifestHeaderOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestHeader_descriptor;
+      }
+      
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestHeader_fieldAccessorTable;
+      }
+      
+      // Construct using org.apache.bookkeeper.proto.DataFormats.ManifestHeader.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+      
+      private Builder(BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+      
+      public Builder clear() {
+        super.clear();
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.proto.DataFormats.ManifestHeader.getDescriptor();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestHeader getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.DataFormats.ManifestHeader.getDefaultInstance();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestHeader build() {
+        org.apache.bookkeeper.proto.DataFormats.ManifestHeader result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+      
+      private org.apache.bookkeeper.proto.DataFormats.ManifestHeader buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        org.apache.bookkeeper.proto.DataFormats.ManifestHeader result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestHeader buildPartial() {
+        org.apache.bookkeeper.proto.DataFormats.ManifestHeader result = new org.apache.bookkeeper.proto.DataFormats.ManifestHeader(this);
+        onBuilt();
+        return result;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.proto.DataFormats.ManifestHeader) {
+          return mergeFrom((org.apache.bookkeeper.proto.DataFormats.ManifestHeader)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(org.apache.bookkeeper.proto.DataFormats.ManifestHeader other) {
+        if (other == org.apache.bookkeeper.proto.DataFormats.ManifestHeader.getDefaultInstance()) return this;
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public final boolean isInitialized() {
+        return true;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
+              }
+              break;
+            }
+          }
+        }
+      }
+      
+      
+      // @@protoc_insertion_point(builder_scope:ManifestHeader)
+    }
+    
+    static {
+      defaultInstance = new ManifestHeader(true);
+      defaultInstance.initFields();
+    }
+    
+    // @@protoc_insertion_point(class_scope:ManifestHeader)
+  }
+  
+  public interface ManifestCurrentOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+    
+    // optional string currentManifest = 1;
+    boolean hasCurrentManifest();
+    String getCurrentManifest();
+  }
+  public static final class ManifestCurrent extends
+      com.google.protobuf.GeneratedMessage
+      implements ManifestCurrentOrBuilder {
+    // Use ManifestCurrent.newBuilder() to construct.
+    private ManifestCurrent(Builder builder) {
+      super(builder);
+    }
+    private ManifestCurrent(boolean noInit) {}
+    
+    private static final ManifestCurrent defaultInstance;
+    public static ManifestCurrent getDefaultInstance() {
+      return defaultInstance;
+    }
+    
+    public ManifestCurrent getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestCurrent_descriptor;
+    }
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestCurrent_fieldAccessorTable;
+    }
+    
+    private int bitField0_;
+    // optional string currentManifest = 1;
+    public static final int CURRENTMANIFEST_FIELD_NUMBER = 1;
+    private java.lang.Object currentManifest_;
+    public boolean hasCurrentManifest() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    public String getCurrentManifest() {
+      java.lang.Object ref = currentManifest_;
+      if (ref instanceof String) {
+        return (String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        String s = bs.toStringUtf8();
+        if (com.google.protobuf.Internal.isValidUtf8(bs)) {
+          currentManifest_ = s;
+        }
+        return s;
+      }
+    }
+    private com.google.protobuf.ByteString getCurrentManifestBytes() {
+      java.lang.Object ref = currentManifest_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8((String) ref);
+        currentManifest_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    
+    private void initFields() {
+      currentManifest_ = "";
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+      
+      memoizedIsInitialized = 1;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBytes(1, getCurrentManifestBytes());
+      }
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(1, getCurrentManifestBytes());
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+    
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestCurrent parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestCurrent parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestCurrent parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestCurrent parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestCurrent parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestCurrent parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestCurrent parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestCurrent parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestCurrent parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.apache.bookkeeper.proto.DataFormats.ManifestCurrent parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.proto.DataFormats.ManifestCurrent prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.bookkeeper.proto.DataFormats.ManifestCurrentOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestCurrent_descriptor;
+      }
+      
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.proto.DataFormats.internal_static_ManifestCurrent_fieldAccessorTable;
+      }
+      
+      // Construct using org.apache.bookkeeper.proto.DataFormats.ManifestCurrent.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+      
+      private Builder(BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+      
+      public Builder clear() {
+        super.clear();
+        currentManifest_ = "";
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.proto.DataFormats.ManifestCurrent.getDescriptor();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestCurrent getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.DataFormats.ManifestCurrent.getDefaultInstance();
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestCurrent build() {
+        org.apache.bookkeeper.proto.DataFormats.ManifestCurrent result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+      
+      private org.apache.bookkeeper.proto.DataFormats.ManifestCurrent buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        org.apache.bookkeeper.proto.DataFormats.ManifestCurrent result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public org.apache.bookkeeper.proto.DataFormats.ManifestCurrent buildPartial() {
+        org.apache.bookkeeper.proto.DataFormats.ManifestCurrent result = new org.apache.bookkeeper.proto.DataFormats.ManifestCurrent(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.currentManifest_ = currentManifest_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.proto.DataFormats.ManifestCurrent) {
+          return mergeFrom((org.apache.bookkeeper.proto.DataFormats.ManifestCurrent)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(org.apache.bookkeeper.proto.DataFormats.ManifestCurrent other) {
+        if (other == org.apache.bookkeeper.proto.DataFormats.ManifestCurrent.getDefaultInstance()) return this;
+        if (other.hasCurrentManifest()) {
+          setCurrentManifest(other.getCurrentManifest());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public final boolean isInitialized() {
+        return true;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
+              }
+              break;
+            }
+            case 10: {
+              bitField0_ |= 0x00000001;
+              currentManifest_ = input.readBytes();
+              break;
+            }
+          }
+        }
+      }
+      
+      private int bitField0_;
+      
+      // optional string currentManifest = 1;
+      private java.lang.Object currentManifest_ = "";
+      public boolean hasCurrentManifest() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      public String getCurrentManifest() {
+        java.lang.Object ref = currentManifest_;
+        if (!(ref instanceof String)) {
+          String s = ((com.google.protobuf.ByteString) ref).toStringUtf8();
+          currentManifest_ = s;
+          return s;
+        } else {
+          return (String) ref;
+        }
+      }
+      public Builder setCurrentManifest(String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
+        currentManifest_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearCurrentManifest() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        currentManifest_ = getDefaultInstance().getCurrentManifest();
+        onChanged();
+        return this;
+      }
+      void setCurrentManifest(com.google.protobuf.ByteString value) {
+        bitField0_ |= 0x00000001;
+        currentManifest_ = value;
+        onChanged();
+      }
+      
+      // @@protoc_insertion_point(builder_scope:ManifestCurrent)
+    }
+    
+    static {
+      defaultInstance = new ManifestCurrent(true);
+      defaultInstance.initFields();
+    }
+    
+    // @@protoc_insertion_point(class_scope:ManifestCurrent)
+  }
+  
   private static com.google.protobuf.Descriptors.Descriptor
     internal_static_LedgerMetadataFormat_descriptor;
   private static
@@ -5310,6 +7454,26 @@ public final class DataFormats {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_Metadata_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_ManifestMutation_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_ManifestMutation_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_ManifestEntry_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_ManifestEntry_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_ManifestHeader_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_ManifestHeader_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_ManifestCurrent_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_ManifestCurrent_fieldAccessorTable;
   
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -5342,7 +7506,14 @@ public final class DataFormats {
       "IndexEntry\022\013\n\003key\030\001 \001(\014\022\016\n\006offset\030\002 \001(\003\"" +
       "Q\n\010Metadata\022\017\n\007version\030\001 \001(\005\022\023\n\013indexOff" +
       "set\030\002 \001(\003\022\017\n\007lastKey\030\003 \001(\014\022\016\n\006canary\030\004 \001" +
-      "(\022B\037\n\033org.apache.bookkeeper.protoH\001"
+      "(\022\"a\n\020ManifestMutation\022\r\n\005level\030\001 \001(\005\022\037\n" +
+      "\007removed\030\002 \003(\0132\016.ManifestEntry\022\035\n\005added\030" +
+      "\003 \003(\0132\016.ManifestEntry\"f\n\rManifestEntry\022\r" +
+      "\n\005level\030\001 \001(\005\022\014\n\004file\030\002 \001(\t\022\020\n\010firstKey\030" +
+      "\003 \001(\014\022\017\n\007lastKey\030\004 \001(\014\022\025\n\rcreationOrder\030" +
+      "\005 \001(\003\"\020\n\016ManifestHeader\"*\n\017ManifestCurre" +
+      "nt\022\027\n\017currentManifest\030\001 \001(\tB\037\n\033org.apach",
+      "e.bookkeeper.protoH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -5429,6 +7600,38 @@ public final class DataFormats {
               new java.lang.String[] { "Version", "IndexOffset", "LastKey", "Canary", },
               org.apache.bookkeeper.proto.DataFormats.Metadata.class,
               org.apache.bookkeeper.proto.DataFormats.Metadata.Builder.class);
+          internal_static_ManifestMutation_descriptor =
+            getDescriptor().getMessageTypes().get(9);
+          internal_static_ManifestMutation_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_ManifestMutation_descriptor,
+              new java.lang.String[] { "Level", "Removed", "Added", },
+              org.apache.bookkeeper.proto.DataFormats.ManifestMutation.class,
+              org.apache.bookkeeper.proto.DataFormats.ManifestMutation.Builder.class);
+          internal_static_ManifestEntry_descriptor =
+            getDescriptor().getMessageTypes().get(10);
+          internal_static_ManifestEntry_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_ManifestEntry_descriptor,
+              new java.lang.String[] { "Level", "File", "FirstKey", "LastKey", "CreationOrder", },
+              org.apache.bookkeeper.proto.DataFormats.ManifestEntry.class,
+              org.apache.bookkeeper.proto.DataFormats.ManifestEntry.Builder.class);
+          internal_static_ManifestHeader_descriptor =
+            getDescriptor().getMessageTypes().get(11);
+          internal_static_ManifestHeader_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_ManifestHeader_descriptor,
+              new java.lang.String[] { },
+              org.apache.bookkeeper.proto.DataFormats.ManifestHeader.class,
+              org.apache.bookkeeper.proto.DataFormats.ManifestHeader.Builder.class);
+          internal_static_ManifestCurrent_descriptor =
+            getDescriptor().getMessageTypes().get(12);
+          internal_static_ManifestCurrent_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_ManifestCurrent_descriptor,
+              new java.lang.String[] { "CurrentManifest", },
+              org.apache.bookkeeper.proto.DataFormats.ManifestCurrent.class,
+              org.apache.bookkeeper.proto.DataFormats.ManifestCurrent.Builder.class);
           return null;
         }
       };
