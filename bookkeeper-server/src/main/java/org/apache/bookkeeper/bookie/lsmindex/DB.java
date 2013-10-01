@@ -78,18 +78,21 @@ public class DB {
             flushLock.readLock().unlock();
         }
 
+        compactor.blockDeletion();
         SortedSet<Manifest.Entry> entries = manifest.getEntriesForRange(from, to);
+
         try {
             for (Manifest.Entry e : entries) {
                 SSTableImpl t = SSTableImpl.open(e.getFile(), keyComparator);
-                iterators.add(t.iterator(from, to));
-                // t.close();
+                iterators.add(t.iterator(from, to))
             }
         } catch (IOException ioe) {
             for (KeyValueIterator i : iterators) {
                 Closeables.closeQuietly(i);
             }
             throw ioe;
+        } finally {
+            compactor.unblockDeletion();
         }
         return new DedupeIterator(keyComparator,
                                   new MergingIterator(keyComparator, iterators));
