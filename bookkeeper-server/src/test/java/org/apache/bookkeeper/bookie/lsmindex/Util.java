@@ -6,7 +6,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.io.File;
+import java.io.IOException;
 import com.google.common.primitives.Ints;
 import org.apache.bookkeeper.proto.DataFormats.KeyValue;
 import com.google.protobuf.ByteString;
@@ -64,4 +66,60 @@ public class Util {
         return new KeyValueIteratorWrapper(l.iterator());
     }
 
+    static KeyValueIterator getIterator(final int min, final int max, final int step) {
+        return new KeyValueIterator() {
+            int cur = min;
+
+            public boolean hasNext() throws IOException {
+                return cur + step < max;
+            }
+
+            public KeyValue peek() throws IOException {
+                if (hasNext()) {
+                    return newKeyValue(cur + step);
+                } else {
+                    throw new NoSuchElementException();
+                }
+            }
+
+            public KeyValue next() throws IOException {
+                cur = cur + step;
+                return newKeyValue(cur);
+            }
+
+            public void close() throws IOException {}
+        };
+    }
+
+    static KeyValueIterator getMaxSizeIterator(Comparator<ByteString> keyComp,
+                                               final int bytes, final int seed) {
+        List<KeyValue> kvs = new ArrayList<KeyValue>();
+        int bytesAdded = 0;
+
+        Random r = new Random(seed);
+        while (bytesAdded < bytes) {
+            KeyValue nextKV = newKeyValue(Math.abs(r.nextInt()));
+            if (nextKV.getSerializedSize() + bytesAdded > bytes) {
+                break;
+            }
+            kvs.add(nextKV);
+            bytesAdded += nextKV.getSerializedSize();
+        }
+        Collections.sort(kvs, keyValueComparator(keyComp));
+        return new KeyValueIteratorWrapper(kvs.iterator());
+    }
+
+    static void assertMatch(Comparator<ByteString> keyComp,
+                            KeyValueIterator iter0, KeyValueIterator... iters)
+            throws IOException {
+        Comparator<KeyValue> comp = keyValueComparator(keyComp);
+        while (iter0.hasNext()) {
+            KeyValue kv0 = iter0.next();
+            for (KeyValueIterator i : iters) {
+                Assert.assertTrue("Must have more", i.hasNext());
+                KeyValue kv = i.next();
+                Assert.assertEquals("Keys musts match", 0, comp.compare(kv0, kv));
+            }
+        }
+    }
 }

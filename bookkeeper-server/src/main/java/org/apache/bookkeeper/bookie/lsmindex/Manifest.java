@@ -74,7 +74,7 @@ public class Manifest implements Closeable {
         @Override
         public String toString() {
             return String.format("Entry[%d,%s,%s,%s]",
-                    level, file.toString(),
+                    level, file.getName().toString(),
                     dumpKey(firstKey),
                     dumpKey(lastKey));
         }

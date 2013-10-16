@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.SortedSet;
 
 import java.io.File;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import com.google.protobuf.ByteString;
@@ -78,13 +79,14 @@ public class DB {
             flushLock.readLock().unlock();
         }
 
+        // currently block deletion while i get the iterators open
+        // in future this could be a retry
         compactor.blockDeletion();
         SortedSet<Manifest.Entry> entries = manifest.getEntriesForRange(from, to);
-
         try {
             for (Manifest.Entry e : entries) {
                 SSTableImpl t = SSTableImpl.open(e.getFile(), keyComparator);
-                iterators.add(t.iterator(from, to))
+                iterators.add(t.iterator(from, to));
             }
         } catch (IOException ioe) {
             for (KeyValueIterator i : iterators) {
@@ -100,8 +102,15 @@ public class DB {
 
     // gaurantee that everything added has hit disk
     // i.e. flush all memstores
-    public void sync() {
-
+    public Future<Void> sync() throws InterruptedException {
+        flushLock.writeLock().lock();
+        try {
+            Future<Void> future = compactor.flushMemtable(currentMem.scan());
+            currentMem = new MemTable(keyComparator);
+            return future;
+        } finally {
+            flushLock.writeLock().unlock();
+        }
     }
 
     public void startCompacting() {};
