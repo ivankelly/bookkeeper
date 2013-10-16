@@ -12,22 +12,24 @@ import com.google.protobuf.ByteString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class DedupeIterator implements KeyValueIterator {
+class TombstoneFilterIterator implements KeyValueIterator {
     private final static Logger LOG
-        = LoggerFactory.getLogger(DedupeIterator.class);
+        = LoggerFactory.getLogger(TombstoneFilterIterator.class);
 
+    final static ByteString TOMBSTONE = ByteString.copyFromUtf8("70MB570N3");
     final KeyValueIterator iter;
-    final Comparator<ByteString> keyComparator;
+    final Comparator<ByteString> comparator;
     ByteString lastKey = ByteString.EMPTY;
-    
-    DedupeIterator(Comparator<ByteString> keyComparator, KeyValueIterator iter) {
-        this.keyComparator = keyComparator;
+
+    TombstoneFilterIterator(KeyValueIterator iter) {
+        comparator = KeyComparators.unsignedLexicographical();
         this.iter = iter;
     }
 
     @Override
     public synchronized boolean hasNext() throws IOException {
-        while (iter.hasNext() && keyComparator.compare(iter.peek().getKey(), lastKey) == 0) {
+        while (iter.hasNext()
+               && comparator.compare(iter.peek().getValue(), TOMBSTONE) == 0) {
             iter.next();
         }
         return iter.hasNext();
@@ -46,9 +48,7 @@ class DedupeIterator implements KeyValueIterator {
         if (!hasNext()) {
             throw new IOException("No next entry");
         }
-        KeyValue kv = iter.next();
-        lastKey = kv.getKey();
-        return kv;
+        return iter.next();
     }
 
     @Override

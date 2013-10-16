@@ -61,12 +61,20 @@ public class DB {
         }
     }
 
+    public void delete(ByteString key) throws InterruptedException {
+        put(key, TombstoneFilterIterator.TOMBSTONE);
+    }
+
     public ByteString get(ByteString key) throws IOException {
         KeyValueIterator iter = scan(key, key);
-        if (iter.hasNext()) {
-            return iter.next().getValue();
+        try {
+            if (iter.hasNext()) {
+                return iter.next().getValue();
+            }
+            return null;
+        } finally {
+            iter.close();
         }
-        return null;
     }
 
     public KeyValueIterator scan(ByteString from, ByteString to) throws IOException {
@@ -96,8 +104,9 @@ public class DB {
         } finally {
             compactor.unblockDeletion();
         }
-        return new DedupeIterator(keyComparator,
-                                  new MergingIterator(keyComparator, iterators));
+        return new TombstoneFilterIterator(
+                new DedupeIterator(keyComparator,
+                        new MergingIterator(keyComparator, iterators)));
     }
 
     // gaurantee that everything added has hit disk

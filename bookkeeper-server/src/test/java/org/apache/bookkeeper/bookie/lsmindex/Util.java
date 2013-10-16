@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import com.google.common.primitives.Ints;
 import org.apache.bookkeeper.proto.DataFormats.KeyValue;
@@ -122,4 +123,10 @@ public class Util {
             }
         }
     }
+
+    final static FilenameFilter sstFilter = new FilenameFilter() {
+            public boolean accept(File dir, String name) {
+                return name.endsWith(".sst");
+            }
+        };
 }

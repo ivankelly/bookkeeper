@@ -76,7 +76,7 @@ public class Compactor implements Runnable {
     }
 
     void start() {
-        Thread t = new Thread(this);
+        Thread t = new Thread(this, "LSMCompact");
         t.start();
     }
 
@@ -91,8 +91,8 @@ public class Compactor implements Runnable {
     public void mergeEntries(int l, SortedSet<Manifest.Entry> toMerge,
                              SortedSet<Manifest.Entry> overlaps)
             throws IOException {
-        LOG.debug("Merging {} with {} on level {}",
-                  new Object[] { toMerge, overlaps, l });
+        LOG.debug("Merging {} on level {} with {} on level {}",
+                  new Object[] { toMerge, l, overlaps, l + 1 });
         ByteString firstKey = toMerge.first().getFirstKey();
         ByteString lastKey = toMerge.last().getLastKey();
         if (overlaps.size() > 0) {
@@ -117,12 +117,19 @@ public class Compactor implements Runnable {
                 tables.add(t2);
                 iterators.add(t2.iterator());
             }
-            MergingIterator merger = new MergingIterator(keyComparator,
+            KeyValueIterator baseiter = new MergingIterator(keyComparator,
                                                          iterators);
-            DedupeIterator dedupe = new DedupeIterator(keyComparator,
-                                                       merger);
+            baseiter = new DedupeIterator(keyComparator,
+                                          baseiter);
+            /* If we're merging into the highest level or a
+               new level, trim out the tombstones */
+            if (l + 1 == manifest.getNumLevels()
+                || l + 1 == manifest.getNumLevels() - 1) {
+                LOG.debug("Using tombstone filter");
+                baseiter = new TombstoneFilterIterator(baseiter);
+            }
             CompactingIterator iter = new CompactingIterator(keyComparator,
-                    dedupe, overlapsL2.iterator());
+                    baseiter, overlapsL2.iterator());
             SortedSet<Manifest.Entry> newEntries
                 = new TreeSet<Manifest.Entry>(manifest.entryComparator());
             while (iter.reallyHasNext()) {
@@ -153,7 +160,7 @@ public class Compactor implements Runnable {
                     }
                 }
             } finally {
-                deletionLock.writeLock().lock();
+                deletionLock.writeLock().unlock();
             }
         } finally {
             for (KeyValueIterator i : iterators) {
@@ -211,6 +218,7 @@ public class Compactor implements Runnable {
             if (l == numLevels-1) {
                 // just promote file up
                 // creating new level
+                LOG.debug("Promoting {} to level {}", e, l+1);
                 Manifest.Entry newe = new Manifest.Entry(l+1, e.getCreationOrder(),
                                                          e.getFile(), e.getFirstKey(), e.getLastKey());
                 manifest.addToLevel(l+1, newe);
