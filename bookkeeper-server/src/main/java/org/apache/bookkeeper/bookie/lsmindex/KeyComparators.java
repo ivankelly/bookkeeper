@@ -14,7 +14,7 @@ public class KeyComparators {
         }
     };
 
-    static Comparator<ByteString> unsignedLexicographical() {
+    public static Comparator<ByteString> unsignedLexicographical() {
         return unsignedLex;
     }
 }
