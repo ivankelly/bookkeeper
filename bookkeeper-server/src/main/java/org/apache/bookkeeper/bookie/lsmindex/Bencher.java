@@ -37,7 +37,7 @@ public class Bencher {
         DB db = new DB(keyComp, new File(args[0]));
         db.start();
         int i = 0;
-        OpTimer op = Stats.get().getOpTimer(Bencher.class.getName(), "put");
+        OpTimer op = Stats.get().getOpTimer(Bencher.class, "put");
 
         while (true) {
             i++;

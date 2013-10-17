@@ -11,8 +11,10 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 import java.io.IOException;
 import java.io.File;
+import java.io.OutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.channels.FileChannel;
 
@@ -40,14 +42,16 @@ public class SSTableImpl {
     static SSTableImpl store(File fn, Comparator<ByteString> comparator,
                              KeyValueIterator kvs) throws IOException {
         FileOutputStream os = new FileOutputStream(fn);
+        BufferedOutputStream bos = new BufferedOutputStream(os);
         FileChannel fc = os.getChannel();
         NavigableMap<ByteString,Long> index = new TreeMap<ByteString,Long>(comparator);
         try {
             ByteString lastKey = ByteString.EMPTY;
             long lastBlockStart = -1;
+            byte[] data = new byte[30];
             while (kvs.hasNext()) {
                 KeyValue kv = kvs.next();
-                if (lastBlockStart == -1
+                /*if (lastBlockStart == -1
                     || (fc.position() - lastBlockStart) > BLOCKSIZE) {
                     lastBlockStart = fc.position();
                     index.put(kv.getKey(), lastBlockStart);
@@ -55,26 +59,29 @@ public class SSTableImpl {
                             new Object[] { kv.getKey().toByteArray(),
                                            Ints.fromByteArray(kv.getKey().toByteArray()),
                                            lastBlockStart });
-                }
+                                           }*/
                 lastKey = kv.getKey();
 
-                kv.writeDelimitedTo(os);
+                //kv.writeDelimitedTo(bos);
+                bos.write(data, 0, data.length);
             }
+            bos.flush();
             long indexOffset = fc.position();
-            writeIndex(os, index);
+            writeIndex(bos, index);
             Metadata md = Metadata.newBuilder()
                 .setVersion(SSTABLE_FORMAT_CURRENT_VERSION)
                 .setCanary(SSTABLE_CANARY)
                 .setLastKey(lastKey)
                 .setIndexOffset(indexOffset).build();
-            writeFooter(os, md);
+            writeFooter(bos, md);
+            bos.flush();
             return new SSTableImpl(fn, md, index, comparator);
         } finally {
             os.close();
         }
     }
 
-    static void writeIndex(FileOutputStream os, Map<ByteString,Long> index)
+    static void writeIndex(OutputStream os, Map<ByteString,Long> index)
             throws IOException {
         for (Map.Entry<ByteString,Long> i : index.entrySet()) {
             IndexEntry e = IndexEntry.newBuilder().setKey(i.getKey())
@@ -84,7 +91,7 @@ public class SSTableImpl {
         }
     }
 
-    static void writeFooter(FileOutputStream os, Metadata md)
+    static void writeFooter(OutputStream os, Metadata md)
             throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         md.writeDelimitedTo(bos);

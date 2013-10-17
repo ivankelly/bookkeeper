@@ -19,6 +19,10 @@ import java.util.Iterator;
 import java.util.TreeSet;
 import com.google.protobuf.ByteString;
 
+import org.apache.bookkeeper.stats.Stats;
+import org.apache.bookkeeper.stats.OpTimer;
+import org.apache.bookkeeper.stats.Histogram;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,10 +39,22 @@ public class Compactor implements Runnable {
     final File tablesDir;
     final Manifest manifest;
 
+    final OpTimer level0Timer;
+    final OpTimer levelxTimer;
+    final OpTimer memflushTimer;
+    final OpTimer mergeTimer;
+    final Histogram mergeFilesHist;
+
     Compactor(Manifest manifest, Comparator<ByteString> keyComparator, File tablesDir) {
         this.manifest = manifest;
         this.keyComparator = keyComparator;
         this.tablesDir = tablesDir;
+
+        level0Timer = Stats.get().getOpTimer(Compactor.class, "level0_compact");
+        levelxTimer = Stats.get().getOpTimer(Compactor.class, "levelx_compact");
+        memflushTimer = Stats.get().getOpTimer(Compactor.class, "memflush");
+        mergeTimer = Stats.get().getOpTimer(Compactor.class, "merge");
+        mergeFilesHist = Stats.get().getHistogram(Compactor.class, "num_files_merged");
     }
 
     private long calcLevelSize(SortedSet<Manifest.Entry> level) {
@@ -91,6 +107,8 @@ public class Compactor implements Runnable {
     public void mergeEntries(int l, SortedSet<Manifest.Entry> toMerge,
                              SortedSet<Manifest.Entry> overlaps)
             throws IOException {
+        OpTimer.Ctx timer = mergeTimer.create();
+        mergeFilesHist.add(toMerge.size() + overlaps.size());
         LOG.debug("Merging {} on level {} with {} on level {}",
                   new Object[] { toMerge, l, overlaps, l + 1 });
         ByteString firstKey = toMerge.first().getFirstKey();
@@ -162,6 +180,8 @@ public class Compactor implements Runnable {
             } finally {
                 deletionLock.writeLock().unlock();
             }
+
+            timer.success();
         } finally {
             for (KeyValueIterator i : iterators) {
                 try {
@@ -178,9 +198,11 @@ public class Compactor implements Runnable {
     }
 
     void compactLevel0() throws IOException {
+
         // Level0 compaction is special
         SortedSet<Manifest.Entry> level0 = manifest.getLevel(0);
         if (level0.size() >= LEVEL0_THRESHOLD) {
+            OpTimer.Ctx timer = level0Timer.create();
             SortedSet<Manifest.Entry> toMerge
                 = new TreeSet<Manifest.Entry>(manifest.entryComparator());
             Iterator<Manifest.Entry> iter = level0.iterator();
@@ -204,6 +226,7 @@ public class Compactor implements Runnable {
             SortedSet<Manifest.Entry> overlaps = manifest.getEntriesForRange(1,
                                                                              firstKey, lastKey);
             mergeEntries(0, toMerge, overlaps);
+            timer.success();
         }
     }
 
@@ -213,6 +236,7 @@ public class Compactor implements Runnable {
         long maxSizeForLevel = (long)(SSTABLE_MAX_SIZE * Math.pow(LEVEL_STEP_BASE, l));
                 
         if (calcLevelSize(level) > maxSizeForLevel) {
+            OpTimer.Ctx timer = levelxTimer.create();
             Manifest.Entry e = selectEntryToCompact(l, level);
                     
             if (l == numLevels-1) {
@@ -247,6 +271,7 @@ public class Compactor implements Runnable {
                     mergeEntries(l, entries, overlaps);
                 }
             }
+            timer.success();
         }
     }
 
@@ -329,6 +354,7 @@ public class Compactor implements Runnable {
     private void flushMemtableIfNecessary() throws IOException {
         FlushMemtableOp op = memtableQueue.poll();
         if (op != null) {
+            OpTimer.Ctx timer = memflushTimer.create();
             long creationOrder = manifest.creationOrder();
             File f = generateNewFile(creationOrder);
             // should probable store creation order in sstable also
@@ -338,6 +364,7 @@ public class Compactor implements Runnable {
                                                      newt.getFirstKey(), newt.getLastKey());
             manifest.addToLevel(0, newe);
             op.complete();
+            timer.success();
         }
     }
 }
