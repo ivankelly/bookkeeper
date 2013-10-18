@@ -13,17 +13,21 @@ import java.io.IOException;
 import java.io.File;
 import java.io.OutputStream;
 import java.io.FileInputStream;
+import java.io.BufferedInputStream;
 import java.io.FileOutputStream;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.channels.FileChannel;
 
+import com.google.common.io.LimitInputStream;
 import com.google.common.primitives.Ints;
 
 import com.google.protobuf.CodedOutputStream;
 import com.google.protobuf.CodedInputStream;
 import com.google.protobuf.ByteString;
 
+import org.apache.bookkeeper.stats.Stats;
+import org.apache.bookkeeper.stats.Meter;
+import org.apache.bookkeeper.stats.OpTimer;
 import org.apache.bookkeeper.proto.DataFormats.Metadata;
 import org.apache.bookkeeper.proto.DataFormats.KeyValue;
 import org.apache.bookkeeper.proto.DataFormats.IndexEntry;
@@ -41,39 +45,55 @@ public class SSTableImpl {
 
     static SSTableImpl store(File fn, Comparator<ByteString> comparator,
                              KeyValueIterator kvs) throws IOException {
+        Meter byteMeter = Stats.get().getMeter(SSTableImpl.class, "bytes-written");
+        Meter entryMeter = Stats.get().getMeter(SSTableImpl.class, "entries-written");
         FileOutputStream os = new FileOutputStream(fn);
-        BufferedOutputStream bos = new BufferedOutputStream(os);
+
         FileChannel fc = os.getChannel();
         NavigableMap<ByteString,Long> index = new TreeMap<ByteString,Long>(comparator);
+
         try {
             ByteString lastKey = ByteString.EMPTY;
             long lastBlockStart = -1;
-            byte[] data = new byte[30];
+
+            ByteArrayOutputStream bos = new ByteArrayOutputStream(BLOCKSIZE);
+            int entryCount = 0;
             while (kvs.hasNext()) {
                 KeyValue kv = kvs.next();
-                /*if (lastBlockStart == -1
-                    || (fc.position() - lastBlockStart) > BLOCKSIZE) {
+                if (lastBlockStart == -1
+                    || (bos.size() + kv.getSerializedSize() + 4) >  BLOCKSIZE) {
+                    bos.writeTo(os);
+
+                    byteMeter.mark(bos.size());
+                    bos.reset();
+
+                    entryMeter.mark(entryCount);
+                    entryCount = 0;
+
                     lastBlockStart = fc.position();
                     index.put(kv.getKey(), lastBlockStart);
-                    LOG.debug("Adding {} ({}) {} to index",
-                            new Object[] { kv.getKey().toByteArray(),
-                                           Ints.fromByteArray(kv.getKey().toByteArray()),
-                                           lastBlockStart });
-                                           }*/
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Adding {} ({}) {} to index",
+                                  new Object[] { kv.getKey().toByteArray(),
+                                                 Ints.fromByteArray(kv.getKey().toByteArray()),
+                                                 lastBlockStart });
+                    }
+                }
                 lastKey = kv.getKey();
 
-                //kv.writeDelimitedTo(bos);
-                bos.write(data, 0, data.length);
+                kv.writeDelimitedTo(bos);
+                entryCount++;
             }
-            bos.flush();
+            bos.writeTo(os);
+
             long indexOffset = fc.position();
-            writeIndex(bos, index);
+            writeIndex(os, index);
             Metadata md = Metadata.newBuilder()
                 .setVersion(SSTABLE_FORMAT_CURRENT_VERSION)
                 .setCanary(SSTABLE_CANARY)
                 .setLastKey(lastKey)
                 .setIndexOffset(indexOffset).build();
-            writeFooter(bos, md);
+            writeFooter(os, md);
             bos.flush();
             return new SSTableImpl(fn, md, index, comparator);
         } finally {
@@ -117,6 +137,8 @@ public class SSTableImpl {
         Metadata meta;
         NavigableMap<ByteString,Long> index;
 
+        OpTimer openTimer = Stats.get().getOpTimer(SSTableImpl.class, "open");
+        OpTimer.Ctx timer = openTimer.create();
         try {
             long metaPosition = file.length() - FOOTERSIZE;
             s.getChannel().position(metaPosition);
@@ -136,8 +158,11 @@ public class SSTableImpl {
                 builder2.mergeDelimitedFrom(s);
                 IndexEntry e = builder2.build();
                 index.put(e.getKey(), e.getOffset());
-                LOG.debug("Reading index entry {} {}", e.getKey().toByteArray(), e.getOffset());
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Reading index entry {} {}", e.getKey().toByteArray(), e.getOffset());
+                }
             }
+            timer.success();
         } finally {
             s.close();
         }
@@ -163,6 +188,8 @@ public class SSTableImpl {
 
         final FileInputStream s = new FileInputStream(file);
         s.getChannel().position(offset.getValue());
+        long limit = meta.getIndexOffset() - offset.getValue();
+        final LimitInputStream is = new LimitInputStream(new BufferedInputStream(s, BLOCKSIZE), limit);
 
         return new KeyValueIterator() {
             KeyValue curKV;
@@ -170,14 +197,12 @@ public class SSTableImpl {
             @Override
             public synchronized boolean hasNext() throws IOException {
                 while (curKV == null) {
-                    if (s.getChannel().position() >= meta.getIndexOffset()) {
-                        curKV = null;
-                        return false;
-                    }
-
                     try {
                         KeyValue.Builder builder = KeyValue.newBuilder();
-                        builder.mergeDelimitedFrom(s);
+                        if (!builder.mergeDelimitedFrom(is)) {
+                            // false means end of stream
+                            return false;
+                        }
                         curKV = builder.build();
                     } catch (IOException ioe) {
                         LOG.error("Exception reading from sstable", ioe);
