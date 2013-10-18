@@ -361,7 +361,7 @@ public class Compactor implements Runnable {
         }
     }
 
-    final ArrayBlockingQueue<FlushMemtableOp> memtableQueue = new ArrayBlockingQueue<FlushMemtableOp>(4);
+    final ArrayBlockingQueue<FlushMemtableOp> memtableQueue = new ArrayBlockingQueue<FlushMemtableOp>(1);
 
     Future<Void> flushMemtable(KeyValueIterator memTable) throws InterruptedException {
         FlushMemtableOp op = new FlushMemtableOp(memTable);
