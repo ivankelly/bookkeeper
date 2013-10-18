@@ -1,6 +1,7 @@
 package org.apache.bookkeeper.bookie.lsmindex;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.SortedSet;
@@ -16,7 +17,7 @@ import com.google.common.io.Closeables;
 
 public class DB {
     MemTable currentMem;
-    MemTable flushingMem;
+
     ReadWriteLock flushLock;
     final Manifest manifest;
     final Compactor compactor;
@@ -27,7 +28,6 @@ public class DB {
         this.keyComparator = keyComparator;
 
         currentMem = new MemTable(keyComparator);
-        flushingMem = new MemTable(keyComparator);
         flushLock = new ReentrantReadWriteLock();
 
         manifest = new Manifest(keyComparator, tablesDir);
@@ -53,7 +53,6 @@ public class DB {
                 if (currentMem.size() > MemTable.MAX_MEMTABLE_SIZE) {
                     compactor.flushMemtable(currentMem.scan());
                 }
-                flushingMem = currentMem;
                 currentMem = new MemTable(keyComparator);
             } finally {
                 flushLock.writeLock().unlock();
@@ -82,7 +81,7 @@ public class DB {
         flushLock.readLock().lock();
         try {
             iterators.add(currentMem.scan(from, to));
-            iterators.add(flushingMem.scan(from, to));
+            iterators.addAll(compactor.getFlushing());
         } finally {
             flushLock.readLock().unlock();
         }

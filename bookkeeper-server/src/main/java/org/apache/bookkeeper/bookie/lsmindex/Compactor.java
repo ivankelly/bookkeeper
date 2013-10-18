@@ -3,6 +3,7 @@ package org.apache.bookkeeper.bookie.lsmindex;
 import java.util.Comparator;
 import java.io.File;
 import java.io.IOException;
+
 import java.util.concurrent.Future;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -361,12 +362,20 @@ public class Compactor implements Runnable {
         }
     }
 
-    final ArrayBlockingQueue<FlushMemtableOp> memtableQueue = new ArrayBlockingQueue<FlushMemtableOp>(1);
+    final ArrayBlockingQueue<FlushMemtableOp> memtableQueue = new ArrayBlockingQueue<FlushMemtableOp>(4);
 
     Future<Void> flushMemtable(KeyValueIterator memTable) throws InterruptedException {
         FlushMemtableOp op = new FlushMemtableOp(memTable);
         memtableQueue.put(op);
         return op;
+    }
+
+    List<KeyValueIterator> getFlushing() {
+        List<KeyValueIterator> flushing = new ArrayList<KeyValueIterator>();
+        for (FlushMemtableOp o : memtableQueue) {
+            flushing.add(o.getMemTable());
+        }
+        return flushing;
     }
 
     private void flushMemtableIfNecessary() throws IOException {
