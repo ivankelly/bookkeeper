@@ -56,6 +56,8 @@ class MergingIterator implements KeyValueIterator {
             if (i.hasNext()) {
                 this.origOrder.add(i);
                 this.iterators.add(i);
+            } else {
+                i.close();
             }
         }
     }
@@ -84,6 +86,8 @@ class MergingIterator implements KeyValueIterator {
             if (sortError != null) {
                 throw sortError;
             }
+        } else {
+            iter.close();
         }
         return next;
     }

@@ -16,6 +16,8 @@ import java.util.Random;
 import java.io.IOException;
 import java.io.File;
 import java.io.ByteArrayOutputStream;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import com.google.common.io.Closeables;
 
 import org.apache.commons.cli.HelpFormatter;
@@ -96,7 +98,9 @@ public class BenchSSTable {
         options.addOption("file", true, "File to write to");
         options.addOption("numEntries", true, "Num entries to write");
         options.addOption("entrySize", true, "Entry size");
-        options.addOption("mode", true, "Mode to run (serialize, write");
+        options.addOption("mode", true, "Mode to run (serialize, writes, read, workload)");
+        options.addOption("directory", true, "Database directory for workload mode");
+        options.addOption("workload", true, "Workload to run");
         options.addOption("seed", true, "Seed to use for randomness");
         options.addOption("help", false, "This message");
 
@@ -115,7 +119,7 @@ public class BenchSSTable {
         int entrySize = Integer.valueOf(cmd.getOptionValue("entrySize", "100"));
 
         String mode = cmd.getOptionValue("mode");
-        int seed = Integer.valueOf(cmd.getOptionValue("seed", "0xdeadbeef"));
+        int seed = Integer.valueOf(cmd.getOptionValue("seed", "1"));
         if (mode.equals("serialize")) {
             OpTimer timer = Stats.get().getOpTimer(BenchSSTable.class, "serialization");
             Meter bytesSerialized = Stats.get().getMeter(BenchSSTable.class, "bytes");
@@ -152,6 +156,21 @@ public class BenchSSTable {
                     Closeables.closeQuietly(i);
                 }
             }
+        } else if (mode.equals("workload")) {
+            Comparator<ByteString> comp = KeyComparators.unsignedLexicographical();
+            String directory = cmd.getOptionValue("directory");
+            String workload = cmd.getOptionValue("workload");
+            DB db = new DB(comp, new File(directory));
+            db.start();
+
+            BufferedReader br = new BufferedReader(new FileReader(workload));
+            String key = br.readLine();
+            LOG.info("Starting writing");
+            while (key != null) {
+                db.put(ByteString.copyFromUtf8(key), ByteString.copyFromUtf8("dummy"));
+                key = br.readLine();
+            }
+            LOG.info("Finished writing");
         } else {
             KeyValueIterator iter = new RandomDataIterator(seed, numEntries, entrySize);
             Comparator<ByteString> comp = KeyComparators.unsignedLexicographical();

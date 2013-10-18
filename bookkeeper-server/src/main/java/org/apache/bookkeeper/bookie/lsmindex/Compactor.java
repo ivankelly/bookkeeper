@@ -19,6 +19,8 @@ import java.util.Iterator;
 import java.util.TreeSet;
 import com.google.protobuf.ByteString;
 
+import com.google.common.io.Closeables;
+
 import org.apache.bookkeeper.stats.Stats;
 import org.apache.bookkeeper.stats.OpTimer;
 import org.apache.bookkeeper.stats.Histogram;
@@ -122,6 +124,7 @@ public class Compactor implements Runnable {
 
         List<SSTableImpl> tables = new ArrayList<SSTableImpl>();
         List<KeyValueIterator> iterators = new ArrayList<KeyValueIterator>();
+        List<KeyValueIterator> overlapIterators = new ArrayList<KeyValueIterator>();
         try {
             for (Manifest.Entry e : toMerge) {
                 SSTableImpl t = SSTableImpl.open(e.getFile(), keyComparator);
@@ -129,12 +132,25 @@ public class Compactor implements Runnable {
                 iterators.add(t.iterator());
             }
 
-            for (Manifest.Entry overlap : overlaps) {
-                SSTableImpl t2 = SSTableImpl.open(overlap.getFile(),
-                                                  keyComparator);
-                tables.add(t2);
-                iterators.add(t2.iterator());
+            try {
+                if (overlaps.size() > 0) {
+                    for (Manifest.Entry overlap : overlaps) {
+                        SSTableImpl t2 = SSTableImpl.open(overlap.getFile(),
+                                                          keyComparator);
+                        tables.add(t2);
+                        overlapIterators.add(t2.iterator());
+                    }
+                    KeyValueIterator concat = new ConcatIterator(overlapIterators);
+                    iterators.add(concat);
+                }
+            } catch (IOException ioe) {
+                for (KeyValueIterator i : overlapIterators) {
+                    Closeables.closeQuietly(i);
+                }
+                throw ioe;
             }
+
+
             KeyValueIterator baseiter = new MergingIterator(keyComparator,
                                                          iterators);
             baseiter = new DedupeIterator(keyComparator,
@@ -231,11 +247,11 @@ public class Compactor implements Runnable {
     }
 
     void compactLevelX(int l) throws IOException {
-        SortedSet<Manifest.Entry> level = manifest.getLevel(l);
-        int numLevels = manifest.getNumLevels();
         long maxSizeForLevel = (long)(SSTABLE_MAX_SIZE * Math.pow(LEVEL_STEP_BASE, l));
-                
-        if (calcLevelSize(level) > maxSizeForLevel) {
+        SortedSet<Manifest.Entry> level = manifest.getLevel(l);
+
+        while (calcLevelSize(level) > maxSizeForLevel) {
+            int numLevels = manifest.getNumLevels();
             OpTimer.Ctx timer = levelxTimer.create();
             Manifest.Entry e = selectEntryToCompact(l, level);
                     
@@ -272,6 +288,8 @@ public class Compactor implements Runnable {
                 }
             }
             timer.success();
+
+            level = manifest.getLevel(l);
         }
     }
 
@@ -343,7 +361,7 @@ public class Compactor implements Runnable {
         }
     }
 
-    final ArrayBlockingQueue<FlushMemtableOp> memtableQueue = new ArrayBlockingQueue<FlushMemtableOp>(1);
+    final ArrayBlockingQueue<FlushMemtableOp> memtableQueue = new ArrayBlockingQueue<FlushMemtableOp>(4);
 
     Future<Void> flushMemtable(KeyValueIterator memTable) throws InterruptedException {
         FlushMemtableOp op = new FlushMemtableOp(memTable);
@@ -353,7 +371,7 @@ public class Compactor implements Runnable {
 
     private void flushMemtableIfNecessary() throws IOException {
         FlushMemtableOp op = memtableQueue.poll();
-        if (op != null) {
+        while (op != null) {
             OpTimer.Ctx timer = memflushTimer.create();
             long creationOrder = manifest.creationOrder();
             File f = generateNewFile(creationOrder);
@@ -365,6 +383,7 @@ public class Compactor implements Runnable {
             manifest.addToLevel(0, newe);
             op.complete();
             timer.success();
+            op = memtableQueue.poll();
         }
     }
 }
