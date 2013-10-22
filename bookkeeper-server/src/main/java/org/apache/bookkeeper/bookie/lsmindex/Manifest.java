@@ -304,7 +304,8 @@ public class Manifest implements Closeable {
                             }
                         }
                         try {
-                            LOG.info("IKDEBUG Applying transform to {}", level);
+                            LOG.debug("Applying transform to {} {} {}",
+                                      new Object[] { level, oldSet, newSet });
                             applyTransform(level, oldSet, newSet);
                         } catch (InvalidMutationException ime) {
                             // no problem, we log before we validate
@@ -321,8 +322,8 @@ public class Manifest implements Closeable {
         while (true) {
             newManifestLog = new File(manifestDir,
                     MANIFEST_NAME + "." + creationOrder.incrementAndGet());
-            LOG.info("Creating new manifest logfile: {}", newManifestLog);
             if (newManifestLog.createNewFile()) {
+                LOG.info("Created new manifest logfile: {}", newManifestLog);
                 break;
             }
         }
@@ -333,7 +334,8 @@ public class Manifest implements Closeable {
         ManifestLog log = new ManifestLog(newManifestLog);
         closeOnException.add(log);
         try {
-            for (Integer k : levels.keySet()) {
+            SortedSet<Integer> levelKeys = new TreeSet<Integer>(levels.keySet());
+            for (Integer k : levelKeys) {
                 log.log(k, emptySet, getLevel(k));
             }
 
