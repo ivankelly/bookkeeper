@@ -28,6 +28,9 @@ import java.net.UnknownHostException;
 
 import org.apache.zookeeper.KeeperException;
 
+import org.apache.bookkeeper.stats.Stats;
+import org.apache.bookkeeper.stats.CodahaleMetricsProvider;
+
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.bookie.ExitCode;
@@ -341,6 +344,9 @@ public class BookieServer {
                            conf.getBookiePort(), conf.getZkServers(),
                            conf.getJournalDirName(), sb);
         LOG.info(hello);
+
+        conf.setProperty(Stats.STATS_PROVIDER_CLASS, CodahaleMetricsProvider.class.getName());
+        Stats.init(conf);
         try {
             final BookieServer bs = new BookieServer(conf);
             bs.start();

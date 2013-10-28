@@ -26,6 +26,7 @@ limitations under the License.
   </parent>
   <groupId>org.apache.bookkeeper.stats</groupId>
   <artifactId>codahale-provider</artifactId>
+  <version>${project.parent.version}</version>
   <name>Stats provider for codahale metrics package</name>
   <url>http://maven.apache.org</url>
   <properties>

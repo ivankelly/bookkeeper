@@ -49,6 +49,7 @@ import org.apache.commons.configuration.Configuration;
 public class CodahaleMetricsProvider implements StatsProvider {
     static final Logger LOG = LoggerFactory.getLogger(CodahaleMetricsProvider.class);
 
+    final static String CODAHALE_STATS_COMPAT_MODE = "codahaleStatsCompatMode";
     static boolean initialized = false;
     static final MetricRegistry metrics = new MetricRegistry();
     static ScheduledReporter reporter = null;
@@ -63,7 +64,8 @@ public class CodahaleMetricsProvider implements StatsProvider {
         metrics.registerAll(new GarbageCollectorMetricSet());
 
         try {
-            String registryName = conf.getString("codahale_stats_name");
+            String registryName = conf.getString("codahaleStatsPrefix");
+            boolean compatMode = conf.getBoolean(CODAHALE_STATS_COMPAT_MODE);
             String graphiteHost = conf.getString("codahale_stats_graphite_host");
             int metricsOutputFrequency = conf.getInt("codahale_stats_frequency_s", 60);
             String metricsDir = conf.getString("codahale_stats_output_directory");
