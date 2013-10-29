@@ -31,9 +31,10 @@ public class Stats {
     static final Logger LOG = LoggerFactory.getLogger(Stats.class);
     public final static String STATS_PROVIDER_CLASS = "statsProviderClass";
 
+    static boolean initialized = false;
     static StatsProvider prov = new NullStatsProvider();
 
-    public static void loadStatsProvider(Configuration conf) {
+    private static void loadStatsProvider(Configuration conf) {
         String className = conf.getString(STATS_PROVIDER_CLASS);
         if (className != null) {
             try {
@@ -57,7 +58,23 @@ public class Stats {
         }
     }
 
+    public static synchronized void init(Configuration conf) {
+        if (!initialized) {
+            loadStatsProvider(conf);
+            initialized = true;
+        }
+        prov.start();
+    }
+
     public static StatsProvider get() {
         return prov;
+    }
+
+    public static String name(Class c, String... qualifiers) {
+        StringBuffer sb = new StringBuffer(c.getName());
+        for (String q : qualifiers) {
+            sb.append(".").append(q);
+        }
+        return sb.toString();
     }
 }

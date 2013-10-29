@@ -36,6 +36,10 @@ import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.proto.BookieClient;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
+import org.apache.bookkeeper.stats.BookkeeperClientStatsLogger;
+import org.apache.bookkeeper.stats.ClientStatsProvider;
+import org.apache.bookkeeper.stats.NullStatsLogger;
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.util.OrderedSafeExecutor;
 import org.apache.bookkeeper.util.ReflectionUtils;
 import org.apache.bookkeeper.util.ZkUtils;
@@ -71,6 +75,9 @@ public class BookKeeper {
     final CountDownLatch connectLatch = new CountDownLatch(1);
     final static int zkConnectTimeoutMs = 5000;
     final ClientSocketChannelFactory channelFactory;
+
+    // The stats logger for this client.
+    private final BookkeeperClientStatsLogger statsLogger;
 
     // whether the socket factory is one we created, or is owned by whoever
     // instantiated us
@@ -142,6 +149,7 @@ public class BookKeeper {
                         "BookKeeper-NIOWorker-%d").build()));
         this.scheduler = Executors.newSingleThreadScheduledExecutor(tfb
                 .setNameFormat("BookKeeperClientScheduler-%d").build());
+        this.statsLogger = Stats.get();
         // initialize the ensemble placement
         this.placementPolicy = initializeEnsemblePlacementPolicy(conf);
 
@@ -156,7 +164,7 @@ public class BookKeeper {
 
         ownChannelFactory = true;
         ownZKHandle = true;
-     }
+    }
 
     /**
      * Create a bookkeeper client but use the passed in zookeeper client instead
@@ -202,6 +210,12 @@ public class BookKeeper {
      */
     public BookKeeper(ClientConfiguration conf, ZooKeeper zk, ClientSocketChannelFactory channelFactory)
             throws IOException, InterruptedException, KeeperException {
+        this(conf, zk, channelFactory, NullStatsLogger.INSTANCE);
+    }
+
+    public BookKeeper(ClientConfiguration conf, ZooKeeper zk, ClientSocketChannelFactory channelFactory,
+                      StatsLogger statsLogger)
+            throws IOException, InterruptedException, KeeperException {
         if (zk == null || channelFactory == null) {
             throw new NullPointerException();
         }
@@ -216,6 +230,7 @@ public class BookKeeper {
                 "BookKeeperClientScheduler-%d");
         this.scheduler = Executors
                 .newSingleThreadScheduledExecutor(tfb.build());
+        this.statsLogger = ClientStatsProvider.createBookKeeperClientStatsLogger(statsLogger);
         // initialize the ensemble placement
         this.placementPolicy = initializeEnsemblePlacementPolicy(conf);
 
@@ -260,6 +275,10 @@ public class BookKeeper {
 
     protected ClientConfiguration getConf() {
         return conf;
+    }
+
+    StatsLogger getStatsLogger() {
+        return statsLogger;
     }
 
     /**

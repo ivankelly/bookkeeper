@@ -29,7 +29,9 @@ import org.apache.bookkeeper.client.AsyncCallback.CreateCallback;
 import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
-
+import org.apache.bookkeeper.stats.OpStatsLogger;
+import static org.apache.bookkeeper.stats.Stats.name;
+import org.apache.bookkeeper.util.MathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +50,8 @@ class LedgerCreateOp implements GenericCallback<Long> {
     byte[] passwd;
     BookKeeper bk;
     DigestType digestType;
+    long startTime;
+    OpStatsLogger createOpLogger;
 
     /**
      * Constructor
@@ -78,6 +82,9 @@ class LedgerCreateOp implements GenericCallback<Long> {
         this.passwd = passwd;
         this.cb = cb;
         this.ctx = ctx;
+        this.startTime = MathUtils.nowInNano();
+        createOpLogger = bk.getStatsLogger()
+            .getOpStatsLogger(name(LedgerCreateOp.class));
     }
 
     /**
@@ -96,7 +103,7 @@ class LedgerCreateOp implements GenericCallback<Long> {
                     .newEnsemble(metadata.getEnsembleSize(), metadata.getWriteQuorumSize());
         } catch (BKNotEnoughBookiesException e) {
             LOG.error("Not enough bookies to create ledger");
-            cb.createComplete(e.getCode(), null, this.ctx);
+            createComplete(e.getCode(), null);
             return;
         }
 
@@ -115,7 +122,7 @@ class LedgerCreateOp implements GenericCallback<Long> {
     @Override
     public void operationComplete(int rc, Long ledgerId) {
         if (BKException.Code.OK != rc) {
-            cb.createComplete(rc, null, this.ctx);
+            createComplete(rc, null);
             return;
         }
 
@@ -123,16 +130,25 @@ class LedgerCreateOp implements GenericCallback<Long> {
             lh = new LedgerHandle(bk, ledgerId, metadata, digestType, passwd);
         } catch (GeneralSecurityException e) {
             LOG.error("Security exception while creating ledger: " + ledgerId, e);
-            cb.createComplete(BKException.Code.DigestNotInitializedException, null, this.ctx);
+            createComplete(BKException.Code.DigestNotInitializedException, null);
             return;
         } catch (NumberFormatException e) {
             LOG.error("Incorrectly entered parameter throttle: " + bk.getConf().getThrottleValue(), e);
-            cb.createComplete(BKException.Code.IncorrectParameterException, null, this.ctx);
+            createComplete(BKException.Code.IncorrectParameterException, null);
             return;
         }
-
         // return the ledger handle back
-        cb.createComplete(BKException.Code.OK, lh, this.ctx);
+        createComplete(BKException.Code.OK, lh);
+    }
+
+    private void createComplete(int rc, LedgerHandle lh) {
+        // Opened a new ledger
+        if (BKException.Code.OK != rc) {
+            createOpLogger.registerFailedEvent(MathUtils.elapsedMSec(startTime));
+        } else {
+            createOpLogger.registerSuccessfulEvent(MathUtils.elapsedMSec(startTime));
+        }
+        cb.createComplete(rc, lh, ctx);
     }
 
 }
