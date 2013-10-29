@@ -36,9 +36,12 @@ import org.apache.bookkeeper.client.AsyncCallback.CloseCallback;
 import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
 import org.apache.bookkeeper.client.AsyncCallback.ReadLastConfirmedCallback;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
+import org.apache.bookkeeper.client.BookKeeperClientStats.ClientCounter;
 import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.DataFormats.LedgerMetadataFormat.State;
+import org.apache.bookkeeper.stats.Counter;
+import org.apache.bookkeeper.stats.Gauge;
 import org.apache.bookkeeper.util.OrderedSafeExecutor.OrderedSafeGenericCallback;
 import org.apache.bookkeeper.util.SafeRunnable;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -75,6 +78,8 @@ public class LedgerHandle {
     final AtomicInteger blockAddCompletions = new AtomicInteger(0);
     final Queue<PendingAddOp> pendingAddOps = new ConcurrentLinkedQueue<PendingAddOp>();
 
+    final Counter ensembleChangeCounter;
+
     LedgerHandle(BookKeeper bk, long ledgerId, LedgerMetadata metadata,
                  DigestType digestType, byte[] password)
             throws GeneralSecurityException, NumberFormatException {
@@ -97,6 +102,17 @@ public class LedgerHandle {
         this.ledgerKey = MacDigestManager.genDigest("ledger", password);
         distributionSchedule = new RoundRobinDistributionSchedule(
                 metadata.getWriteQuorumSize(), metadata.getAckQuorumSize(), metadata.getEnsembleSize());
+
+        ensembleChangeCounter = bk.getStatsLogger().getCounter(ClientCounter.NUM_ENSEMBLE_CHANGE);
+        bk.getStatsLogger().registerGauge(ClientCounter.NUM_PENDING_ADD,
+                                          new Gauge<Integer>() {
+                                              public Integer getDefaultValue() {
+                                                  return 0;
+                                              }
+                                              public Integer getSample() {
+                                                  return pendingAddOps.size();
+                                              }
+                                          });
     }
 
     /**
@@ -200,7 +216,7 @@ public class LedgerHandle {
      * Close this ledger synchronously.
      * @see #asyncClose
      */
-    public void close() 
+    public void close()
             throws InterruptedException, BKException {
         SyncCounter counter = new SyncCounter();
         counter.inc();
@@ -215,11 +231,11 @@ public class LedgerHandle {
 
     /**
      * Asynchronous close, any adds in flight will return errors.
-     * 
-     * Closing a ledger will ensure that all clients agree on what the last entry 
-     * of the ledger is. This ensures that, once the ledger has been closed, all 
-     * reads from the ledger will return the same set of entries. 
-     * 
+     *
+     * Closing a ledger will ensure that all clients agree on what the last entry
+     * of the ledger is. This ensures that, once the ledger has been closed, all
+     * reads from the ledger will return the same set of entries.
+     *
      * @param cb
      *          callback implementation
      * @param ctx
@@ -416,7 +432,7 @@ public class LedgerHandle {
         SyncAddCallback callback = new SyncAddCallback();
         asyncAddEntry(data, offset, length, callback, counter);
         counter.block(0);
-        
+
         if (counter.getrc() != BKException.Code.OK) {
             throw BKException.create(counter.getrc());
         }
@@ -521,14 +537,14 @@ public class LedgerHandle {
     }
 
     /**
-     * Obtains asynchronously the last confirmed write from a quorum of bookies. This 
+     * Obtains asynchronously the last confirmed write from a quorum of bookies. This
      * call obtains the the last add confirmed each bookie has received for this ledger
      * and returns the maximum. If the ledger has been closed, the value returned by this
      * call may not correspond to the id of the last entry of the ledger, since it reads
-     * the hint of bookies. Consequently, in the case the ledger has been closed, it may 
-     * return a different value than getLastAddConfirmed, which returns the local value 
+     * the hint of bookies. Consequently, in the case the ledger has been closed, it may
+     * return a different value than getLastAddConfirmed, which returns the local value
      * of the ledger handle.
-     * 
+     *
      * @see #getLastAddConfirmed()
      *
      * @param cb
@@ -591,18 +607,17 @@ public class LedgerHandle {
      * obtains the the last add confirmed each bookie has received for this ledger
      * and returns the maximum. If the ledger has been closed, the value returned by this
      * call may not correspond to the id of the last entry of the ledger, since it reads
-     * the hint of bookies. Consequently, in the case the ledger has been closed, it may 
-     * return a different value than getLastAddConfirmed, which returns the local value 
+     * the hint of bookies. Consequently, in the case the ledger has been closed, it may
+     * return a different value than getLastAddConfirmed, which returns the local value
      * of the ledger handle.
-     * 
+     *
      * @see #getLastAddConfirmed()
-     * 
+     *
      * @return The entry id of the last confirmed write or {@link #INVALID_ENTRY_ID INVALID_ENTRY_ID}
      *         if no entry has been confirmed
      * @throws InterruptedException
      * @throws BKException
      */
-    
     public long readLastConfirmed()
             throws InterruptedException, BKException {
         LastConfirmedCtx ctx = new LastConfirmedCtx();
@@ -735,6 +750,9 @@ public class LedgerHandle {
         @Override
         public void safeOperationComplete(final int rc, Void result) {
             if (rc == BKException.Code.MetadataVersionException) {
+                // We changed the ensemble, but got a version exception. We
+                // should still consider this as an ensemble change
+                ensembleChangeCounter.inc();
                 rereadMetadata(new ReReadLedgerMetadataCb(rc,
                                        ensembleInfo));
                 return;
@@ -748,6 +766,8 @@ public class LedgerHandle {
             }
             blockAddCompletions.decrementAndGet();
 
+            // We've successfully changed an ensemble
+            ensembleChangeCounter.inc();
             // the failed bookie has been replaced
             unsetSuccessAndSendWriteRequest(ensembleInfo.bookieIndex);
         }
@@ -840,6 +860,8 @@ public class LedgerHandle {
                     return updateMetadataIfPossible(newMeta);
                 }
             } else {
+                ensembleChangeCounter.inc();
+                // We've successfully changed an ensemble
                 // the failed bookie has been replaced
                 blockAddCompletions.decrementAndGet();
                 unsetSuccessAndSendWriteRequest(ensembleInfo.bookieIndex);
@@ -938,7 +960,7 @@ public class LedgerHandle {
             // noop
         }
     }
-    
+
     private static class SyncReadCallback implements ReadCallback {
         /**
          * Implementation of callback interface for synchronous read method.
@@ -955,7 +977,7 @@ public class LedgerHandle {
         @Override
         public void readComplete(int rc, LedgerHandle lh,
                                  Enumeration<LedgerEntry> seq, Object ctx) {
-            
+
             SyncCounter counter = (SyncCounter) ctx;
             synchronized (counter) {
                 counter.setSequence(seq);
@@ -998,7 +1020,7 @@ public class LedgerHandle {
         @Override
         public void readLastConfirmedComplete(int rc, long lastConfirmed, Object ctx) {
             LastConfirmedCtx lcCtx = (LastConfirmedCtx) ctx;
-            
+
             synchronized(lcCtx) {
                 lcCtx.setRC(rc);
                 lcCtx.setLastConfirmed(lastConfirmed);

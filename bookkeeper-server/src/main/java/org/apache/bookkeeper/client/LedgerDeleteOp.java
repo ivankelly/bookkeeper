@@ -22,6 +22,8 @@
 package org.apache.bookkeeper.client;
 
 import org.apache.bookkeeper.client.AsyncCallback.DeleteCallback;
+import org.apache.bookkeeper.stats.OpStatsLogger;
+import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.OrderedSafeExecutor.OrderedSafeGenericCallback;
 import org.apache.bookkeeper.versioning.Version;
 import org.slf4j.Logger;
@@ -39,6 +41,8 @@ class LedgerDeleteOp extends OrderedSafeGenericCallback<Void> {
     long ledgerId;
     DeleteCallback cb;
     Object ctx;
+    long startTime;
+    OpStatsLogger deleteOpLogger;
 
     /**
      * Constructor
@@ -58,6 +62,9 @@ class LedgerDeleteOp extends OrderedSafeGenericCallback<Void> {
         this.ledgerId = ledgerId;
         this.cb = cb;
         this.ctx = ctx;
+        this.startTime = MathUtils.nowInNano();
+        deleteOpLogger = bk.getStatsLogger()
+            .getOpStatsLogger(BookKeeperClientStats.ClientOp.LEDGER_DELETE);
     }
 
     /**
@@ -74,6 +81,11 @@ class LedgerDeleteOp extends OrderedSafeGenericCallback<Void> {
      */
     @Override
     public void safeOperationComplete(int rc, Void result) {
+        if (BKException.Code.OK != rc) {
+            deleteOpLogger.registerFailedEvent(startTime);
+        } else {
+            deleteOpLogger.registerSuccessfulEvent(startTime);
+        }
         cb.deleteComplete(rc, this.ctx);
     }
 }
