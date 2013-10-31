@@ -37,17 +37,17 @@ class OstrichStatsLoggerImpl implements StatsLogger {
     }
 
     @Override
-    public OpStatsLogger getOpStatsLogger(String statName) {
+    public OpStatsLogger getOpStatsLogger(Enum statName) {
         return new OpStatsLoggerImpl(getStatName(statName), ostrichProvider);
     }
 
     @Override
-    public Counter getCounter(String statName) {
+    public Counter getCounter(Enum statName) {
         return new CounterImpl(ostrichProvider.getCounter(getStatName(statName)));
     }
 
     @Override
-    public <T extends Number> void registerGauge(final String statName, final Gauge<T> gauge) {
+    public <T extends Number> void registerGauge(final Enum statName, final Gauge<T> gauge) {
         Function0<Object> gaugeFunc = new AbstractFunction0<Object>() {
             @Override
             public Object apply() {
@@ -55,6 +55,10 @@ class OstrichStatsLoggerImpl implements StatsLogger {
             }
         };
         ostrichProvider.addGauge(getStatName(statName), gaugeFunc);
+    }
+
+    private String getStatName(Enum statName) {
+        return getStatName(statName.toString());
     }
 
     private String getStatName(String statName) {

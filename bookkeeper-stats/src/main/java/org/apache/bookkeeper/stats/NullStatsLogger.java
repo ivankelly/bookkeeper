@@ -74,17 +74,17 @@ public class NullStatsLogger implements StatsLogger {
     static NullCounter nullCounter = new NullCounter();
 
     @Override
-    public OpStatsLogger getOpStatsLogger(String name) {
+    public OpStatsLogger getOpStatsLogger(Enum name) {
         return nullOpStatsLogger;
     }
 
     @Override
-    public Counter getCounter(String name) {
+    public Counter getCounter(Enum name) {
         return nullCounter;
     }
 
     @Override
-    public <T extends Number> void registerGauge(String name, Gauge<T> gauge) {
+    public <T extends Number> void registerGauge(Enum name, Gauge<T> gauge) {
         // nop
     }
 

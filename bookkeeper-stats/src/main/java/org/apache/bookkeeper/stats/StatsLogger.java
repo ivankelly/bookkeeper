@@ -26,14 +26,14 @@ public interface StatsLogger {
      *          Stats Name
      * @return Get the logger for an OpStat described by the <i>name</i>.
      */
-    public OpStatsLogger getOpStatsLogger(String name);
+    public OpStatsLogger getOpStatsLogger(Enum name);
 
     /**
      * @param name
      *          Stats Name
      * @return Get the logger for a simple stat described by the <i>name</i>
      */
-    public Counter getCounter(String name);
+    public Counter getCounter(Enum name);
 
     /**
      * Register given <i>guage</i> as name <i>name</i>.
@@ -41,7 +41,7 @@ public interface StatsLogger {
      * @param name
      *          gauge name
      */
-    public <T extends Number> void registerGauge(String name, Gauge<T> gauge);
+    public <T extends Number> void registerGauge(Enum name, Gauge<T> gauge);
 
     /**
      * Provide the stats logger under scope <i>name</i>.
