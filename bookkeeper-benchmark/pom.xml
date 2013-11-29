@@ -102,6 +102,11 @@
       <scope>test</scope>
       <type>test-jar</type>
     </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-math3</artifactId>
+      <version>3.2</version>
+    </dependency>
     <!--
 	Annoying dependency we need to include because
 	zookeeper uses log4j and so we transatively do, but
