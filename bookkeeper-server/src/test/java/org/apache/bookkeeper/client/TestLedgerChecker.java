@@ -20,17 +20,18 @@
  */
 package org.apache.bookkeeper.client;
 
+
+
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import static org.junit.Assert.*;
 
 /**
@@ -131,7 +132,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
         // Entry should have added in first 2 Bookies.
 
         // Kill the 3rd BK from ensemble.
-        ArrayList<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
+        List<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
                 .getEnsembles().get(0L);
         BookieSocketAddress lastBookieFromEnsemble = firstEnsemble.get(2);
         LOG.info("Killing " + lastBookieFromEnsemble + " from ensemble="
@@ -174,7 +175,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
         startNewBookie();
         lh.addEntry(TEST_LEDGER_ENTRY_DATA);
 
-        ArrayList<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
+        List<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
                 .getEnsembles().get(0L);
 
         BookieSocketAddress firstBookieFromEnsemble = firstEnsemble.get(0);
@@ -205,7 +206,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
         LedgerHandle lh = bkc.createLedger(3, 2, BookKeeper.DigestType.CRC32,
                 TEST_LEDGER_PASSWORD);
 
-        ArrayList<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
+        List<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
                 .getEnsembles().get(0L);
         BookieSocketAddress firstBookieFromEnsemble = firstEnsemble.get(0);
         killBookie(firstBookieFromEnsemble);
@@ -237,7 +238,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
         }
 
         // Kill all three bookies
-        ArrayList<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
+        List<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
                 .getEnsembles().get(0L);
         for (BookieSocketAddress bkAddr : firstEnsemble) {
             killBookie(firstEnsemble, bkAddr);
@@ -296,7 +297,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
         LedgerHandle lh = bkc.createLedger(3, 3, BookKeeper.DigestType.CRC32,
                 TEST_LEDGER_PASSWORD);
         lh.addEntry(TEST_LEDGER_ENTRY_DATA);
-        ArrayList<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
+        List<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
                 .getEnsembles().get(0L);
         BookieSocketAddress lastBookieFromEnsemble = firstEnsemble.get(0);
         LOG.info("Killing " + lastBookieFromEnsemble + " from ensemble="
@@ -328,7 +329,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
         for (int i = 0; i < 10; i++) {
             lh.addEntry(TEST_LEDGER_ENTRY_DATA);
         }
-        ArrayList<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
+        List<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
                 .getEnsembles().get(0L);
         BookieSocketAddress lastBookieFromEnsemble = firstEnsemble.get(
                 lh.getDistributionSchedule().getWriteSet(lh.getLastAddPushed()).get(0));
@@ -363,7 +364,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
     public void testClosedEmptyLedger() throws Exception {
         LedgerHandle lh = bkc.createLedger(3, 3, BookKeeper.DigestType.CRC32,
                 TEST_LEDGER_PASSWORD);
-        ArrayList<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
+        List<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
                 .getEnsembles().get(0L);
         lh.close();
 
@@ -390,7 +391,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
     public void testClosedSingleEntryLedger() throws Exception {
         LedgerHandle lh = bkc.createLedger(3, 2, BookKeeper.DigestType.CRC32,
                 TEST_LEDGER_PASSWORD);
-        ArrayList<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
+        List<BookieSocketAddress> firstEnsemble = lh.getLedgerMetadata()
             .getEnsembles().get(0L);
         lh.addEntry(TEST_LEDGER_ENTRY_DATA);
         lh.close();
@@ -455,7 +456,7 @@ public class TestLedgerChecker extends BookKeeperClusterTestCase {
         return result;
     }
 
-    private void killBookie(ArrayList<BookieSocketAddress> firstEnsemble, BookieSocketAddress ensemble)
+    private void killBookie(List<BookieSocketAddress> firstEnsemble, BookieSocketAddress ensemble)
             throws Exception {
         LOG.info("Killing " + ensemble + " from ensemble=" + firstEnsemble);
         killBookie(ensemble);

@@ -19,10 +19,10 @@
  */
 package org.apache.bookkeeper.client;
 
-import java.util.ArrayList;
+
+import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.SortedMap;
-
 import org.apache.bookkeeper.net.BookieSocketAddress;
 
 /**
@@ -48,7 +48,7 @@ public class LedgerFragment {
         this.bookieIndex = bookieIndex;
         this.ensemble = lh.getLedgerMetadata().getEnsemble(firstEntryId);
         this.schedule = lh.getDistributionSchedule();
-        SortedMap<Long, ArrayList<BookieSocketAddress>> ensembles = lh
+        SortedMap<Long, ImmutableList<BookieSocketAddress>> ensembles = lh
                 .getLedgerMetadata().getEnsembles();
         this.isLedgerClosed = lh.getLedgerMetadata().isClosed()
                 || !ensemble.equals(ensembles.get(ensembles.lastKey()));

@@ -29,4 +29,8 @@ public class LedgerHandleAdapter {
     public static LedgerMetadata getLedgerMetadata(LedgerHandle lh) {
         return lh.getLedgerMetadata();
     }
+
+    public static void updateLedgerMetadata(LedgerHandle lh, LedgerMetadata metadata) {
+        lh.metadataRef.set(metadata);
+    }
 }

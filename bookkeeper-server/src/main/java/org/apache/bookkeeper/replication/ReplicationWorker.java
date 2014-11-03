@@ -19,22 +19,23 @@
  */
 package org.apache.bookkeeper.replication;
 
+
+
+import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedMap;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.SortedMap;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.concurrent.CountDownLatch;
-
-import com.google.common.base.Stopwatch;
 import org.apache.bookkeeper.bookie.BookieThread;
-import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.BKBookieHandleNotAvailableException;
 import org.apache.bookkeeper.client.BKException.BKNoSuchLedgerExistsException;
 import org.apache.bookkeeper.client.BKException.BKReadException;
+import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.LedgerChecker;
@@ -56,7 +57,6 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import static org.apache.bookkeeper.replication.ReplicationStats.BK_CLIENT_SCOPE;
 import static org.apache.bookkeeper.replication.ReplicationStats.REREPLICATE_OP;
 
@@ -302,9 +302,9 @@ public class ReplicationWorker implements Runnable {
             return false;
         }
 
-        SortedMap<Long, ArrayList<BookieSocketAddress>> ensembles
+        ImmutableSortedMap<Long, ImmutableList<BookieSocketAddress>> ensembles
             = admin.getLedgerMetadata(lh).getEnsembles();
-        ArrayList<BookieSocketAddress> finalEnsemble = ensembles.get(ensembles.lastKey());
+        List<BookieSocketAddress> finalEnsemble = ensembles.get(ensembles.lastKey());
         Collection<BookieSocketAddress> available = admin.getAvailableBookies();
         for (BookieSocketAddress b : finalEnsemble) {
             if (!available.contains(b)) {

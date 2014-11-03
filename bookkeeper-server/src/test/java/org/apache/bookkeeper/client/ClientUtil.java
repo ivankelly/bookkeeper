@@ -34,7 +34,7 @@ public class ClientUtil {
 
     /** Returns that whether ledger is in open state */
     public static boolean isLedgerOpen(LedgerHandle handle) {
-        return !handle.metadata.isClosed();
+        return !handle.metadataRef.get().isClosed();
     }
 
 }

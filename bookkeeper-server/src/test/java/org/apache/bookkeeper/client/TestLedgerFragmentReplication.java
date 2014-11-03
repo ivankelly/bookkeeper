@@ -19,14 +19,19 @@
  */
 package org.apache.bookkeeper.client;
 
+
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedMap;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.List;
 import java.util.SortedMap;
 import java.util.concurrent.CountDownLatch;
-
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
@@ -34,7 +39,6 @@ import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import static org.junit.Assert.*;
 
 /**
@@ -108,12 +112,12 @@ public class TestLedgerFragmentReplication extends BookKeeperClusterTestCase {
         }
 
         // Killing all bookies except newly replicated bookie
-        SortedMap<Long, ArrayList<BookieSocketAddress>> allBookiesBeforeReplication = lh
+        ImmutableSortedMap<Long, ImmutableList<BookieSocketAddress>> allBookiesBeforeReplication = lh
                 .getLedgerMetadata().getEnsembles();
-        Set<Entry<Long, ArrayList<BookieSocketAddress>>> entrySet = allBookiesBeforeReplication
+        Set<Entry<Long, ImmutableList<BookieSocketAddress>>> entrySet = allBookiesBeforeReplication
                 .entrySet();
-        for (Entry<Long, ArrayList<BookieSocketAddress>> entry : entrySet) {
-            ArrayList<BookieSocketAddress> bookies = entry.getValue();
+        for (Entry<Long, ImmutableList<BookieSocketAddress>> entry : entrySet) {
+            List<BookieSocketAddress> bookies = entry.getValue();
             for (BookieSocketAddress bookie : bookies) {
                 if (newBkAddr.equals(bookie)) {
                     continue;
@@ -235,18 +239,12 @@ public class TestLedgerFragmentReplication extends BookKeeperClusterTestCase {
     @Test(timeout = 30000)
     public void testSplitIntoSubFragmentsWithDifferentFragmentBoundaries()
             throws Exception {
-        LedgerMetadata metadata = new LedgerMetadata(3, 3, 3, TEST_DIGEST_TYPE,
-                TEST_PSSWD) {
-            @Override
-            ArrayList<BookieSocketAddress> getEnsemble(long entryId) {
-                return null;
-            }
+        LedgerMetadata metadata = LedgerMetadata.newBuilder()
+            .setEnsembleSize(3).setWriteQuorumSize(3).setAckQuorumSize(3)
+            .setDigestType(TEST_DIGEST_TYPE).setPassword(TEST_PSSWD)
+            .setEnsembles(buildDummyEnsembles(3))
+            .closeLedger(-1).build();
 
-            @Override
-            public boolean isClosed() {
-                return true;
-            }
-        };
         LedgerHandle lh = new LedgerHandle(bkc, 0, metadata, TEST_DIGEST_TYPE,
                 TEST_PSSWD);
         testSplitIntoSubFragments(10, 21, -1, 1, lh);

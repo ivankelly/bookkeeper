@@ -21,17 +21,19 @@
 
 package org.apache.bookkeeper.test;
 
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedMap;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.client.BookKeeperTestClient;
@@ -42,8 +44,8 @@ import org.apache.bookkeeper.conf.TestBKConfiguration;
 import org.apache.bookkeeper.metastore.InMemoryMetaStore;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookieServer;
-import org.apache.bookkeeper.replication.AutoRecoveryMain;
 import org.apache.bookkeeper.replication.Auditor;
+import org.apache.bookkeeper.replication.AutoRecoveryMain;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.commons.io.FileUtils;
@@ -562,5 +564,17 @@ public abstract class BookKeeperClusterTestCase {
      */
     public static boolean isCreatedFromIp(BookieSocketAddress addr) {
         return addr.getSocketAddress().toString().startsWith("/");
+    }
+
+    public ImmutableSortedMap<Long, ImmutableList<BookieSocketAddress>> buildDummyEnsembles(int ens)
+            throws Exception {
+        ImmutableSortedMap.Builder<Long, ImmutableList<BookieSocketAddress>> builder
+            = ImmutableSortedMap.<Long, ImmutableList<BookieSocketAddress>>naturalOrder();
+        ImmutableList.Builder<BookieSocketAddress> ensBuilder
+            = ImmutableList.<BookieSocketAddress>builder();
+        for (int i = 0; i < numBookies; i++) {
+            ensBuilder.add(bs.get(i).getLocalAddress());
+        }
+        return builder.put(0L, ensBuilder.build()).build();
     }
 }

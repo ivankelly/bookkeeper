@@ -21,9 +21,11 @@
 
 package org.apache.bookkeeper.client;
 
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedMap;
+import java.security.GeneralSecurityException;
+import java.util.List;
 import org.apache.bookkeeper.client.AsyncCallback.CreateCallback;
 import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
@@ -31,6 +33,7 @@ import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.util.MathUtils;
+import org.apache.bookkeeper.meta.LedgerManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,19 +41,22 @@ import org.slf4j.LoggerFactory;
  * Encapsulates asynchronous ledger create operation
  *
  */
-class LedgerCreateOp implements GenericCallback<Long> {
+class LedgerCreateOp implements GenericCallback<LedgerManager.LedgerIdAndMetadataVersion> {
 
     static final Logger LOG = LoggerFactory.getLogger(LedgerCreateOp.class);
 
-    CreateCallback cb;
-    LedgerMetadata metadata;
+    final CreateCallback cb;
+    LedgerMetadata metadata = null;
+    final LedgerMetadata.Builder metadataBuilder;
+    final int ensembleSize;
+    final int writeQuorumSize;
     LedgerHandle lh;
-    Object ctx;
-    byte[] passwd;
-    BookKeeper bk;
-    DigestType digestType;
-    long startTime;
-    OpStatsLogger createOpLogger;
+    final Object ctx;
+    final byte[] passwd;
+    final BookKeeper bk;
+    final DigestType digestType;
+    final long startTime;
+    final OpStatsLogger createOpLogger;
 
     /**
      * Constructor
@@ -76,7 +82,11 @@ class LedgerCreateOp implements GenericCallback<Long> {
                    DigestType digestType,
                    byte[] passwd, CreateCallback cb, Object ctx) {
         this.bk = bk;
-        this.metadata = new LedgerMetadata(ensembleSize, writeQuorumSize, ackQuorumSize, digestType, passwd);
+        this.metadataBuilder = LedgerMetadata.newBuilder().setEnsembleSize(ensembleSize)
+            .setWriteQuorumSize(writeQuorumSize).setAckQuorumSize(ackQuorumSize)
+            .setDigestType(digestType).setPassword(passwd);
+        this.ensembleSize = ensembleSize;
+        this.writeQuorumSize = writeQuorumSize;
         this.digestType = digestType;
         this.passwd = passwd;
         this.cb = cb;
@@ -94,11 +104,9 @@ class LedgerCreateOp implements GenericCallback<Long> {
         /*
          * Adding bookies to ledger handle
          */
-
-        ArrayList<BookieSocketAddress> ensemble;
+        List<BookieSocketAddress> ensemble;
         try {
-            ensemble = bk.bookieWatcher
-                    .newEnsemble(metadata.getEnsembleSize(), metadata.getWriteQuorumSize());
+            ensemble = bk.bookieWatcher.newEnsemble(ensembleSize, writeQuorumSize);
         } catch (BKNotEnoughBookiesException e) {
             LOG.error("Not enough bookies to create ledger");
             createComplete(e.getCode(), null);
@@ -108,7 +116,11 @@ class LedgerCreateOp implements GenericCallback<Long> {
         /*
          * Add ensemble to the configuration
          */
-        metadata.addEnsemble(0L, ensemble);
+        ImmutableSortedMap.Builder<Long, ImmutableList<BookieSocketAddress>> ensBuilder
+            = ImmutableSortedMap.<Long, ImmutableList<BookieSocketAddress>>naturalOrder();
+        ensBuilder.put(0L, ImmutableList.copyOf(ensemble));
+
+        metadata = metadataBuilder.setEnsembles(ensBuilder.build()).build();
 
         // create a ledger with metadata
         bk.getLedgerManager().createLedger(metadata, this);
@@ -118,16 +130,18 @@ class LedgerCreateOp implements GenericCallback<Long> {
      * Callback when created ledger.
      */
     @Override
-    public void operationComplete(int rc, Long ledgerId) {
+    public void operationComplete(int rc, LedgerManager.LedgerIdAndMetadataVersion idAndVersion) {
         if (BKException.Code.OK != rc) {
             createComplete(rc, null);
             return;
         }
 
+        LedgerMetadata newMetadata = LedgerMetadata.copyFrom(metadata)
+            .setVersion(idAndVersion.getMetadataVersion()).build();
         try {
-            lh = new LedgerHandle(bk, ledgerId, metadata, digestType, passwd);
+            lh = new LedgerHandle(bk, idAndVersion.getLedgerId(), newMetadata, digestType, passwd);
         } catch (GeneralSecurityException e) {
-            LOG.error("Security exception while creating ledger: " + ledgerId, e);
+            LOG.error("Security exception while creating ledger: " + idAndVersion.getLedgerId(), e);
             createComplete(BKException.Code.DigestNotInitializedException, null);
             return;
         } catch (NumberFormatException e) {

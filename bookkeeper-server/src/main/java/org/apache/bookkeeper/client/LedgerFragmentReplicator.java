@@ -19,6 +19,9 @@
  */
 package org.apache.bookkeeper.client;
 
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedMap;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -26,7 +29,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-
+import java.util.Map;
 import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookieProtocol;
@@ -34,8 +37,8 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.MultiCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.util.OrderedSafeExecutor.OrderedSafeGenericCallback;
+import org.apache.bookkeeper.versioning.Version;
 import org.apache.zookeeper.AsyncCallback;
-import org.apache.zookeeper.KeeperException.Code;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -342,13 +345,30 @@ public class LedgerFragmentReplicator {
          * Update the ledger metadata's ensemble info to point to the new
          * bookie.
          */
-        ArrayList<BookieSocketAddress> ensemble = lh.getLedgerMetadata()
-                .getEnsembles().get(fragmentStartId);
+        LedgerMetadata curMetadata = lh.getLedgerMetadata();
+        List<BookieSocketAddress> ensemble = new ArrayList<>(
+                curMetadata.getEnsembles().get(fragmentStartId));
+
         int deadBookieIndex = ensemble.indexOf(oldBookie);
         ensemble.remove(deadBookieIndex);
         ensemble.add(deadBookieIndex, newBookie);
-        lh.writeLedgerConfig(new UpdateEnsembleCb(ensembleUpdatedCb,
-                fragmentStartId, lh, oldBookie, newBookie));
+
+        LedgerMetadata.Builder builder = LedgerMetadata.copyFrom(curMetadata);
+        ImmutableSortedMap.Builder<Long, ImmutableList<BookieSocketAddress>> ensBuilder
+            = ImmutableSortedMap.naturalOrder();
+        for (Map.Entry<Long, ImmutableList<BookieSocketAddress>> e
+                 : curMetadata.getEnsembles().entrySet()) {
+            if (e.getKey() != fragmentStartId) {
+                ensBuilder.put(e.getKey(), e.getValue());
+            }
+        }
+        ensBuilder.put(fragmentStartId, ImmutableList.copyOf(ensemble));
+        builder.setEnsembles(ensBuilder.build());
+
+        LedgerMetadata newMetadata = builder.build();
+        lh.writeLedgerConfig(newMetadata, new UpdateEnsembleCb(ensembleUpdatedCb,
+                                     fragmentStartId, lh,
+                                     curMetadata, newMetadata, oldBookie, newBookie));
     }
 
     /**
@@ -356,60 +376,74 @@ public class LedgerFragmentReplicator {
      * MetadataVersionException and update ensemble again. On successfull
      * updation, it will also notify to super call back
      */
-    private static class UpdateEnsembleCb implements GenericCallback<Void> {
+    private static class UpdateEnsembleCb implements GenericCallback<Version> {
         final AsyncCallback.VoidCallback ensembleUpdatedCb;
         final LedgerHandle lh;
         final long fragmentStartId;
+        final LedgerMetadata curMetadata;
+        final LedgerMetadata newMetadata;
         final BookieSocketAddress oldBookie;
         final BookieSocketAddress newBookie;
 
         public UpdateEnsembleCb(AsyncCallback.VoidCallback ledgerFragmentsMcb,
                 long fragmentStartId, LedgerHandle lh,
+                LedgerMetadata curMetadata, LedgerMetadata newMetadata,
                 BookieSocketAddress oldBookie, BookieSocketAddress newBookie) {
             this.ensembleUpdatedCb = ledgerFragmentsMcb;
             this.lh = lh;
             this.fragmentStartId = fragmentStartId;
+            this.curMetadata = curMetadata;
+            this.newMetadata = newMetadata;
             this.newBookie = newBookie;
             this.oldBookie = oldBookie;
         }
 
         @Override
-        public void operationComplete(int rc, Void result) {
+        public void operationComplete(int rc, Version version) {
+            GenericCallback<LedgerMetadata> rereadCb
+                = new OrderedSafeGenericCallback<LedgerMetadata>(
+                        lh.bk.mainWorkerPool, lh.getId()) {
+                @Override
+                public void safeOperationComplete(int rc,
+                        LedgerMetadata readMeta) {
+                    if (rc != BKException.Code.OK) {
+                        LOG.error("Error reading updated ledger metadata for ledger "
+                                  + lh.getId());
+                        ensembleUpdatedCb.processResult(rc, null,
+                                                        null);
+                    } else {
+                        lh.metadataRef.compareAndSet(curMetadata, readMeta);
+                        updateEnsembleInfo(ensembleUpdatedCb,
+                                           fragmentStartId, lh, oldBookie,
+                                           newBookie);
+                    }
+                }
+            };
             if (rc == BKException.Code.MetadataVersionException) {
                 LOG.warn("Two fragments attempted update at once; ledger id: "
                         + lh.getId() + " startid: " + fragmentStartId);
                 // try again, the previous success (with which this has
                 // conflicted) will have updated the stat other operations
                 // such as (addEnsemble) would update it too.
-                lh
-                        .rereadMetadata(new OrderedSafeGenericCallback<LedgerMetadata>(
-                                lh.bk.mainWorkerPool, lh.getId()) {
-                            @Override
-                            public void safeOperationComplete(int rc,
-                                    LedgerMetadata newMeta) {
-                                if (rc != BKException.Code.OK) {
-                                    LOG
-                                            .error("Error reading updated ledger metadata for ledger "
-                                                    + lh.getId());
-                                    ensembleUpdatedCb.processResult(rc, null,
-                                            null);
-                                } else {
-                                    lh.metadata = newMeta;
-                                    updateEnsembleInfo(ensembleUpdatedCb,
-                                            fragmentStartId, lh, oldBookie,
-                                            newBookie);
-                                }
-                            }
-                        });
+                lh.rereadMetadata(rereadCb);
                 return;
             } else if (rc != BKException.Code.OK) {
                 LOG.error("Error updating ledger config metadata for ledgerId "
                         + lh.getId() + " : " + BKException.getMessage(rc));
             } else {
-                LOG.info("Updated ZK for ledgerId: (" + lh.getId() + " : "
-                        + fragmentStartId
-                        + ") to point ledger fragments from old dead bookie: ("
-                        + oldBookie + ") to new bookie: (" + newBookie + ")");
+                LedgerMetadata newMetadata2 = LedgerMetadata.copyFrom(newMetadata)
+                    .setVersion(version).build();
+                if (!lh.metadataRef.compareAndSet(curMetadata, newMetadata2)) {
+                    updateEnsembleInfo(ensembleUpdatedCb,
+                                       fragmentStartId, lh, oldBookie,
+                                       newBookie);
+                    return;
+                } else {
+                    LOG.info("Updated ZK for ledgerId: (" + lh.getId() + " : "
+                             + fragmentStartId
+                             + ") to point ledger fragments from old dead bookie: ("
+                             + oldBookie + ") to new bookie: (" + newBookie + ")");
+                }
             }
             /*
              * Pass the return code result up the chain with the parent

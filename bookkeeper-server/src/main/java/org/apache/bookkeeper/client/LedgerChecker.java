@@ -19,14 +19,14 @@
  */
 package org.apache.bookkeeper.client;
 
-import java.util.ArrayList;
+
+import com.google.common.collect.ImmutableList;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookieClient;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
@@ -179,8 +179,8 @@ public class LedgerChecker {
         final Set<LedgerFragment> fragments = new HashSet<LedgerFragment>();
 
         Long curEntryId = null;
-        ArrayList<BookieSocketAddress> curEnsemble = null;
-        for (Map.Entry<Long, ArrayList<BookieSocketAddress>> e : lh
+        ImmutableList<BookieSocketAddress> curEnsemble = null;
+        for (Map.Entry<Long, ImmutableList<BookieSocketAddress>> e : lh
                 .getLedgerMetadata().getEnsembles().entrySet()) {
             if (curEntryId != null) {
                 for (int i = 0; i < curEnsemble.size(); i++) {

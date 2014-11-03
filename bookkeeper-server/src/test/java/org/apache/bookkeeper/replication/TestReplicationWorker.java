@@ -19,6 +19,13 @@
  */
 package org.apache.bookkeeper.replication;
 
+
+
+import com.google.common.collect.ImmutableList;
+import java.net.InetAddress;
+import java.util.Enumeration;
+import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.ClientUtil;
@@ -38,13 +45,6 @@ import org.apache.zookeeper.ZooKeeper;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.Map.Entry;
-import java.util.Set;
-
 import static org.junit.Assert.*;
 
 /**
@@ -575,10 +575,10 @@ public class TestReplicationWorker extends MultiLedgerManagerTestCase {
     private void killAllBookies(LedgerHandle lh, BookieSocketAddress excludeBK)
             throws Exception {
         // Killing all bookies except newly replicated bookie
-        Set<Entry<Long, ArrayList<BookieSocketAddress>>> entrySet = LedgerHandleAdapter
+        Set<Entry<Long, ImmutableList<BookieSocketAddress>>> entrySet = LedgerHandleAdapter
                 .getLedgerMetadata(lh).getEnsembles().entrySet();
-        for (Entry<Long, ArrayList<BookieSocketAddress>> entry : entrySet) {
-            ArrayList<BookieSocketAddress> bookies = entry.getValue();
+        for (Entry<Long, ImmutableList<BookieSocketAddress>> entry : entrySet) {
+            ImmutableList<BookieSocketAddress> bookies = entry.getValue();
             for (BookieSocketAddress bookie : bookies) {
                 if (bookie.equals(excludeBK)) {
                     continue;

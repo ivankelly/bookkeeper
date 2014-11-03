@@ -21,7 +21,7 @@ package org.apache.bookkeeper.client;
  *
  */
 
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
@@ -285,7 +285,7 @@ public class TestSpeculativeRead extends BaseTestCase {
 
         LedgerHandle l = bkspec.openLedger(id, digestType, passwd);
 
-        ArrayList<BookieSocketAddress> ensemble = l.getLedgerMetadata().getEnsembles().get(0L);
+        List<BookieSocketAddress> ensemble = l.getLedgerMetadata().getEnsembles().get(0L);
         Set<BookieSocketAddress> allHosts = new HashSet<BookieSocketAddress>(ensemble);
         Set<BookieSocketAddress> noHost = new HashSet<BookieSocketAddress>();
         Set<BookieSocketAddress> secondHostOnly = new HashSet<BookieSocketAddress>();

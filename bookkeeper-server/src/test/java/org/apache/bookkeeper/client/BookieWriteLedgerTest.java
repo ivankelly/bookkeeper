@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Random;
+import java.util.List;
 
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
@@ -109,7 +110,7 @@ public class BookieWriteLedgerTest extends
         startNewBookie();
 
         // Shutdown three bookies in the last ensemble and continue writing
-        ArrayList<BookieSocketAddress> ensemble = lh.getLedgerMetadata()
+        List<BookieSocketAddress> ensemble = lh.getLedgerMetadata()
                 .getEnsembles().entrySet().iterator().next().getValue();
         killBookie(ensemble.get(0));
         killBookie(ensemble.get(1));
@@ -158,7 +159,7 @@ public class BookieWriteLedgerTest extends
         startNewBookie();
 
         // Shutdown three bookies in the last ensemble and continue writing
-        ArrayList<BookieSocketAddress> ensemble = lh.getLedgerMetadata()
+        List<BookieSocketAddress> ensemble = lh.getLedgerMetadata()
                 .getEnsembles().entrySet().iterator().next().getValue();
         killBookie(ensemble.get(0));
         killBookie(ensemble.get(1));

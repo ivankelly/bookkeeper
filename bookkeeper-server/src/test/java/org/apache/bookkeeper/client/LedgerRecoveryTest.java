@@ -181,7 +181,7 @@ public class LedgerRecoveryTest extends BaseTestCase {
         // kill first bookie server to start a fake one to simulate a slow bookie
         // and failed to add entry on crash
         // until write succeed
-        BookieSocketAddress host = beforelh.getLedgerMetadata().currentEnsemble.get(slowBookieIdx);
+        BookieSocketAddress host = beforelh.getLedgerMetadata().getCurrentEnsemble().get(slowBookieIdx);
         ServerConfiguration conf = killBookie(host);
 
         Bookie fakeBookie = new Bookie(conf) {
@@ -255,7 +255,7 @@ public class LedgerRecoveryTest extends BaseTestCase {
         bs.add(startBookie(conf, deadBookie1));
 
         // kill first bookie server
-        BookieSocketAddress bookie1 = lhbefore.getLedgerMetadata().currentEnsemble.get(0);
+        BookieSocketAddress bookie1 = lhbefore.getLedgerMetadata().getCurrentEnsemble().get(0);
         ServerConfiguration conf1 = killBookie(bookie1);
 
         // Try to recover and fence the ledger after killing one bookie in the
@@ -270,7 +270,7 @@ public class LedgerRecoveryTest extends BaseTestCase {
         // restart the first server, kill the second
         bsConfs.add(conf1);
         bs.add(startBookie(conf1));
-        BookieSocketAddress bookie2 = lhbefore.getLedgerMetadata().currentEnsemble.get(1);
+        BookieSocketAddress bookie2 = lhbefore.getLedgerMetadata().getCurrentEnsemble().get(1);
         ServerConfiguration conf2 = killBookie(bookie2);
 
         // using async, because this could trigger an assertion
@@ -336,7 +336,7 @@ public class LedgerRecoveryTest extends BaseTestCase {
         bs.add(startBookie(conf, deadBookie1));
 
         // kill first bookie server
-        BookieSocketAddress bookie1 = lhbefore.getLedgerMetadata().currentEnsemble.get(0);
+        BookieSocketAddress bookie1 = lhbefore.getLedgerMetadata().getCurrentEnsemble().get(0);
         killBookie(bookie1);
 
         // Try to recover and fence the ledger after killing one bookie in the
@@ -388,9 +388,9 @@ public class LedgerRecoveryTest extends BaseTestCase {
             fail("Failed to add " + numEntries + " to ledger handle " + lh.getId());
         }
         // kill first 2 bookies to replace bookies
-        BookieSocketAddress bookie1 = lh.getLedgerMetadata().currentEnsemble.get(0);
+        BookieSocketAddress bookie1 = lh.getLedgerMetadata().getCurrentEnsemble().get(0);
         ServerConfiguration conf1 = killBookie(bookie1);
-        BookieSocketAddress bookie2 = lh.getLedgerMetadata().currentEnsemble.get(1);
+        BookieSocketAddress bookie2 = lh.getLedgerMetadata().getCurrentEnsemble().get(1);
         ServerConfiguration conf2 = killBookie(bookie2);
 
         // replace these two bookies

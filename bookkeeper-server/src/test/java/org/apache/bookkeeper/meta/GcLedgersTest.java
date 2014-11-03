@@ -63,13 +63,21 @@ public class GcLedgersTest extends LedgerManagerTestCase {
     /**
      * Create ledgers
      */
-    private void createLedgers(int numLedgers, final Set<Long> createdLedgers) {
+    private void createLedgers(int numLedgers, final Set<Long> createdLedgers)
+            throws Exception {
         final AtomicInteger expected = new AtomicInteger(numLedgers);
         for (int i=0; i<numLedgers; i++) {
-            getLedgerManager().createLedger(new LedgerMetadata(1, 1, 1, DigestType.MAC, "".getBytes()),
-                new GenericCallback<Long>() {
+            LedgerMetadata metadata = LedgerMetadata.newBuilder()
+                .setEnsembleSize(1).setWriteQuorumSize(1).setAckQuorumSize(1)
+                .setDigestType(DigestType.MAC).setPassword("".getBytes())
+                .setEnsembles(buildDummyEnsembles(1))
+                .build();
+            getLedgerManager().createLedger(metadata,
+                new GenericCallback<LedgerManager.LedgerIdAndMetadataVersion>() {
                 @Override
-                public void operationComplete(int rc, Long ledgerId) {
+                public void operationComplete(int rc,
+                        LedgerManager.LedgerIdAndMetadataVersion result) {
+                    Long ledgerId = result.getLedgerId();
                     if (rc == BKException.Code.OK) {
                         activeLedgers.put(ledgerId, true);
                         createdLedgers.add(ledgerId);

@@ -114,7 +114,7 @@ public class TestTryReadLastConfirmed extends BookKeeperClusterTestCase {
             ServerConfiguration[] confs = new ServerConfiguration[ensembleSize - 1];
             for (int j = 0; j < ensembleSize - 1; j++) {
                 int idx = (i + 1 + j) % ensembleSize;
-                confs[j] = killBookie(lh.getLedgerMetadata().currentEnsemble.get(idx));
+                confs[j] = killBookie(lh.getLedgerMetadata().getCurrentEnsemble().get(idx));
             }
 
             final AtomicBoolean success = new AtomicBoolean(false);
@@ -159,7 +159,7 @@ public class TestTryReadLastConfirmed extends BookKeeperClusterTestCase {
             lh.addEntry(("data" + i).getBytes());
         }
         for (int i = 0; i < ensembleSize; i++) {
-            killBookie(lh.getLedgerMetadata().currentEnsemble.get(i));
+            killBookie(lh.getLedgerMetadata().getCurrentEnsemble().get(i));
         }
         final AtomicBoolean success = new AtomicBoolean(false);
         final AtomicInteger numCallbacks = new AtomicInteger(0);

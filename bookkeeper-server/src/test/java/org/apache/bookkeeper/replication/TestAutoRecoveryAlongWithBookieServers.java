@@ -20,12 +20,13 @@
  */
 package org.apache.bookkeeper.replication;
 
+
+
+import com.google.common.collect.ImmutableList;
 import java.net.InetAddress;
-import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Map.Entry;
 import java.util.Set;
-
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
@@ -34,7 +35,6 @@ import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.apache.bookkeeper.util.BookKeeperConstants;
 import org.junit.Test;
-
 import static org.junit.Assert.*;
 
 public class TestAutoRecoveryAlongWithBookieServers extends
@@ -76,10 +76,10 @@ public class TestAutoRecoveryAlongWithBookieServers extends
         }
 
         // Killing all bookies except newly replicated bookie
-        Set<Entry<Long, ArrayList<BookieSocketAddress>>> entrySet = LedgerHandleAdapter
+        Set<Entry<Long, ImmutableList<BookieSocketAddress>>> entrySet = LedgerHandleAdapter
                 .getLedgerMetadata(lh).getEnsembles().entrySet();
-        for (Entry<Long, ArrayList<BookieSocketAddress>> entry : entrySet) {
-            ArrayList<BookieSocketAddress> bookies = entry.getValue();
+        for (Entry<Long, ImmutableList<BookieSocketAddress>> entry : entrySet) {
+            ImmutableList<BookieSocketAddress> bookies = entry.getValue();
             for (BookieSocketAddress bookie : bookies) {
                 if (bookie.equals(newBkAddr)) {
                     continue;

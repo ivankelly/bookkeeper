@@ -102,16 +102,8 @@ public class ConditionalSetTest extends BaseTestCase {
                                         new byte[] { 'a', 'b' });
         LOG.debug("Opened the ledger already");
 
-        /*
-         * Writer tries to close the ledger, and if should fail.
-         */
-        try{
-            lhWrite.close();
-            fail("Should have received an exception when trying to close the ledger.");
-        } catch (BKException e) {
-            /*
-             * Correctly failed to close the ledger
-             */
-        }
+        // should try to close, get a metadata version exception,
+        // read the new metadata and confirm that the ledger is correct length.
+        lhWrite.close();
     }
 }

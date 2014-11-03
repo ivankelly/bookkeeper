@@ -85,8 +85,8 @@ class PendingAddOp implements WriteCallback {
     void sendWriteRequest(int bookieIndex) {
         int flags = isRecoveryAdd ? BookieProtocol.FLAG_RECOVERY_ADD : BookieProtocol.FLAG_NONE;
 
-        lh.bk.bookieClient.addEntry(lh.metadata.currentEnsemble.get(bookieIndex), lh.ledgerId, lh.ledgerKey, entryId, toSend,
-                this, bookieIndex, flags);
+        lh.bk.bookieClient.addEntry(lh.getLedgerMetadata().getCurrentEnsemble().get(bookieIndex),
+                lh.ledgerId, lh.ledgerKey, entryId, toSend, this, bookieIndex, flags);
     }
 
     void unsetSuccessAndSendWriteRequest(int bookieIndex) {

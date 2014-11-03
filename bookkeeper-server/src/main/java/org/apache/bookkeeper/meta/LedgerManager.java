@@ -41,6 +41,19 @@ import org.apache.bookkeeper.versioning.Version;
  */
 public interface LedgerManager extends Closeable {
 
+    class LedgerIdAndMetadataVersion {
+        final long ledgerId;
+        final Version metadataVersion;
+
+        LedgerIdAndMetadataVersion(Long ledgerId, Version metadataVersion) {
+            this.ledgerId = ledgerId;
+            this.metadataVersion = metadataVersion;
+        }
+
+        public long getLedgerId() { return ledgerId; }
+        public Version getMetadataVersion() { return metadataVersion; }
+    }
+
     /**
      * Create a new ledger with provided metadata
      *
@@ -51,7 +64,7 @@ public interface LedgerManager extends Closeable {
      *        {@link BKException.Code.ZKException} return code when can't generate
      *        or extract new ledger id
      */
-    public void createLedger(LedgerMetadata metadata, GenericCallback<Long> cb);
+    public void createLedger(LedgerMetadata metadata, GenericCallback<LedgerIdAndMetadataVersion> cb);
 
     /**
      * Remove a specified ledger metadata by ledgerId and version.
@@ -92,7 +105,7 @@ public interface LedgerManager extends Closeable {
      *          {@link BKException.Code.MetadataVersionException} return code when version doesn't match,
      *          {@link BKException.Code.ZKException} return code when other issues happen.
      */
-    public void writeLedgerMetadata(long ledgerId, LedgerMetadata metadata, GenericCallback<Void> cb);
+    public void writeLedgerMetadata(long ledgerId, LedgerMetadata metadata, GenericCallback<Version> cb);
 
     /**
      * Register the ledger metadata <i>listener</i> on <i>ledgerId</i>.

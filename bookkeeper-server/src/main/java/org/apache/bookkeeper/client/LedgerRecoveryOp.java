@@ -85,7 +85,7 @@ class LedgerRecoveryOp implements ReadCallback, AddCallback {
                             entryToRead = lh.lastAddConfirmed;
                             // keep a copy of ledger metadata before proceeding
                             // ledger recovery
-                            metadataForRecovery = new LedgerMetadata(lh.getLedgerMetadata());
+                            metadataForRecovery = LedgerMetadata.copyFrom(lh.getLedgerMetadata()).build();
                             doRecoveryRead();
                         } else if (rc == BKException.Code.UnauthorizedAccessException) {
                             cb.operationComplete(rc, null);

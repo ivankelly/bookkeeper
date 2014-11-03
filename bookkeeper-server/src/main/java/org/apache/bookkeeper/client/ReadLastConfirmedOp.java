@@ -51,13 +51,13 @@ class ReadLastConfirmedOp implements ReadEntryCallback {
         this.cb = cb;
         this.maxRecoveredData = new RecoveryData(LedgerHandle.INVALID_ENTRY_ID, 0);
         this.lh = lh;
-        this.numResponsesPending = lh.metadata.getEnsembleSize();
+        this.numResponsesPending = lh.getLedgerMetadata().getEnsembleSize();
         this.coverageSet = lh.distributionSchedule.getCoverageSet();
     }
 
     public void initiate() {
-        for (int i = 0; i < lh.metadata.currentEnsemble.size(); i++) {
-            lh.bk.bookieClient.readEntry(lh.metadata.currentEnsemble.get(i),
+        for (int i = 0; i < lh.getLedgerMetadata().getCurrentEnsemble().size(); i++) {
+            lh.bk.bookieClient.readEntry(lh.getLedgerMetadata().getCurrentEnsemble().get(i),
                                          lh.ledgerId,
                                          BookieProtocol.LAST_ADD_CONFIRMED,
                                          this, i);
@@ -65,8 +65,8 @@ class ReadLastConfirmedOp implements ReadEntryCallback {
     }
 
     public void initiateWithFencing() {
-        for (int i = 0; i < lh.metadata.currentEnsemble.size(); i++) {
-            lh.bk.bookieClient.readEntryAndFenceLedger(lh.metadata.currentEnsemble.get(i),
+        for (int i = 0; i < lh.getLedgerMetadata().getCurrentEnsemble().size(); i++) {
+            lh.bk.bookieClient.readEntryAndFenceLedger(lh.getLedgerMetadata().getCurrentEnsemble().get(i),
                                                        lh.ledgerId,
                                                        lh.ledgerKey,
                                                        BookieProtocol.LAST_ADD_CONFIRMED,
@@ -92,7 +92,7 @@ class ReadLastConfirmedOp implements ReadEntryCallback {
                 // still might be able to recover though so continue
                 LOG.error("Mac mismatch for ledger: " + ledgerId + ", entry: " + entryId
                           + " while reading last entry from bookie: "
-                          + lh.metadata.currentEnsemble.get(bookieIndex));
+                          + lh.getLedgerMetadata().getCurrentEnsemble().get(bookieIndex));
             }
         }
 

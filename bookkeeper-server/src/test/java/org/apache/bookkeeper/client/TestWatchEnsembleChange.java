@@ -41,7 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.CountDownLatch;
@@ -85,8 +85,8 @@ public class TestWatchEnsembleChange extends BookKeeperClusterTestCase {
         LedgerHandle readLh = bkc.openLedgerNoRecovery(lh.getId(), digestType, "".getBytes());
         long lastLAC = readLh.getLastAddConfirmed();
         assertEquals(numEntries - 2, lastLAC);
-        ArrayList<BookieSocketAddress> ensemble =
-                lh.getLedgerMetadata().currentEnsemble;
+        List<BookieSocketAddress> ensemble =
+            lh.getLedgerMetadata().getCurrentEnsemble();
         for (BookieSocketAddress addr : ensemble) {
             killBookie(addr);
         }
@@ -111,12 +111,18 @@ public class TestWatchEnsembleChange extends BookKeeperClusterTestCase {
        final CountDownLatch createLatch = new CountDownLatch(1);
        final CountDownLatch removeLatch = new CountDownLatch(1);
 
-       manager.createLedger( new LedgerMetadata(4, 2, 2, digestType, "fpj was here".getBytes()),
-                new BookkeeperInternalCallbacks.GenericCallback<Long>(){
+       LedgerMetadata metadata = LedgerMetadata.newBuilder()
+           .setEnsembleSize(4).setWriteQuorumSize(2).setAckQuorumSize(2)
+           .setDigestType(digestType).setPassword("fpj was here".getBytes())
+           .setEnsembles(buildDummyEnsembles(4))
+           .build();
+
+       manager.createLedger(metadata,
+               new BookkeeperInternalCallbacks.GenericCallback<LedgerManager.LedgerIdAndMetadataVersion>(){
 
            @Override
-           public void operationComplete(int rc, Long result) {
-               bbLedgerId.putLong(result);
+           public void operationComplete(int rc, LedgerManager.LedgerIdAndMetadataVersion result) {
+               bbLedgerId.putLong(result.getLedgerId());
                bbLedgerId.flip();
                createLatch.countDown();
            }

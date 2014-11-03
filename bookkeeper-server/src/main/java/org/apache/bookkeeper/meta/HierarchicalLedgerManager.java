@@ -86,7 +86,8 @@ class HierarchicalLedgerManager extends AbstractZkLedgerManager {
     }
 
     @Override
-    public void createLedger(final LedgerMetadata metadata, final GenericCallback<Long> ledgerCb) {
+    public void createLedger(final LedgerMetadata metadata,
+            final GenericCallback<LedgerManager.LedgerIdAndMetadataVersion> ledgerCb) {
         ZkUtils.asyncCreateFullPathOptimistic(zk, idGenPath, new byte[0], Ids.OPEN_ACL_UNSAFE,
             CreateMode.EPHEMERAL_SEQUENTIAL, new StringCallback() {
             @Override
@@ -119,9 +120,9 @@ class HierarchicalLedgerManager extends AbstractZkLedgerManager {
                                       KeeperException.create(KeeperException.Code.get(rc), path));
                             ledgerCb.operationComplete(BKException.Code.ZKException, null);
                         } else {
-                            // update version
-                            metadata.setVersion(new ZkVersion(0));
-                            ledgerCb.operationComplete(BKException.Code.OK, lid);
+                            ledgerCb.operationComplete(BKException.Code.OK,
+                                    new LedgerManager.LedgerIdAndMetadataVersion(lid,
+                                            new ZkVersion(0)));
                         }
                     }
                 };

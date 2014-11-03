@@ -20,12 +20,13 @@
  */
 package org.apache.bookkeeper.replication;
 
-import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
-import org.apache.bookkeeper.test.TestCallbacks;
 
-import java.util.List;
-import org.apache.bookkeeper.net.BookieSocketAddress;
-import org.apache.bookkeeper.zookeeper.ZooKeeperWatcherBase;
+
+
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedMap;
+import java.util.Map;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.LedgerHandleAdapter;
@@ -35,17 +36,19 @@ import org.apache.bookkeeper.conf.TestBKConfiguration;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerUnderreplicationManager;
-
+import org.apache.bookkeeper.net.BookieSocketAddress;
+import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
+import org.apache.bookkeeper.test.TestCallbacks;
 import org.apache.bookkeeper.util.ZkUtils;
-
+import org.apache.bookkeeper.versioning.Version;
+import org.apache.bookkeeper.zookeeper.ZooKeeperWatcherBase;
 import org.apache.zookeeper.ZooKeeper;
-import org.junit.Before;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.assertEquals;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import static org.junit.Assert.assertEquals;
 
 /**
  * This test verifies that the period check on the auditor
@@ -104,10 +107,23 @@ public class AuditorPeriodicBookieCheckTest extends BookKeeperClusterTestCase {
 
         LedgerHandle lh = bkc.createLedger(3, 3, DigestType.CRC32, "passwd".getBytes());
         LedgerMetadata md = LedgerHandleAdapter.getLedgerMetadata(lh);
-        List<BookieSocketAddress> ensemble = md.getEnsembles().get(0L);
-        ensemble.set(0, new BookieSocketAddress("1.1.1.1", 1000));
 
-        TestCallbacks.GenericCallbackFuture<Void> cb = new TestCallbacks.GenericCallbackFuture<Void>();
+        LedgerMetadata.Builder builder = LedgerMetadata.copyFrom(md);
+        ImmutableSortedMap.Builder<Long, ImmutableList<BookieSocketAddress>> ensembles
+            = ImmutableSortedMap.<Long, ImmutableList<BookieSocketAddress>>naturalOrder();
+        for (Map.Entry<Long, ImmutableList<BookieSocketAddress>> e : md.getEnsembles().entrySet()) {
+            ImmutableList<BookieSocketAddress> oldEnsemble = e.getValue();
+            ImmutableList<BookieSocketAddress> newEnsemble = ImmutableList.<BookieSocketAddress>builder()
+                .add(new BookieSocketAddress("1.1.1.1", 1000)).add(oldEnsemble.get(1)).add(oldEnsemble.get(2))
+                .build();
+            ensembles.put(e.getKey(), newEnsemble);
+        }
+        builder.setEnsembles(ensembles.build());
+        md = builder.build();
+        LedgerHandleAdapter.updateLedgerMetadata(lh, md);
+
+        TestCallbacks.GenericCallbackFuture<Version> cb
+            = new TestCallbacks.GenericCallbackFuture<Version>();
         ledgerManager.writeLedgerMetadata(lh.getId(), md, cb);
         cb.get();
 

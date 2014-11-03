@@ -99,14 +99,15 @@ public class CleanupLedgerManager implements LedgerManager {
 
     @Override
     public void createLedger(LedgerMetadata metadata,
-                             GenericCallback<Long> cb) {
+                             GenericCallback<LedgerManager.LedgerIdAndMetadataVersion> cb) {
         closeLock.readLock().lock();
         try {
             if (closed) {
                 cb.operationComplete(BKException.Code.ClientClosedException, null);
                 return;
             }
-            underlying.createLedger(metadata, new CleanupGenericCallback<Long>(cb));
+            underlying.createLedger(metadata,
+                    new CleanupGenericCallback<LedgerManager.LedgerIdAndMetadataVersion>(cb));
         } finally {
             closeLock.readLock().unlock();
         }
@@ -145,7 +146,7 @@ public class CleanupLedgerManager implements LedgerManager {
 
     @Override
     public void writeLedgerMetadata(long ledgerId, LedgerMetadata metadata,
-                                    GenericCallback<Void> cb) {
+                                    GenericCallback<Version> cb) {
         closeLock.readLock().lock();
         try {
             if (closed) {
@@ -153,7 +154,7 @@ public class CleanupLedgerManager implements LedgerManager {
                 return;
             }
             underlying.writeLedgerMetadata(ledgerId, metadata,
-                    new CleanupGenericCallback<Void>(cb));
+                    new CleanupGenericCallback<Version>(cb));
         } finally {
             closeLock.readLock().unlock();
         }

@@ -20,7 +20,6 @@
  */
 package org.apache.bookkeeper.client;
 
-import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -80,12 +79,12 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
         int firstError = BKException.Code.OK;
         int numMissedEntryReads = 0;
 
-        final ArrayList<BookieSocketAddress> ensemble;
+        final List<BookieSocketAddress> ensemble;
         final List<Integer> writeSet;
         final BitSet sentReplicas;
         final BitSet erroredReplicas;
 
-        LedgerEntryRequest(ArrayList<BookieSocketAddress> ensemble, long lId, long eId) {
+        LedgerEntryRequest(List<BookieSocketAddress> ensemble, long lId, long eId) {
             super(lId, eId);
 
             this.ensemble = ensemble;
@@ -273,7 +272,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
     }
 
     protected LedgerMetadata getLedgerMetadata() {
-        return lh.metadata;
+        return lh.getLedgerMetadata();
     }
 
     private void cancelSpeculativeTask(boolean mayInterruptIfRunning) {
@@ -286,7 +285,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
     public void initiate() throws InterruptedException {
         long nextEnsembleChange = startEntryId, i = startEntryId;
         this.requestTimeMillis = MathUtils.now();
-        ArrayList<BookieSocketAddress> ensemble = null;
+        List<BookieSocketAddress> ensemble = null;
 
         if (speculativeReadTimeout > 0) {
             Runnable readTask = new Runnable() {

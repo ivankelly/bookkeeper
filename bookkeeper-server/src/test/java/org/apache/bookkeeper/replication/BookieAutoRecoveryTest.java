@@ -19,13 +19,16 @@
  */
 package org.apache.bookkeeper.replication;
 
+
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedMap;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.BookKeeperTestClient;
@@ -417,9 +420,9 @@ public class BookieAutoRecoveryTest extends BookKeeperClusterTestCase {
         List<LedgerHandle> listOfLedgerHandle = createLedgersAndAddEntries(1, 5);
         LedgerHandle lh = listOfLedgerHandle.get(0);
         int ledgerReplicaIndex = 0;
-        final SortedMap<Long, ArrayList<BookieSocketAddress>> ensembles = LedgerHandleAdapter
+        final SortedMap<Long, ImmutableList<BookieSocketAddress>> ensembles = LedgerHandleAdapter
                 .getLedgerMetadata(lh).getEnsembles();
-        final ArrayList<BookieSocketAddress> bkAddresses = ensembles.get(0L);
+        final List<BookieSocketAddress> bkAddresses = ensembles.get(0L);
         BookieSocketAddress replicaToKillAddr = bkAddresses.get(0);
         for (BookieSocketAddress bookieSocketAddress : bkAddresses) {
             if(!isCreatedFromIp(bookieSocketAddress)){
@@ -496,9 +499,9 @@ public class BookieAutoRecoveryTest extends BookKeeperClusterTestCase {
         List<LedgerHandle> listOfLedgerHandle = createLedgersAndAddEntries(1, 5);
         LedgerHandle lh = listOfLedgerHandle.get(0);
         int ledgerReplicaIndex = 0;
-        final SortedMap<Long, ArrayList<BookieSocketAddress>> ensembles = LedgerHandleAdapter
+        final ImmutableSortedMap<Long, ImmutableList<BookieSocketAddress>> ensembles = LedgerHandleAdapter
                 .getLedgerMetadata(lh).getEnsembles();
-        final ArrayList<BookieSocketAddress> bkAddresses = ensembles.get(0L);
+        final List<BookieSocketAddress> bkAddresses = ensembles.get(0L);
         BookieSocketAddress replicaToKillAddr = bkAddresses.get(0);
         for (BookieSocketAddress bookieSocketAddress : bkAddresses) {
             if (isCreatedFromIp(bookieSocketAddress)) {
@@ -552,7 +555,7 @@ public class BookieAutoRecoveryTest extends BookKeeperClusterTestCase {
 
     private int getReplicaIndexInLedger(LedgerHandle lh,
  BookieSocketAddress replicaToKill) {
-        SortedMap<Long, ArrayList<BookieSocketAddress>> ensembles = LedgerHandleAdapter
+        ImmutableSortedMap<Long, ImmutableList<BookieSocketAddress>> ensembles = LedgerHandleAdapter
                 .getLedgerMetadata(lh).getEnsembles();
         int ledgerReplicaIndex = -1;
         for (BookieSocketAddress addr : ensembles.get(0L)) {

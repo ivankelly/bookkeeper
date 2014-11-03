@@ -20,6 +20,21 @@
  */
 package org.apache.bookkeeper.client;
 
+
+
+import com.google.common.collect.ImmutableList;
+import java.io.IOException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Random;
+import java.util.UUID;
 import org.apache.bookkeeper.client.AsyncCallback.OpenCallback;
 import org.apache.bookkeeper.client.AsyncCallback.RecoverCallback;
 import org.apache.bookkeeper.client.BookKeeper.SyncOpenCallback;
@@ -35,27 +50,13 @@ import org.apache.bookkeeper.util.ZkUtils;
 import org.apache.bookkeeper.zookeeper.ZooKeeperWatcherBase;
 import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.Code;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZKUtil;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Random;
-import java.util.UUID;
-
 import static com.google.common.base.Charsets.UTF_8;
 
 /**
@@ -556,7 +557,7 @@ public class BookKeeperAdmin {
                 if (!lm.isClosed() &&
                     lm.getEnsembles().size() > 0) {
                     Long lastKey = lm.getEnsembles().lastKey();
-                    ArrayList<BookieSocketAddress> lastEnsemble = lm.getEnsembles().get(lastKey);
+                    List<BookieSocketAddress> lastEnsemble = lm.getEnsembles().get(lastKey);
                     // the original write has not removed faulty bookie from
                     // current ledger ensemble. to avoid data loss issue in
                     // the case of concurrent updates to the ensemble composition,
@@ -600,10 +601,11 @@ public class BookKeeperAdmin {
                  */
                 Map<Long, Long> ledgerFragmentsRange = new HashMap<Long, Long>();
                 Long curEntryId = null;
-                for (Map.Entry<Long, ArrayList<BookieSocketAddress>> entry : lh.getLedgerMetadata().getEnsembles()
+                for (Map.Entry<Long, ImmutableList<BookieSocketAddress>> entry : lh.getLedgerMetadata().getEnsembles()
                          .entrySet()) {
-                    if (curEntryId != null)
+                    if (curEntryId != null) {
                         ledgerFragmentsRange.put(curEntryId, entry.getKey() - 1);
+                    }
                     curEntryId = entry.getKey();
                     if (entry.getValue().contains(bookieSrc)) {
                         /*
@@ -660,7 +662,7 @@ public class BookKeeperAdmin {
                     try {
                         LedgerFragmentReplicator.SingleFragmentCallback cb = new LedgerFragmentReplicator.SingleFragmentCallback(
                                                                                ledgerFragmentsMcb, lh, startEntryId, bookieSrc, newBookie);
-                        ArrayList<BookieSocketAddress> currentEnsemble = lh.getLedgerMetadata().getEnsemble(
+                        List<BookieSocketAddress> currentEnsemble = lh.getLedgerMetadata().getEnsemble(
                                 startEntryId);
                         int bookieIndex = -1;
                         if (null != currentEnsemble) {
