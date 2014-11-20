@@ -22,6 +22,10 @@
 package org.apache.bookkeeper.client;
 
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import com.google.common.collect.Sets;
+
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -59,5 +63,74 @@ public class RoundRobinDistributionScheduleTest {
         assertFalse("Shouldn't cover yet", covSet.addBookieAndCheckCovered(4));
         assertFalse("Shouldn't cover yet", covSet.addBookieAndCheckCovered(0));
         assertTrue("Should cover now", covSet.addBookieAndCheckCovered(2));
+    }
+
+    boolean[] buildAvailable(int ensemble, Set<Integer> responses) {
+        boolean[] available = new boolean[ensemble];
+        for (int i = 0; i < ensemble; i++) {
+            if (responses.contains(i)) {
+                available[i] = false;
+            } else {
+                available[i] = true;
+            }
+        }
+        return available;
+    }
+
+    boolean canGetAckQuorum(int ensemble, int writeQuorum, int ackQuorum, boolean[] available) {
+        for (int i = 0; i < ensemble; i++) {
+            int count = 0;
+            for (int j = 0; j < writeQuorum; j++) {
+                if (available[(i+j)%ensemble]) {
+                    count++;
+                }
+            }
+            if (count >= ackQuorum) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int testConfiguration(int ensemble, int writeQuorum, int ackQuorum) {
+        RoundRobinDistributionSchedule schedule = new RoundRobinDistributionSchedule(
+                writeQuorum, ackQuorum, ensemble);
+        Set<Integer> indexes = new HashSet<Integer>();
+        for (int i = 0; i < ensemble; i++) {
+            indexes.add(i);
+        }
+        Set<Set<Integer>> subsets = Sets.powerSet(indexes);
+
+        int errors = 0;
+        for (Set<Integer> subset : subsets) {
+            DistributionSchedule.QuorumCoverageSet covSet = schedule.getCoverageSet();
+            boolean covSetSays = false;
+            for (Integer i : subset) {
+                covSetSays = covSet.addBookieAndCheckCovered(i);
+            }
+
+            boolean[] nodesAvailable = buildAvailable(ensemble, subset);
+            boolean canGetAck = canGetAckQuorum(ensemble, writeQuorum, ackQuorum, nodesAvailable);
+            if (canGetAck == covSetSays) {
+                LOG.error("e{}:w{}:a{} available {}    canGetAck {} covSetSays {}",
+                          new Object[] { ensemble, writeQuorum, ackQuorum,
+                                         nodesAvailable, canGetAck, covSetSays });
+                errors++;
+            }
+        }
+        return errors;
+    }
+
+    @Test(timeout=60000)
+    public void testCoverageSets() {
+        int errors = 0;
+        for (int e = 6; e > 0; e--) {
+            for (int w = e; w > 0; w--) {
+                for (int a = w; a > 0; a--) {
+                    errors += testConfiguration(e, w, a);
+                }
+            }
+        }
+        assertEquals("Should be no errors", 0, errors);
     }
 }
