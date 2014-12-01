@@ -20,18 +20,20 @@
  */
 package org.apache.bookkeeper.statemachine;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.io.IOException;
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
 
 public class StateMachineLogParser {
 
@@ -107,7 +109,6 @@ public class StateMachineLogParser {
         for (List<String> transitions : fsms.values()) {
             String currentEvent = null;
             for (String s : transitions) {
-                //System.err.println(s);
                 Matcher m = eventPattern.matcher(s);
                 if (m.find()) {
                     currentEvent = m.group(1);
@@ -133,6 +134,33 @@ public class StateMachineLogParser {
         return tuples;
     }
 
+    static Set<Tuple> reachableFromInitState(Set<Tuple> tuples, String initState) {
+        Set<Tuple> newtuples = new HashSet<Tuple>();
+        Set<String> processed = new HashSet<String>();
+
+        Map<String, List<Tuple>> graph = new HashMap<>();
+        for (Tuple t : tuples) {
+            if (!graph.containsKey(t.state1)) {
+                graph.put(t.state1, new ArrayList<Tuple>());
+            }
+            graph.get(t.state1).add(t);
+        }
+        Queue<String> next = new ArrayDeque<String>();
+        next.add(initState);
+        while (next.size() > 0) {
+            String node = next.remove();
+            List<Tuple> outEdges = graph.get(node);
+            if (!processed.contains(node) && outEdges != null) {
+                for (Tuple t : outEdges) {
+                    newtuples.add(t);
+                    next.add(t.state2);
+                }
+                processed.add(node);
+            }
+        }
+        return newtuples;
+    }
+
     static void drawDotGraph(Set<Tuple> tuples) {
         Set<String> states = new HashSet<String>();
         for (Tuple t : tuples) {
@@ -142,7 +170,7 @@ public class StateMachineLogParser {
 
         System.out.println("digraph finite_state_machine {");
         for (String s : states) {
-            System.out.println("\tnode [ shape = circle ] " + s + ";");
+            System.out.println("\tnode [ shape = box ] " + s + ";");
         }
         for (Tuple t : tuples) {
             System.out.println("\t" + t.state1 + " -> " + t.state2 + " [ label = \"" + t.event + "\" ];");
@@ -152,12 +180,15 @@ public class StateMachineLogParser {
 
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
-            System.out.println("Usage: StateMachineLogParser <logfile> | dot -Tsvg ");
+            System.err.println("Usage: StateMachineLogParser <logfile> [initstate] | dot -Tsvg ");
             System.exit(-1);
         }
         BufferedReader f = new BufferedReader(new InputStreamReader(new FileInputStream(args[0])));
         Map<String,List<String>> fsms = getFsmEventMap(f);
         Set<Tuple> tuples = getStateTuples(fsms);
+        if (args.length == 2) {
+            tuples = reachableFromInitState(tuples, args[1]);
+        }
         drawDotGraph(tuples);
     }
 }
