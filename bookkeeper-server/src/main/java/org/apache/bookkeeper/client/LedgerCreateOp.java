@@ -141,7 +141,7 @@ class LedgerCreateOp implements GenericCallback<LedgerManager.LedgerIdAndMetadat
         try {
             lh = new LedgerHandle(bk, idAndVersion.getLedgerId(), newMetadata, digestType, passwd);
         } catch (GeneralSecurityException e) {
-            LOG.error("Security exception while creating ledger: " + idAndVersion.getLedgerId(), e);
+            LOG.error("Security exception while creating ledger: {}", idAndVersion.getLedgerId(), e);
             createComplete(BKException.Code.DigestNotInitializedException, null);
             return;
         } catch (NumberFormatException e) {

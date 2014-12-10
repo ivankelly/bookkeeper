@@ -102,8 +102,10 @@ public class ConditionalSetTest extends BaseTestCase {
                                         new byte[] { 'a', 'b' });
         LOG.debug("Opened the ledger already");
 
-        // should try to close, get a metadata version exception,
-        // read the new metadata and confirm that the ledger is correct length.
+        // should try to close, get a metadata version exception internally,
+        // read the new metadata and confirm that the ledger is correct length
+        // and then complete the close to the client, since all assumptions that
+        // the client may have held still hold
         lhWrite.close();
     }
 }

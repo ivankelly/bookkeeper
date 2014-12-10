@@ -53,7 +53,10 @@ class ReadOnlyLedgerHandle extends LedgerHandle implements LedgerMetadataListene
 
         @Override
         public void safeRun() {
-            metadataRef.compareAndSet(currentMetadata, newMetadata);
+            if (!metadataRef.compareAndSet(currentMetadata, newMetadata)) {
+                LOG.warn("Failed to update metadata on ledger handle {} old {} new {}",
+                         new Object[] { ledgerId, currentMetadata, newMetadata });
+            }
         }
     }
 

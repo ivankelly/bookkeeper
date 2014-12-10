@@ -27,6 +27,8 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Queue;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -82,6 +84,8 @@ public class LedgerHandle {
 
     final AtomicInteger blockAddCompletions = new AtomicInteger(0);
     final Queue<PendingAddOp> pendingAddOps = new ConcurrentLinkedQueue<PendingAddOp>();
+    // bookie failures currently being handled
+    final Set<BookieFailureEvent> bookieFailures = new HashSet<BookieFailureEvent>();
 
     final Counter ensembleChangeCounter;
     final Counter lacUpdateHitsCounter;
@@ -347,6 +351,7 @@ public class LedgerHandle {
                                             && ((readMetadata.isClosed()
                                                  && readMetadata.getLastEntryId() == lastAddConfirmed)
                                                 || !currentMetadata.isConflictWith(readMetadata))) {
+                                            // doesn't matter if this succeeds or not, retrying anyhow
                                             metadataRef.compareAndSet(currentMetadata, readMetadata);
                                             // retry with the new metadata
                                             asyncCloseInternal(cb, ctx, rc);
@@ -867,19 +872,20 @@ public class LedgerHandle {
         }
     }
 
-    List<BookieFailureEvent> failures = new ArrayList<BookieFailureEvent>();
-    synchronized void handleBookieFailure(final BookieSocketAddress addr, final int bookieIndex) {
+    void handleBookieFailure(final BookieSocketAddress addr, final int bookieIndex) {
         BookieFailureEvent event = new BookieFailureEvent(addr, bookieIndex);
-        if (failures.contains(event)) {
-            return;
+        synchronized (this) {
+            if (bookieFailures.contains(event)) {
+                return;
+            }
+            bookieFailures.add(event);
         }
-        failures.add(event);
         blockAddCompletions.incrementAndGet();
         replaceFailedBookie(event);
     }
 
     synchronized void bookieFailuredHandled(BookieFailureEvent event) {
-        assert(failures.remove(event));
+        assert(bookieFailures.remove(event));
         blockAddCompletions.decrementAndGet();
 
         // the failed bookie has been replaced
@@ -907,12 +913,8 @@ public class LedgerHandle {
                     currentEnsemble, bookieIndex);
             LedgerMetadata.Builder builder = LedgerMetadata.copyFrom(metadata);
             ImmutableSortedMap.Builder<Long, ImmutableList<BookieSocketAddress>> ensembles
-                = ImmutableSortedMap.naturalOrder();
-            for (Map.Entry<Long, ImmutableList<BookieSocketAddress>> e : metadata.getEnsembles().entrySet()) {
-                if (e.getKey() < newEnsembleStartEntry) {
-                    ensembles.put(e.getKey(), e.getValue());
-                }
-            }
+                = ImmutableSortedMap.<Long, ImmutableList<BookieSocketAddress>>naturalOrder()
+                .putAll(metadata.getEnsembles().headMap(newEnsembleStartEntry));
             ensembles.put(newEnsembleStartEntry, newEnsemble);
             builder.setEnsembles(ensembles.build());
 
@@ -1064,9 +1066,13 @@ public class LedgerHandle {
                 LedgerMetadata tmpMetadata = LedgerMetadata.copyFrom(newMetadata).setVersion(version).build();
                 if (rc == BKException.Code.MetadataVersionException) {
                     rereadMetadata(rereadCb);
-                } else if (rc == BKException.Code.OK
-                           && metadataRef.compareAndSet(metadata, tmpMetadata)) {
-                    new LedgerRecoveryOp(LedgerHandle.this, cb).initiate();
+                } else if (rc == BKException.Code.OK) {
+                    if (metadataRef.compareAndSet(metadata, tmpMetadata)) {
+                        new LedgerRecoveryOp(LedgerHandle.this, cb).initiate();
+                    } else {
+                        LOG.error("Concurrent modification of metadata for ledger handle {}. Cannot recover", ledgerId);
+                        cb.operationComplete(BKException.Code.LedgerRecoveryException, null);
+                    }
                 } else {
                     LOG.error("Error writing ledger config " + rc + " of ledger " + ledgerId);
                     cb.operationComplete(rc, null);

@@ -355,13 +355,8 @@ public class LedgerFragmentReplicator {
 
         LedgerMetadata.Builder builder = LedgerMetadata.copyFrom(curMetadata);
         ImmutableSortedMap.Builder<Long, ImmutableList<BookieSocketAddress>> ensBuilder
-            = ImmutableSortedMap.naturalOrder();
-        for (Map.Entry<Long, ImmutableList<BookieSocketAddress>> e
-                 : curMetadata.getEnsembles().entrySet()) {
-            if (e.getKey() != fragmentStartId) {
-                ensBuilder.put(e.getKey(), e.getValue());
-            }
-        }
+            = ImmutableSortedMap.<Long, ImmutableList<BookieSocketAddress>>naturalOrder()
+            .putAll(curMetadata.getEnsembles());
         ensBuilder.put(fragmentStartId, ImmutableList.copyOf(ensemble));
         builder.setEnsembles(ensBuilder.build());
 
@@ -407,8 +402,8 @@ public class LedgerFragmentReplicator {
                 public void safeOperationComplete(int rc,
                         LedgerMetadata readMeta) {
                     if (rc != BKException.Code.OK) {
-                        LOG.error("Error reading updated ledger metadata for ledger "
-                                  + lh.getId());
+                        LOG.error("Error reading updated ledger metadata for ledger {}",
+                                  lh.getId());
                         ensembleUpdatedCb.processResult(rc, null,
                                                         null);
                     } else {
@@ -420,8 +415,8 @@ public class LedgerFragmentReplicator {
                 }
             };
             if (rc == BKException.Code.MetadataVersionException) {
-                LOG.warn("Two fragments attempted update at once; ledger id: "
-                        + lh.getId() + " startid: " + fragmentStartId);
+                LOG.warn("Two fragments attempted update at once; ledger id: {} startid: {}",
+                         lh.getId(), fragmentStartId);
                 // try again, the previous success (with which this has
                 // conflicted) will have updated the stat other operations
                 // such as (addEnsemble) would update it too.
@@ -434,6 +429,7 @@ public class LedgerFragmentReplicator {
                 LedgerMetadata newMetadata2 = LedgerMetadata.copyFrom(newMetadata)
                     .setVersion(version).build();
                 if (!lh.metadataRef.compareAndSet(curMetadata, newMetadata2)) {
+                    LOG.info("Couldn't update(CAS) ledger metadata reference, retrying");
                     updateEnsembleInfo(ensembleUpdatedCb,
                                        fragmentStartId, lh, oldBookie,
                                        newBookie);
