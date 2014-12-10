@@ -78,9 +78,7 @@ public class UpdateLedgerOp {
     public void updateBookieIdInLedgers(final BookieSocketAddress oldBookieId, final BookieSocketAddress newBookieId,
             final int rate, final int limit, final int printMessageCnt) throws BKException, IOException,
             InterruptedException {
-        final AtomicBoolean stop = new AtomicBoolean(false);
         final CountDownLatch latch = new CountDownLatch(1);
-        final UpdateLedgerMetadataCb metaCb = new UpdateLedgerMetadataCb(stop);
         final RateLimiter throttler = RateLimiter.create(rate);
         final Iterator<Long> ledgerItr = admin.listLedgers().iterator();
         ExecutorService executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
@@ -89,6 +87,7 @@ public class UpdateLedgerOp {
                 return new Thread(r, "UpdateLedgerThread");
             }
         });
+        final ExecutorService cbexecutor = Executors.newSingleThreadExecutor();
         executor.submit(new Runnable() {
 
             @Override
@@ -96,11 +95,26 @@ public class UpdateLedgerOp {
                 // iterate through all the ledgers
                 try {
                     long issuedLedgerCnt = 0;
+                    final Set<Future<Void>> outstanding = Collections.newSetFromMap(new ConcurrentHashMap<Future<Void>>());
+                    final AtomicBoolean stop = new AtomicBoolean(false);
                     while (ledgerItr.hasNext() && !stop.get()) {
                         final Long lId = ledgerItr.next();
                         throttler.acquire();
-                        ReadLedgerMetadataCb readCb = new ReadLedgerMetadataCb(bkc, lId, oldBookieId, newBookieId,
-                                metaCb);
+                        final ReadLedgerMetadataCb readCb = new ReadLedgerMetadataCb(bkc, lId, oldBookieId, newBookieId);
+                        outstanding.add(readCb);
+                        readCb.addListener(executor, new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        readCb.get();
+                                        outstanding.remove(readCb);
+                                    } catch (ExecutionException ee) {
+                                        LOG.error("Error updating ledger {}", lId, ee.getCause());
+                                        stop.set(true);
+                                    }
+                                }
+                            });
+
                         bkc.getLedgerManager().readLedgerMetadata(lId, readCb);
                         issuedLedgerCnt++;
                         final long updatedLedgerCnt = metaCb.getUpdatedLedgerCount();
@@ -111,9 +125,9 @@ public class UpdateLedgerOp {
                             break;
                         }
                     }
-                    List<CountDownLatch> ledgersWaitForCompletion = metaCb.ledgersWaitForCompletion;
-                    for (CountDownLatch l : ledgersWaitForCompletion) {
-                        l.await();
+
+                    for (Future<Void> f : outstanding) {
+                        f.get();
                     }
                 } catch (InterruptedException ie) {
                     LOG.error("Interrupted exception while updating ledger", ie);
@@ -166,35 +180,29 @@ public class UpdateLedgerOp {
 
     }
 
-    private final static class ReadLedgerMetadataCb implements GenericCallback<LedgerMetadata> {
+    private final static class ReadLedgerMetadataCb extends AbstractFuture<Void> implements GenericCallback<LedgerMetadata> {
         final BookKeeper bkc;
         final Long ledgerId;
         final BookieSocketAddress curBookieAddr;
         final BookieSocketAddress toBookieAddr;
-        final UpdateLedgerMetadataCb metaCb;
-        final CountDownLatch syncObj;
 
         public ReadLedgerMetadataCb(BookKeeper bkc, Long ledgerId, BookieSocketAddress curBookieAddr,
-                BookieSocketAddress toBookieAddr, UpdateLedgerMetadataCb metaCb) {
+                                    BookieSocketAddress toBookieAddr) {
             this.bkc = bkc;
             this.ledgerId = ledgerId;
             this.curBookieAddr = curBookieAddr;
             this.toBookieAddr = toBookieAddr;
-            this.metaCb = metaCb;
-            this.syncObj = new CountDownLatch(1);
-            metaCb.ledgersWaitForCompletion.add(syncObj);
         }
 
         @Override
         public void operationComplete(int rc, LedgerMetadata metadata) {
             if (BKException.Code.NoSuchLedgerExistsException == rc) {
-                syncObj.countDown();
-                metaCb.ledgersWaitForCompletion.remove(syncObj);
+                set(null);
                 return; // this is OK
             } else if (BKException.Code.OK != rc) {
                 // open ledger failed.
                 LOG.error("Get ledger metadata {} failed. Error code {}", new Object[] { ledgerId, rc });
-                metaCb.operationComplete(rc, syncObj);
+                setException(BKException.create(rc));
                 return;
             }
             boolean updateEnsemble = false;
@@ -206,8 +214,7 @@ public class UpdateLedgerOp {
                 }
             }
             if (!updateEnsemble) {
-                syncObj.countDown();
-                metaCb.ledgersWaitForCompletion.remove(syncObj);
+                set(null);
                 return; // ledger doesn't contains the given curBookieId
             }
             final GenericCallback<Void> writeCb = new GenericCallback<Void>() {
@@ -216,8 +223,10 @@ public class UpdateLedgerOp {
                     if (rc != BKException.Code.OK) {
                         // metadata update failed
                         LOG.error("Ledger {} metadata update failed. Error code {}", new Object[] { ledgerId, rc });
+                        setException(BKException.create(rc));
+                    } else {
+                        set(null);
                     }
-                    metaCb.operationComplete(rc, syncObj);
                 }
             };
             bkc.getLedgerManager().writeLedgerMetadata(ledgerId, metadata, writeCb);
