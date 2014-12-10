@@ -33,6 +33,7 @@ import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.replication.AuditorElector;
+import org.apache.bookkeeper.admin.UpdateLedgerOp;
 import org.apache.bookkeeper.bookie.BookieException.InvalidCookieException;
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogScanner;
 import org.apache.bookkeeper.bookie.Journal.JournalScanner;
@@ -101,6 +102,7 @@ public class BookieShell implements Tool {
     static final String CMD_AUTORECOVERY = "autorecovery";
     static final String CMD_LISTBOOKIES = "listbookies";
     static final String CMD_UPDATECOOKIE = "updatecookie";
+    static final String CMD_UPDATELEDGER = "updateledgers";
     static final String CMD_HELP = "help";
 
     final ServerConfiguration bkConf = new ServerConfiguration();
@@ -1163,13 +1165,6 @@ public class BookieShell implements Tool {
             return 0;
         }
 
-        private boolean getOptionalValue(String optValue, String optName) {
-            if (StringUtils.equals(optValue, optName)) {
-                return true;
-            }
-            return false;
-        }
-
         private boolean verifyCookie(Cookie oldCookie, File dir) throws IOException {
             try {
                 Cookie cookie = Cookie.readFromDirectory(dir);
@@ -1178,6 +1173,94 @@ public class BookieShell implements Tool {
                 return false;
             }
             return true;
+        }
+    }
+
+    /**
+     * Update ledger command
+     */
+    class UpdateLedgerCmd extends MyCommand {
+        Options opts = new Options();
+
+        UpdateLedgerCmd() {
+            super(CMD_UPDATELEDGER);
+            opts.addOption("b", "bookieId", true, "Bookie Id");
+            opts.addOption("s", "bandwidthpersec", false,
+                    "Bandwidth of the no: of ledgers updating per second (default 5 per sec)");
+            opts.addOption("l", "limit", false,
+                    "No: of ledgers selected for updation(default all ledgers). Stop update if reaching limit");
+            opts.addOption("v", "verbose", false, "Print status of the ledger updation (default 0)");
+        }
+
+        @Override
+        Options getOptions() {
+            return opts;
+        }
+
+        @Override
+        String getDescription() {
+            return "Update bookie id in ledgers (this may take a long time)";
+        }
+
+        @Override
+        String getUsage() {
+            return "updateledger -bookieId <hostname|ip> [-bandwidthpersec N] [-limit N] [-verbose N]";
+        }
+
+        @Override
+        int runCmd(CommandLine cmdLine) throws Exception {
+            final String bookieId = cmdLine.getOptionValue("bookieId");
+            if (StringUtils.isBlank(bookieId)) {
+                LOG.error("Invalid argument list!");
+                this.printUsage();
+                return -1;
+            }
+            if (!StringUtils.equals(bookieId, "hostname") && !StringUtils.equals(bookieId, "ip")) {
+                LOG.error("Invalid option value:" + bookieId);
+                this.printUsage();
+                return -1;
+            }
+            boolean useHostName = getOptionalValue(bookieId, "hostname");
+            if (!bkConf.getUseHostNameAsBookieID() && useHostName) {
+                LOG.error("Expects configuration useHostNameAsBookieID=true as the option value passed is 'hostname'");
+                return -1;
+            } else if (bkConf.getUseHostNameAsBookieID() && !useHostName) {
+                LOG.error("Expects configuration useHostNameAsBookieID=false as the option value passed is 'ip'");
+                return -1;
+            }
+            final int rate = getOptionIntValue(cmdLine, "bandwidthpersec", 5);
+            if (rate <= 0) {
+                LOG.error("Invalid bandwidthpersec {}, should be > 0" + rate);
+                return -1;
+            }
+            final int limit = getOptionIntValue(cmdLine, "limit", Integer.MIN_VALUE);
+            if (limit <= 0 && limit != Integer.MIN_VALUE) {
+                LOG.error("Invalid limit {}, should be > 0" + limit);
+                return -1;
+            }
+            final int printMsgCnt = getOptionIntValue(cmdLine, "verbose", Integer.MIN_VALUE);
+            ClientConfiguration conf = new ClientConfiguration();
+            conf.addConfiguration(bkConf);
+            BookKeeper bk = new BookKeeper(conf);
+            BookKeeperAdmin admin = new BookKeeperAdmin(conf);
+            UpdateLedgerOp updateLedgerOp = new UpdateLedgerOp(bk, admin);
+            ServerConfiguration serverConf = new ServerConfiguration(bkConf);
+            BookieSocketAddress newBookieId = Bookie.getBookieAddress(serverConf);
+            serverConf.setUseHostNameAsBookieID(!useHostName);
+            BookieSocketAddress oldBookieId = Bookie.getBookieAddress(serverConf);
+            try {
+                updateLedgerOp.updateBookieIdInLedgers(oldBookieId, newBookieId, rate, limit, printMsgCnt);
+            } catch (BKException bke) {
+                LOG.error("Failed to update ledger metadata", bke);
+                return -1;
+            } catch (IOException ioe) {
+                LOG.error("Failed to update ledger metadata", ioe);
+                return -1;
+            } catch (InterruptedException ie) {
+                LOG.error("Failed to update ledger metadata", ie);
+                return -1;
+            }
+            return 0;
         }
     }
 
@@ -1577,5 +1660,12 @@ public class BookieShell implements Tool {
             }
         }
         return defaultVal;
+    }
+
+    private boolean getOptionalValue(String optValue, String optName) {
+        if (StringUtils.equals(optValue, optName)) {
+            return true;
+        }
+        return false;
     }
 }

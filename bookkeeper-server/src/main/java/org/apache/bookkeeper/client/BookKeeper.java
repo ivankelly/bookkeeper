@@ -331,7 +331,7 @@ public class BookKeeper {
         }
     }
 
-    LedgerManager getLedgerManager() {
+    public LedgerManager getLedgerManager() {
         return ledgerManager;
     }
 
