@@ -35,7 +35,7 @@ before_install:
 
 script:
   - travis_retry mvn --batch-mode clean apache-rat:check install findbugs:check -DskipTests
-  - ./dev/ticktoc.sh "mvn -pl :stream-protocol clean package"
+  - ./dev/ticktoc.sh "mvn clean package -f streamstorage"
 # Disabled the tests here. Since tests are running much slower on Travis than on Jenkins
 #  - ./dev/ticktoc.sh "mvn --batch-mode clean package"
 
