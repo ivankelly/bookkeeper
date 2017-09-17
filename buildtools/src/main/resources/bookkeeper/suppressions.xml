@@ -20,6 +20,7 @@
     <suppress checks="JavadocPackage" files=".*[\\/]src[\\/]test[\\/].*"/>
     <suppress checks="JavadocPackage" files=".*[\\/]maven-archetypes[\\/].*"/>
     <suppress checks="JavadocPackage" files=".*[\\/]examples[\\/].*"/>
+    <suppress checks="FallThrough" files=".*[\\/]MurmurHash.java"/>
 
     <!-- suppress all checks in the generated directories -->
     <suppress checks=".*" files=".+[\\/]generated[\\/].+\.java" />
