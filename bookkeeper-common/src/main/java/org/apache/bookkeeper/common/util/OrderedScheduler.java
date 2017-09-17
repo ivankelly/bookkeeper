@@ -265,6 +265,10 @@ public class OrderedScheduler {
             return threads[0];
         }
 
+        if (null == orderingKey) {
+            return threads[rand.nextInt(threads.length)];
+        }
+
         return threads[MathUtils.signSafeMod(orderingKey.hashCode(), threads.length)];
     }
 
