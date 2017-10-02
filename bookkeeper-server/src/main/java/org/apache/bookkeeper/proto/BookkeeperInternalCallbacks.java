@@ -21,6 +21,7 @@
 
 package org.apache.bookkeeper.proto;
 
+import java.util.Map;
 import io.netty.buffer.ByteBuf;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -148,6 +149,11 @@ public class BookkeeperInternalCallbacks {
     
     public interface GetBookieInfoCallback {
         void getBookieInfoComplete(int rc, BookieInfo bInfo, Object ctx);
+    }
+
+    public interface NewWriterCallback {
+        void newWriterComplete(int rc, WriterId higherWriter,
+                               Map<String,PaxosValue> currentValues, Object ctx);
     }
 
     /**

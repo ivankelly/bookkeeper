@@ -24,6 +24,7 @@ import static com.google.common.base.Charsets.UTF_8;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -42,6 +43,7 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.NewWriterCallback;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.tls.SecurityException;
@@ -443,6 +445,40 @@ public class BookieClient implements PerChannelBookieClientFactory {
                     pcbc.getBookieInfo(requested, cb, ctx);
                 }
             }, requested);
+        } finally {
+            closeLock.readLock().unlock();
+        }
+    }
+
+    public void setNewWriter(final BookieSocketAddress addr,
+                             final long ledgerId,
+                             final byte[] masterKey,
+                             final WriterId writer,
+                             final Set<String> keys,
+                             final NewWriterCallback cb,
+                             final Object ctx) {
+        closeLock.readLock().lock();
+        try {
+            final PerChannelBookieClientPool client = lookupClient(
+                    addr, BookkeeperProtocol.OperationType.NEW_WRITER);
+            if (client == null) {
+                cb.newWriterComplete(
+                        BKException.Code.BookieHandleNotAvailableException,
+                        null, null, ctx);
+                return;
+            }
+
+            client.obtain(new GenericCallback<PerChannelBookieClient>() {
+                @Override
+                public void operationComplete(final int rc, PerChannelBookieClient pcbc) {
+                    if (rc != BKException.Code.OK) {
+                        cb.newWriterComplete(rc, null, null, ctx);
+                        return;
+                    }
+                    pcbc.setNewWriter(ledgerId, masterKey, writer,
+                                      keys, cb, ctx);
+                }
+            }, ledgerId);
         } finally {
             closeLock.readLock().unlock();
         }

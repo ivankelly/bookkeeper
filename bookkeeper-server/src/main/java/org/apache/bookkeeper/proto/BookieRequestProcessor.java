@@ -27,6 +27,9 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import io.netty.util.HashedWheelTimer;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.bookkeeper.auth.AuthProviderFactoryFactory;
@@ -233,6 +236,9 @@ public class BookieRequestProcessor implements RequestProcessor {
                 case START_TLS:
                     processStartTLSRequestV3(r, c);
                     break;
+                case NEW_WRITER:
+                    processNewWriter(r, c);
+                    break;
                 default:
                     LOG.info("Unknown operation type {}", header.getOperation());
                     BookkeeperProtocol.Response.Builder response =
@@ -265,7 +271,51 @@ public class BookieRequestProcessor implements RequestProcessor {
         }
     }
 
-     private void processWriteLacRequestV3(final BookkeeperProtocol.Request r, final Channel c) {
+    final Map<Long, WriterId> writerIds = new HashMap<>();
+    final Map<Long, Map<String,PaxosValue>> values = new HashMap<>();
+
+    private void processNewWriter(final BookkeeperProtocol.Request r,
+                                  final Channel c) {
+        BookkeeperProtocol.Response.Builder response = BookkeeperProtocol.Response.newBuilder();
+        BookkeeperProtocol.BKPacketHeader.Builder header = BookkeeperProtocol.BKPacketHeader.newBuilder();
+        header.setVersion(BookkeeperProtocol.ProtocolVersion.VERSION_THREE);
+        header.setOperation(r.getHeader().getOperation());
+        header.setTxnId(r.getHeader().getTxnId());
+        response.setHeader(header.build());
+
+        synchronized(writerIds) {
+            BookkeeperProtocol.NewWriterRequest nwr = r.getNewWriterRequest();
+            long ledgerId = nwr.getLedgerId();
+            WriterId writer = WriterId.fromProtobuf(nwr.getWriterId());
+            WriterId currentWriter = writerIds.get(ledgerId);
+            if (currentWriter != null
+                && currentWriter.compareTo(writer) > 0) {
+                response.setStatus(BookkeeperProtocol.StatusCode.EOLDWRITER);
+                currentWriter.toProtobuf(response.getNewWriterResponseBuilder()
+                                         .getHigherWriterIdBuilder());
+            } else {
+                writerIds.put(ledgerId, writer);
+                if (!values.containsKey(ledgerId)) {
+                    values.put(ledgerId, new HashMap<>());
+                }
+                response.setStatus(BookkeeperProtocol.StatusCode.EOK);
+                for (String k : nwr.getKeyList()) {
+                    PaxosValue current = values.get(ledgerId).get(k);
+                    if (current != null) {
+                        current.getWriter().toProtobuf(
+                                response.getNewWriterResponseBuilder()
+                                .addCurrentValueBuilder()
+                                .setKey(k)
+                                .setValue(current.getValue())
+                                .getWriterBuilder());// mess
+                    }
+                }
+            }
+        }
+        c.writeAndFlush(response.build());
+    }
+
+    private void processWriteLacRequestV3(final BookkeeperProtocol.Request r, final Channel c) {
         WriteLacProcessorV3 writeLac = new WriteLacProcessorV3(r, c, this);
         if (null == writeThreadPool) {
             writeLac.run();

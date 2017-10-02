@@ -212,6 +212,11 @@ public abstract class BKException extends Exception {
         int ReplicationException = -200;
 
         /**
+         * Bookie's writer is newer than that passed
+         */
+        int OldWriterException = -300;
+
+        /**
          * Unexpected condition.
          */
         int UnexpectedConditionException = -999;
@@ -291,6 +296,8 @@ public abstract class BKException extends Exception {
             return "Bookie operation timeout";
         case Code.SecurityException:
             return "Failed to establish a secure connection";
+        case Code.OldWriterException:
+            return "Bookie has newer writer";
         default:
             return "Unexpected condition";
         }

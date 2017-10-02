@@ -30,7 +30,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.Code;
@@ -46,6 +51,10 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetBookieInfoCall
 import org.apache.bookkeeper.proto.BookkeeperProtocol;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.NewWriterCallback;
+import org.apache.bookkeeper.proto.WriterId;
+import org.apache.bookkeeper.proto.PaxosValue;
+
 import org.apache.bookkeeper.util.OrderedSafeExecutor;
 import org.apache.bookkeeper.util.IOUtils;
 import org.junit.After;
@@ -293,5 +302,74 @@ public class BookieClientTest {
         assertTrue("GetBookieInfo failed with error " + obj.rc, obj.rc == Code.OK);
         assertTrue("GetBookieInfo failed with error " + obj.rc, obj.freeDiskSpace <= obj.totalDiskCapacity);
         assertTrue("GetBookieInfo failed with error " + obj.rc, obj.totalDiskCapacity > 0);
+    }
+
+
+    class TestNewWriterCallback
+        extends CountDownLatch
+        implements NewWriterCallback {
+        int rc;
+        WriterId higherWriter;
+        Map<String,PaxosValue> currentValues;
+
+        TestNewWriterCallback() { super(1); }
+
+        @Override
+        public void newWriterComplete(int rc, WriterId higherWriter,
+                                      Map<String,PaxosValue> currentValues,
+                                      Object ctx) {
+            this.rc = rc;
+            this.higherWriter = higherWriter;
+            this.currentValues = currentValues;
+            countDown();
+        }
+    }
+
+    @Test
+    public void testNewWriter() throws Exception {
+        long ledgerId = 100;
+        byte[] masterKey = new byte[0];
+
+        BookieSocketAddress addr = new BookieSocketAddress("127.0.0.1", port);
+        BookieClient bc = new BookieClient(new ClientConfiguration(),
+                                           new NioEventLoopGroup(), executor);
+
+
+        WriterId w1 = new WriterId(0, new UUID(0, 1L));
+        WriterId w2 = new WriterId(0, new UUID(0, 2L));
+        WriterId w3 = new WriterId(0, new UUID(0, 3L));
+        Set<String> keys = new HashSet<>();
+        keys.add("foobar");
+
+        // try to set writer 1, should succeed
+        TestNewWriterCallback cb1 = new TestNewWriterCallback();
+        bc.setNewWriter(addr, ledgerId, masterKey,
+                        w1, keys, cb1, null);
+        assertTrue("Request should complete", cb1.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should succeed", cb1.rc, Code.OK);
+
+        // try to set writer 3, should succeed
+        TestNewWriterCallback cb2 = new TestNewWriterCallback();
+        bc.setNewWriter(addr, ledgerId, masterKey,
+                        w3, keys, cb2, null);
+        assertTrue("Request should complete", cb2.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should succeed", cb2.rc, Code.OK);
+
+        // try to set writer 2, should fail, 3 is higher
+        TestNewWriterCallback cb3 = new TestNewWriterCallback();
+        bc.setNewWriter(addr, ledgerId, masterKey,
+                        w2, keys, cb3, null);
+        assertTrue("Request should complete", cb3.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should not succeed", cb3.rc,
+                     Code.OldWriterException);
+        assertEquals("Should be w3", w3, cb3.higherWriter);
+
+        // bump the epoch of writer 2 and try again
+        WriterId w2_2 = w2.surpass(cb3.higherWriter);
+        TestNewWriterCallback cb4 = new TestNewWriterCallback();
+        bc.setNewWriter(addr, ledgerId, masterKey,
+                        w2_2, keys, cb4, null);
+        assertTrue("Request should complete", cb4.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should succeed", cb4.rc, Code.OK);
     }
 }

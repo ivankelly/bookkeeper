@@ -45,6 +45,9 @@ enum StatusCode {
     EBADVERSION = 503;
     EFENCED = 504;
     EREADONLY = 505;
+
+    // Paxos errors 6xx
+    EOLDWRITER = 601;
 }
 
 /**
@@ -62,6 +65,8 @@ enum OperationType {
     READ_LAC = 7;
     GET_BOOKIE_INFO = 8;
     START_TLS = 9;
+
+    NEW_WRITER = 10;
 }
 
 /**
@@ -83,6 +88,7 @@ message Request {
     optional ReadLacRequest readLacRequest = 104;
     optional GetBookieInfoRequest getBookieInfoRequest = 105;
     optional StartTLSRequest startTLSRequest = 106;
+    optional NewWriterRequest newWriterRequest = 107;
 }
 
 message ReadRequest {
@@ -136,6 +142,24 @@ message GetBookieInfoRequest {
     optional int64 requested = 1;
 }
 
+message WriterId {
+    required int64 uniqueMsb = 1;
+    required int64 uniqueLsb = 2;
+    required int64 epoch = 3;
+}
+
+message KeyValue {
+    required string key = 1;
+    required bytes value = 2;
+    optional WriterId writer = 3;
+}
+message NewWriterRequest {
+    required int64 ledgerId = 1;
+    required bytes masterKey = 2;
+    required WriterId writerId = 3;
+    repeated string key = 4;
+}
+
 message Response {
 
     required BKPacketHeader header = 1;
@@ -150,6 +174,7 @@ message Response {
     optional ReadLacResponse readLacResponse = 104;
     optional GetBookieInfoResponse getBookieInfoResponse = 105;
     optional StartTLSResponse startTLSResponse = 106;
+    optional NewWriterResponse newWriterResponse = 107;
 }
 
 message ReadResponse {
@@ -193,3 +218,9 @@ message GetBookieInfoResponse {
 
 message StartTLSResponse {
 }
+
+message NewWriterResponse {
+    optional WriterId higherWriterId = 1;
+    repeated KeyValue currentValue = 2;
+}
+

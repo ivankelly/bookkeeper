@@ -62,6 +62,8 @@ import java.nio.channels.ClosedChannelException;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
@@ -84,6 +86,7 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.StartTLSCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.NewWriterCallback;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader;
@@ -172,6 +175,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     private final OpStatsLogger getBookieInfoTimeoutOpLogger;
     private final OpStatsLogger startTLSOpLogger;
     private final OpStatsLogger startTLSTimeoutOpLogger;
+    private final OpStatsLogger newWriterOpLogger;
+    private final OpStatsLogger newWriterTimeoutOpLogger;
 
     private final boolean useV2WireProtocol;
 
@@ -272,6 +277,10 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         getBookieInfoTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.TIMEOUT_GET_BOOKIE_INFO);
         startTLSOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_START_TLS_OP);
         startTLSTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_TIMEOUT_START_TLS_OP);
+        newWriterOpLogger = statsLogger.getOpStatsLogger(
+                BookKeeperClientStats.CHANNEL_NEW_WRITER_OP);
+        newWriterTimeoutOpLogger = statsLogger.getOpStatsLogger(
+                BookKeeperClientStats.CHANNEL_TIMEOUT_NEW_WRITER_OP);
 
         this.pcbcPool = pcbcPool;
 
@@ -754,6 +763,35 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                 .build();
 
         writeAndFlush(channel, completionKey, getBookieInfoRequest);
+    }
+
+    void setNewWriter(final long ledgerId, byte[] masterKey,
+                      final WriterId writer,
+                      final Set<String> keys,
+                      final NewWriterCallback cb,
+                      final Object ctx) {
+        final long txnId = getTxnId();
+        CompletionKey completionKey = new V3CompletionKey(
+                txnId, OperationType.NEW_WRITER);
+        completionObjects.put(completionKey,
+                              new NewWriterCompletion(completionKey, cb, ctx));
+
+        Request.Builder builder = Request.newBuilder();
+
+        builder.getHeaderBuilder()
+            .setVersion(ProtocolVersion.VERSION_THREE)
+            .setOperation(OperationType.NEW_WRITER)
+            .setTxnId(txnId);
+
+        builder.getNewWriterRequestBuilder()
+            .setLedgerId(ledgerId)
+            .setMasterKey(ByteString.copyFrom(masterKey));
+        writer.toProtobuf(
+                builder.getNewWriterRequestBuilder().getWriterIdBuilder());
+        for (String k : keys) {
+            builder.getNewWriterRequestBuilder().addKey(k);
+        }
+        writeAndFlush(channel, completionKey, builder.build());
     }
 
     /**
@@ -1583,6 +1621,60 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         }
     }
 
+    class NewWriterCompletion extends CompletionValue {
+        final NewWriterCallback cb;
+
+        public NewWriterCompletion(CompletionKey key,
+                                   final NewWriterCallback origCallback,
+                                   final Object origCtx) {
+            super("NewWriter", origCtx, 0L, 0L,
+                  newWriterOpLogger, newWriterTimeoutOpLogger,
+                  scheduleTimeout(key, addEntryTimeout));
+            this.cb = new NewWriterCallback() {
+                        @Override
+                        public void newWriterComplete(
+                                int rc, WriterId higherWriter,
+                                Map<String,PaxosValue> currentValues,
+                                Object ctx) {
+                            cancelTimeoutAndLogOp(rc);
+
+                            origCallback.newWriterComplete(
+                                    rc, higherWriter, currentValues, origCtx);
+                        }
+                    };
+        }
+
+        @Override
+        public void errorOut() {
+            errorOut(BKException.Code.BookieHandleNotAvailableException);
+        }
+
+        @Override
+        public void errorOut(final int rc) {
+            errorOutAndRunCallback(
+                    () -> cb.newWriterComplete(rc, null, null, ctx));
+        }
+
+        @Override
+        public void handleV3Response(BookkeeperProtocol.Response response) {
+            BookkeeperProtocol.NewWriterResponse nwr
+                = response.getNewWriterResponse();
+            int rc = logAndConvertStatus(response.getStatus(),
+                                         BKException.Code.WriteException);
+
+            WriterId higherWriter = nwr.hasHigherWriterId() ?
+                WriterId.fromProtobuf(nwr.getHigherWriterId()) : null;
+            Map<String,PaxosValue> values = new HashMap<>();
+            for (BookkeeperProtocol.KeyValue kv : nwr.getCurrentValueList()) {
+                values.put(kv.getKey(),
+                           new PaxosValue(
+                                   kv.getValue(),
+                                   WriterId.fromProtobuf(kv.getWriter())));
+            }
+            cb.newWriterComplete(rc, higherWriter, values, ctx);
+        }
+    }
+
     // visible for testing
     class AddCompletion extends CompletionValue {
         final WriteCallback cb;
@@ -1738,6 +1830,9 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                 break;
             case EREADONLY:
                 rcToRet = BKException.Code.WriteOnReadOnlyBookieException;
+                break;
+            case EOLDWRITER:
+                rcToRet = BKException.Code.OldWriterException;
                 break;
             default:
                 break;
