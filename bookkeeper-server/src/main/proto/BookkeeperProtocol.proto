@@ -67,6 +67,7 @@ enum OperationType {
     START_TLS = 9;
 
     NEW_WRITER = 10;
+    PROPOSE_VALUES = 11;
 }
 
 /**
@@ -89,6 +90,7 @@ message Request {
     optional GetBookieInfoRequest getBookieInfoRequest = 105;
     optional StartTLSRequest startTLSRequest = 106;
     optional NewWriterRequest newWriterRequest = 107;
+    optional ProposeValuesRequest proposeValuesRequest = 108;
 }
 
 message ReadRequest {
@@ -160,6 +162,13 @@ message NewWriterRequest {
     repeated string key = 4;
 }
 
+message ProposeValuesRequest {
+    required int64 ledgerId = 1;
+    required bytes masterKey = 2;
+    required WriterId writerId = 3;
+    repeated KeyValue update = 4;
+}
+
 message Response {
 
     required BKPacketHeader header = 1;
@@ -175,6 +184,7 @@ message Response {
     optional GetBookieInfoResponse getBookieInfoResponse = 105;
     optional StartTLSResponse startTLSResponse = 106;
     optional NewWriterResponse newWriterResponse = 107;
+    optional ProposeValuesResponse proposeValuesResponse = 108;
 }
 
 message ReadResponse {
@@ -224,3 +234,6 @@ message NewWriterResponse {
     repeated KeyValue currentValue = 2;
 }
 
+message ProposeValuesResponse {
+    optional WriterId higherWriterId = 1;
+}

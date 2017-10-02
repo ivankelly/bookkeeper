@@ -156,6 +156,11 @@ public class BookkeeperInternalCallbacks {
                                Map<String,PaxosValue> currentValues, Object ctx);
     }
 
+    public interface ProposeValuesCallback {
+        void proposeValuesComplete(int rc, WriterId higherWriter,
+                                   Object ctx);
+    }
+
     /**
      * This is a multi callback object that waits for all of
      * the multiple async operations to complete. If any fail, then we invoke

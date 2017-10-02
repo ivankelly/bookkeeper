@@ -68,4 +68,8 @@ public interface BookKeeperClientStats {
     public final static String CHANNEL_NEW_WRITER_OP = "NEW_WRITER";
     public final static String CHANNEL_TIMEOUT_NEW_WRITER_OP
         = "TIMEOUT_NEW_WRITER";
+    public final static String CHANNEL_PROPOSE_VALUES_OP = "PROPOSE_VALUES";
+    public final static String CHANNEL_TIMEOUT_PROPOSE_VALUES_OP
+        = "TIMEOUT_PROPOSE_VALUES";
+
 }

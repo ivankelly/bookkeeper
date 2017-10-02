@@ -24,6 +24,7 @@ import static com.google.common.base.Charsets.UTF_8;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
@@ -44,6 +45,7 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.NewWriterCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ProposeValuesCallback;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.tls.SecurityException;
@@ -55,6 +57,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.ExtensionRegistry;
 
 import io.netty.buffer.ByteBuf;
@@ -477,6 +480,42 @@ public class BookieClient implements PerChannelBookieClientFactory {
                     }
                     pcbc.setNewWriter(ledgerId, masterKey, writer,
                                       keys, cb, ctx);
+                }
+            }, ledgerId);
+        } finally {
+            closeLock.readLock().unlock();
+        }
+    }
+
+    public void proposeValues(final BookieSocketAddress addr,
+                              final long ledgerId,
+                              final byte[] masterKey,
+                              final WriterId writer,
+                              final Map<String,ByteString> values,
+                              final ProposeValuesCallback cb,
+                              final Object ctx) {
+        closeLock.readLock().lock();
+        try {
+            final PerChannelBookieClientPool client = lookupClient(
+                    addr, BookkeeperProtocol.OperationType.PROPOSE_VALUES);
+            if (client == null) {
+                cb.proposeValuesComplete(
+                        BKException.Code.BookieHandleNotAvailableException,
+                        null, ctx);
+                return;
+            }
+
+            client.obtain(new GenericCallback<PerChannelBookieClient>() {
+                @Override
+                public void operationComplete(final int rc,
+                                              PerChannelBookieClient pcbc) {
+                    if (rc != BKException.Code.OK) {
+                        cb.proposeValuesComplete(rc, null, ctx);
+                        return;
+                    }
+                    pcbc.proposeValues(ledgerId, masterKey,
+                                       writer, values,
+                                       cb, ctx);
                 }
             }, ledgerId);
         } finally {

@@ -239,6 +239,9 @@ public class BookieRequestProcessor implements RequestProcessor {
                 case NEW_WRITER:
                     processNewWriter(r, c);
                     break;
+                case PROPOSE_VALUES:
+                    processProposeValues(r, c);
+                    break;
                 default:
                     LOG.info("Unknown operation type {}", header.getOperation());
                     BookkeeperProtocol.Response.Builder response =
@@ -310,6 +313,42 @@ public class BookieRequestProcessor implements RequestProcessor {
                                 .getWriterBuilder());// mess
                     }
                 }
+            }
+        }
+        c.writeAndFlush(response.build());
+    }
+
+    private void processProposeValues(final BookkeeperProtocol.Request r,
+                                      final Channel c) {
+        BookkeeperProtocol.Response.Builder response = BookkeeperProtocol.Response.newBuilder();
+        BookkeeperProtocol.BKPacketHeader.Builder header = BookkeeperProtocol.BKPacketHeader.newBuilder();
+        header.setVersion(BookkeeperProtocol.ProtocolVersion.VERSION_THREE);
+        header.setOperation(r.getHeader().getOperation());
+        header.setTxnId(r.getHeader().getTxnId());
+        response.setHeader(header.build());
+
+        synchronized(writerIds) {
+            BookkeeperProtocol.ProposeValuesRequest pvr
+                = r.getProposeValuesRequest();
+            long ledgerId = pvr.getLedgerId();
+            WriterId writer = WriterId.fromProtobuf(pvr.getWriterId());
+            WriterId currentWriter = writerIds.get(ledgerId);
+            if (currentWriter != null
+                && currentWriter.compareTo(writer) == 0) {
+                response.setStatus(BookkeeperProtocol.StatusCode.EOK);
+                if (!values.containsKey(ledgerId)) {
+                    values.put(ledgerId, new HashMap<>());
+                }
+                for (BookkeeperProtocol.KeyValue kv : pvr.getUpdateList()) {
+                    values.get(ledgerId).put(kv.getKey(),
+                                             new PaxosValue(kv.getValue(),
+                                                            writer));
+                }
+            } else {
+                response.setStatus(BookkeeperProtocol.StatusCode.EOLDWRITER);
+                currentWriter.toProtobuf(response
+                                         .getProposeValuesResponseBuilder()
+                                         .getHigherWriterIdBuilder());
             }
         }
         c.writeAndFlush(response.build());

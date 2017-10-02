@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -52,11 +53,15 @@ import org.apache.bookkeeper.proto.BookkeeperProtocol;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.NewWriterCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ProposeValuesCallback;
 import org.apache.bookkeeper.proto.WriterId;
 import org.apache.bookkeeper.proto.PaxosValue;
 
 import org.apache.bookkeeper.util.OrderedSafeExecutor;
 import org.apache.bookkeeper.util.IOUtils;
+import com.google.protobuf.ByteString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,6 +69,9 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class BookieClientTest {
+    private final static Logger LOG = LoggerFactory.getLogger(
+            BookieClientTest.class);
+
     BookieServer bs;
     File tmpDir;
     public int port = 13645;
@@ -318,9 +326,29 @@ public class BookieClientTest {
         public void newWriterComplete(int rc, WriterId higherWriter,
                                       Map<String,PaxosValue> currentValues,
                                       Object ctx) {
+            LOG.debug("New writer response, rc {}, higherWriter {}, values {}",
+                      rc, higherWriter, currentValues);
             this.rc = rc;
             this.higherWriter = higherWriter;
             this.currentValues = currentValues;
+
+            countDown();
+        }
+    }
+
+    class TestProposeValuesCallback
+        extends CountDownLatch
+        implements ProposeValuesCallback {
+        int rc;
+        WriterId higherWriter;
+
+        TestProposeValuesCallback() { super(1); }
+
+        @Override
+        public void proposeValuesComplete(int rc, WriterId higherWriter,
+                                          Object ctx) {
+            this.rc = rc;
+            this.higherWriter = higherWriter;
             countDown();
         }
     }
@@ -371,5 +399,118 @@ public class BookieClientTest {
                         w2_2, keys, cb4, null);
         assertTrue("Request should complete", cb4.await(10, TimeUnit.SECONDS));
         assertEquals("Request should succeed", cb4.rc, Code.OK);
+    }
+
+    @Test
+    public void testProposeValues() throws Exception {
+        long ledgerId = 100;
+        byte[] masterKey = new byte[0];
+
+        BookieSocketAddress addr = new BookieSocketAddress("127.0.0.1", port);
+        BookieClient bc = new BookieClient(new ClientConfiguration(),
+                                           new NioEventLoopGroup(), executor);
+        WriterId w1 = new WriterId(0, new UUID(0, 1L));
+        WriterId w2 = new WriterId(0, new UUID(0, 2L));
+        WriterId w3 = new WriterId(0, new UUID(0, 3L));
+
+        Map<String,ByteString> proposedValues = new HashMap<>();
+        proposedValues.put("foobar", ByteString.copyFromUtf8("barfoo"));
+
+        Map<String,ByteString> proposedValues2 = new HashMap<>();
+        proposedValues2.put("foobar", ByteString.copyFromUtf8("bazfob"));
+
+        // try to set writer 1, should succeed
+        TestNewWriterCallback cb1 = new TestNewWriterCallback();
+        bc.setNewWriter(addr, ledgerId, masterKey,
+                        w1, proposedValues.keySet(), cb1, null);
+        assertTrue("Request should complete", cb1.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should succeed", cb1.rc, Code.OK);
+
+        // Update the values on the bookies
+        TestProposeValuesCallback cb2 = new TestProposeValuesCallback();
+        bc.proposeValues(addr, ledgerId, masterKey,
+                         w1, proposedValues, cb2, null);
+        assertTrue("Request should complete", cb2.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should succeed", cb2.rc, Code.OK);
+
+        // Set new writer w2
+        TestNewWriterCallback cb3 = new TestNewWriterCallback();
+        bc.setNewWriter(addr, ledgerId, masterKey,
+                        w2, proposedValues.keySet(), cb3, null);
+        assertTrue("Request should complete", cb3.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should succeed", cb3.rc, Code.OK);
+        assertEquals("Previous value is visible",
+                     cb3.currentValues.get("foobar").getValue(),
+                     proposedValues.get("foobar"));
+        assertEquals("Previous value was written by writer 1",
+                     cb3.currentValues.get("foobar").getWriter(),
+                     w1);
+
+        // set new writer w3
+        TestNewWriterCallback cb4 = new TestNewWriterCallback();
+        bc.setNewWriter(addr, ledgerId, masterKey,
+                        w3, proposedValues.keySet(), cb4, null);
+        assertTrue("Request should complete", cb4.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should succeed", cb4.rc, Code.OK);
+        assertEquals("Previous value is visible",
+                     cb4.currentValues.get("foobar").getValue(),
+                     proposedValues.get("foobar"));
+        assertEquals("Previous value was written by writer 1",
+                     cb4.currentValues.get("foobar").getWriter(),
+                     w1);
+
+        // update values with w2 should fail
+        TestProposeValuesCallback cb5 = new TestProposeValuesCallback();
+        bc.proposeValues(addr, ledgerId, masterKey,
+                         w1, proposedValues, cb5, null);
+        assertTrue("Request should complete", cb5.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should not succeed",
+                     cb5.rc, Code.OldWriterException);
+
+        // surpass and try again
+        WriterId w2_2 = w2.surpass(cb5.higherWriter);
+
+        // fails without setting writer id again
+        TestProposeValuesCallback cb6 = new TestProposeValuesCallback();
+        bc.proposeValues(addr, ledgerId, masterKey,
+                         w2_2, proposedValues2, cb6, null);
+        assertTrue("Request should complete", cb6.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should not succeed",
+                     cb6.rc, Code.OldWriterException);
+
+        // set new writer, previously proposed values should be there
+        TestNewWriterCallback cb7 = new TestNewWriterCallback();
+        bc.setNewWriter(addr, ledgerId, masterKey,
+                        w2_2, proposedValues2.keySet(), cb7, null);
+        assertTrue("Request should complete", cb7.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should succeed", cb7.rc, Code.OK);
+        assertEquals("Previous value is visible",
+                     cb7.currentValues.get("foobar").getValue(),
+                     proposedValues.get("foobar"));
+        assertEquals("Previous value was written by writer 1",
+                     cb7.currentValues.get("foobar").getWriter(),
+                     w1);
+
+        // update values
+        TestProposeValuesCallback cb8 = new TestProposeValuesCallback();
+        bc.proposeValues(addr, ledgerId, masterKey,
+                         w2_2, proposedValues2, cb8, null);
+        assertTrue("Request should complete", cb8.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should succeed", cb8.rc, Code.OK);
+
+        // ensure new values were updated
+        WriterId w3_2 = w3.surpass(w2);
+
+        TestNewWriterCallback cb9 = new TestNewWriterCallback();
+        bc.setNewWriter(addr, ledgerId, masterKey,
+                        w3_2, proposedValues2.keySet(), cb9, null);
+        assertTrue("Request should complete", cb9.await(10, TimeUnit.SECONDS));
+        assertEquals("Request should succeed", cb9.rc, Code.OK);
+        assertEquals("Previous value is visible",
+                     cb9.currentValues.get("foobar").getValue(),
+                     proposedValues2.get("foobar"));
+        assertEquals("Previous value was written by writer 1",
+                     w2_2,
+                     cb9.currentValues.get("foobar").getWriter());
     }
 }

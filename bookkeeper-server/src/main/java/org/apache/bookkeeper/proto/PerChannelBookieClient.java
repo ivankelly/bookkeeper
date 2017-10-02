@@ -87,6 +87,7 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.StartTLSCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.NewWriterCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ProposeValuesCallback;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader;
@@ -177,6 +178,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     private final OpStatsLogger startTLSTimeoutOpLogger;
     private final OpStatsLogger newWriterOpLogger;
     private final OpStatsLogger newWriterTimeoutOpLogger;
+    private final OpStatsLogger proposeValuesOpLogger;
+    private final OpStatsLogger proposeValuesTimeoutOpLogger;
 
     private final boolean useV2WireProtocol;
 
@@ -281,6 +284,10 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                 BookKeeperClientStats.CHANNEL_NEW_WRITER_OP);
         newWriterTimeoutOpLogger = statsLogger.getOpStatsLogger(
                 BookKeeperClientStats.CHANNEL_TIMEOUT_NEW_WRITER_OP);
+        proposeValuesOpLogger = statsLogger.getOpStatsLogger(
+                BookKeeperClientStats.CHANNEL_PROPOSE_VALUES_OP);
+        proposeValuesTimeoutOpLogger = statsLogger.getOpStatsLogger(
+                BookKeeperClientStats.CHANNEL_TIMEOUT_PROPOSE_VALUES_OP);
 
         this.pcbcPool = pcbcPool;
 
@@ -790,6 +797,37 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                 builder.getNewWriterRequestBuilder().getWriterIdBuilder());
         for (String k : keys) {
             builder.getNewWriterRequestBuilder().addKey(k);
+        }
+        writeAndFlush(channel, completionKey, builder.build());
+    }
+
+    void proposeValues(final long ledgerId, byte[] masterKey,
+                       final WriterId writer,
+                       final Map<String,ByteString> values,
+                       final ProposeValuesCallback cb,
+                       final Object ctx) {
+        final long txnId = getTxnId();
+        CompletionKey completionKey = new V3CompletionKey(
+                txnId, OperationType.PROPOSE_VALUES);
+        completionObjects.put(completionKey,
+                              new ProposeValuesCompletion(completionKey,
+                                                          cb, ctx));
+
+        Request.Builder builder = Request.newBuilder();
+
+        builder.getHeaderBuilder()
+            .setVersion(ProtocolVersion.VERSION_THREE)
+            .setOperation(OperationType.PROPOSE_VALUES)
+            .setTxnId(txnId);
+
+        builder.getProposeValuesRequestBuilder()
+            .setLedgerId(ledgerId)
+            .setMasterKey(ByteString.copyFrom(masterKey));
+        writer.toProtobuf(
+                builder.getProposeValuesRequestBuilder().getWriterIdBuilder());
+        for (Map.Entry<String,ByteString> e : values.entrySet()) {
+            builder.getProposeValuesRequestBuilder()
+                .addUpdateBuilder().setKey(e.getKey()).setValue(e.getValue());
         }
         writeAndFlush(channel, completionKey, builder.build());
     }
@@ -1672,6 +1710,52 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                                    WriterId.fromProtobuf(kv.getWriter())));
             }
             cb.newWriterComplete(rc, higherWriter, values, ctx);
+        }
+    }
+
+    class ProposeValuesCompletion extends CompletionValue {
+        final ProposeValuesCallback cb;
+
+        public ProposeValuesCompletion(CompletionKey key,
+                                       final ProposeValuesCallback origCallback,
+                                       final Object origCtx) {
+            super("ProposeValues", origCtx, 0L, 0L,
+                  proposeValuesOpLogger, proposeValuesTimeoutOpLogger,
+                  scheduleTimeout(key, addEntryTimeout));
+            this.cb = new ProposeValuesCallback() {
+                        @Override
+                        public void proposeValuesComplete(
+                                int rc, WriterId higherWriter,
+                                Object ctx) {
+                            cancelTimeoutAndLogOp(rc);
+
+                            origCallback.proposeValuesComplete(
+                                    rc, higherWriter, origCtx);
+                        }
+                    };
+        }
+
+        @Override
+        public void errorOut() {
+            errorOut(BKException.Code.BookieHandleNotAvailableException);
+        }
+
+        @Override
+        public void errorOut(final int rc) {
+            errorOutAndRunCallback(
+                    () -> cb.proposeValuesComplete(rc, null, ctx));
+        }
+
+        @Override
+        public void handleV3Response(BookkeeperProtocol.Response response) {
+            BookkeeperProtocol.ProposeValuesResponse pvr
+                = response.getProposeValuesResponse();
+            int rc = logAndConvertStatus(response.getStatus(),
+                                         BKException.Code.WriteException);
+
+            WriterId higherWriter = pvr.hasHigherWriterId() ?
+                WriterId.fromProtobuf(pvr.getHigherWriterId()) : null;
+            cb.proposeValuesComplete(rc, higherWriter, ctx);
         }
     }
 
