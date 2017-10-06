@@ -86,7 +86,6 @@ public class BookKeeper implements AutoCloseable {
 
     static final Logger LOG = LoggerFactory.getLogger(BookKeeper.class);
 
-    final ZooKeeper zk;
     final EventLoopGroup eventLoopGroup;
 
     // The stats logger for this client.
@@ -107,9 +106,6 @@ public class BookKeeper implements AutoCloseable {
     // whether the event loop group is one we created, or is owned by whoever
     // instantiated us
     boolean ownEventLoopGroup = false;
-    // whether the zk handle is one we created, or is owned by whoever
-    // instantiated us
-    boolean ownZKHandle = false;
 
     final BookieClient bookieClient;
     final BookieWatcher bookieWatcher;
@@ -125,9 +121,6 @@ public class BookKeeper implements AutoCloseable {
     final Feature disableEnsembleChangeFeature;
 
     // Ledger manager responsible for how to store ledger meta data
-    final LedgerManagerFactory ledgerManagerFactory;
-    final LedgerManager ledgerManager;
-    final LedgerIdGenerator ledgerIdGenerator;
 
     // Ensemble Placement Policy
     final EnsemblePlacementPolicy placementPolicy;
@@ -391,25 +384,6 @@ public class BookKeeper implements AutoCloseable {
         this.delayEnsembleChange = conf.getDelayEnsembleChange();
         this.reorderReadSequence = conf.isReorderReadSequenceEnabled();
 
-        // initialize zookeeper client
-        if (zkc == null) {
-            this.zk = ZooKeeperClient.newBuilder()
-                    .connectString(conf.getZkServers())
-                    .sessionTimeoutMs(conf.getZkTimeout())
-                    .operationRetryPolicy(new BoundExponentialBackoffRetryPolicy(conf.getZkTimeout(),
-                            conf.getZkTimeout(), 0))
-                    .statsLogger(statsLogger)
-                    .build();
-            this.ownZKHandle = true;
-        } else {
-            if (!zkc.getState().isConnected()) {
-                LOG.error("Unconnected zookeeper handle passed to bookkeeper");
-                throw KeeperException.create(KeeperException.Code.CONNECTIONLOSS);
-            }
-            this.zk = zkc;
-            this.ownZKHandle = false;
-        }
-
         // initialize event loop group
         if (null == eventLoopGroup) {
             this.eventLoopGroup = getDefaultEventLoopGroup();
@@ -500,9 +474,6 @@ public class BookKeeper implements AutoCloseable {
         }
 
         // initialize ledger manager
-        this.ledgerManagerFactory = LedgerManagerFactory.newLedgerManagerFactory(conf, this.zk);
-        this.ledgerManager = new CleanupLedgerManager(ledgerManagerFactory.newLedgerManager());
-        this.ledgerIdGenerator = ledgerManagerFactory.newLedgerIdGenerator();
         this.explicitLacInterval = conf.getExplictLacInterval();
         if (LOG.isDebugEnabled()) {
             LOG.debug("Explicit LAC Interval : {}", this.explicitLacInterval);
@@ -562,20 +533,6 @@ public class BookKeeper implements AutoCloseable {
         }
     }
 
-    @VisibleForTesting
-    public LedgerManager getLedgerManager() {
-        return ledgerManager;
-    }
-
-    @VisibleForTesting
-    LedgerManager getUnderlyingLedgerManager() {
-        return ((CleanupLedgerManager) ledgerManager).getUnderlying();
-    }
-    
-    LedgerIdGenerator getLedgerIdGenerator() {
-        return ledgerIdGenerator;
-    }
-
     /**
      * There are 2 digest types that can be used for verification. The CRC32 is
      * cheap to compute but does not protect against byzantine bookies (i.e., a
@@ -585,10 +542,6 @@ public class BookKeeper implements AutoCloseable {
      */
     public enum DigestType {
         MAC, CRC32
-    }
-
-    ZooKeeper getZkHandle() {
-        return zk;
     }
 
     protected ClientConfiguration getConf() {
@@ -1211,15 +1164,7 @@ public class BookKeeper implements AutoCloseable {
      * @param cb    callback method
      */
     public void asyncIsClosed(long lId, final IsClosedCallback cb, final Object ctx){
-        ledgerManager.readLedgerMetadata(lId, new GenericCallback<LedgerMetadata>(){
-            public void operationComplete(int rc, LedgerMetadata lm){
-                if (rc == BKException.Code.OK) {
-                    cb.isClosedComplete(rc, lm.isClosed(), ctx);
-                } else {
-                    cb.isClosedComplete(rc, false, ctx);
-                }
-            }
-        });
+        cb.isClosedComplete(BKException.Code.UnexpectedConditionException, false, ctx);
     }
 
     /**
@@ -1283,15 +1228,6 @@ public class BookKeeper implements AutoCloseable {
         // Close bookie client so all pending bookie requests would be failed
         // which will reject any incoming bookie requests.
         bookieClient.close();
-        try {
-            // Close ledger manage so all pending metadata requests would be failed
-            // which will reject any incoming metadata requests.
-            ledgerManager.close();
-            ledgerIdGenerator.close();
-            ledgerManagerFactory.uninitialize();
-        } catch (IOException ie) {
-            LOG.error("Failed to close ledger manager : ", ie);
-        }
 
         // Close the scheduler
         scheduler.shutdown();
@@ -1314,9 +1250,6 @@ public class BookKeeper implements AutoCloseable {
         }
         if (ownEventLoopGroup) {
             eventLoopGroup.shutdownGracefully();
-        }
-        if (ownZKHandle) {
-            zk.close();
         }
     }
 

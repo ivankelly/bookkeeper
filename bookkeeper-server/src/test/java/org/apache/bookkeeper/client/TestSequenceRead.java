@@ -67,16 +67,6 @@ public class TestSequenceRead extends BookKeeperClusterTestCase {
         lh.getLedgerMetadata().setEnsembles(newEnsembles);
         // update the ledger metadata with duplicated bookies
         final CountDownLatch latch = new CountDownLatch(1);
-        bkc.getLedgerManager().writeLedgerMetadata(lh.getId(), lh.getLedgerMetadata(), new BookkeeperInternalCallbacks.GenericCallback<Void>() {
-            @Override
-            public void operationComplete(int rc, Void result) {
-                if (BKException.Code.OK == rc) {
-                    latch.countDown();
-                } else {
-                    logger.error("Error on writing ledger metadata for ledger {} : ", lh.getId(), BKException.getMessage(rc));
-                }
-            }
-        });
         latch.await();
         logger.info("Update ledger metadata with duplicated bookies for ledger {}.", lh.getId());
         return lh;

@@ -576,20 +576,7 @@ public class BookieRecoveryTest extends BookKeeperClusterTestCase {
 
     private LedgerMetadata getLedgerMetadata(LedgerHandle lh) throws Exception {
         final SyncLedgerMetaObject syncObj = new SyncLedgerMetaObject();
-        bkc.getLedgerManager().readLedgerMetadata(lh.getId(), new GenericCallback<LedgerMetadata>() {
-
-            @Override
-            public void operationComplete(int rc, LedgerMetadata result) {
-                synchronized (syncObj) {
-                    syncObj.rc = rc;
-                    syncObj.meta = result;
-                    syncObj.value = true;
-                    syncObj.notify();
-                }
-            }
-
-        });
-
+        
         synchronized (syncObj) {
             while (!syncObj.value) {
                 syncObj.wait();

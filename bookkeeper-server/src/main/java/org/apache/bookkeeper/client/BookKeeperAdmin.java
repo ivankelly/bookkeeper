@@ -170,7 +170,7 @@ public class BookKeeperAdmin implements AutoCloseable {
         bkc = new BookKeeper(conf, zk);
         ownsBK = true;
         this.lfr = new LedgerFragmentReplicator(bkc, NullStatsLogger.INSTANCE);
-        this.mFactory = bkc.ledgerManagerFactory;
+        this.mFactory = null;
     }
 
     /**
@@ -185,11 +185,11 @@ public class BookKeeperAdmin implements AutoCloseable {
     public BookKeeperAdmin(final BookKeeper bkc, StatsLogger statsLogger) {
         this.bkc = bkc;
         ownsBK = false;
-        this.zk = bkc.zk;
+        this.zk = null;
         ownsZK = false;
         this.bookiesPath = bkc.getConf().getZkAvailableBookiesPath();
         this.lfr = new LedgerFragmentReplicator(bkc, statsLogger);
-        this.mFactory = bkc.ledgerManagerFactory;
+        this.mFactory = null;
     }
 
     public BookKeeperAdmin(final BookKeeper bkc) {
@@ -656,9 +656,6 @@ public class BookKeeperAdmin implements AutoCloseable {
                 recoverLedger(bookieSrc, ledgerId, iterCallback, availableBookies);
             }
         };
-        bkc.getLedgerManager().asyncProcessLedgers(
-                ledgerProcessor, new RecoverCallbackWrapper(cb),
-                context, BKException.Code.OK, BKException.Code.LedgerRecoveryException);
     }
 
     /**
@@ -969,7 +966,7 @@ public class BookKeeperAdmin implements AutoCloseable {
             }
             bkc = new BookKeeper(conf, zkc);
             // Format all ledger metadata layout
-            bkc.ledgerManagerFactory.format(conf, zkc);
+            //bkc.ledgerManagerFactory.format(conf, zkc);
 
             // Clear underreplicated ledgers
             try {
@@ -1039,7 +1036,7 @@ public class BookKeeperAdmin implements AutoCloseable {
      */
     public Iterable<Long> listLedgers()
     throws IOException {
-        final LedgerRangeIterator iterator = bkc.getLedgerManager().getLedgerRanges();
+        final LedgerRangeIterator iterator = null;
         return new Iterable<Long>() {
             public Iterator<Long> iterator() {
                 return new Iterator<Long>() {
@@ -1206,7 +1203,7 @@ public class BookKeeperAdmin implements AutoCloseable {
          * bookieLedgerIndexer.getBookieToLedgerIndex.
          */
         
-        BookieLedgerIndexer bookieLedgerIndexer = new BookieLedgerIndexer(bkc.ledgerManager);
+        BookieLedgerIndexer bookieLedgerIndexer = new BookieLedgerIndexer(null);//
         Map<String, Set<Long>> bookieToLedgersMap = bookieLedgerIndexer.getBookieToLedgerIndex();
         Set<Long> ledgersStoredInThisBookie = bookieToLedgersMap.get(bookieAddress.toString());
         if ((ledgersStoredInThisBookie != null) && (!ledgersStoredInThisBookie.isEmpty())) {
@@ -1215,7 +1212,7 @@ public class BookKeeperAdmin implements AutoCloseable {
              * bookies by making sure that these ledgers metadata don't
              * contain this bookie as part of their ensemble.
              */
-            waitForLedgersToBeReplicated(ledgersStoredInThisBookie, bookieAddress, bkc.ledgerManager);
+            waitForLedgersToBeReplicated(ledgersStoredInThisBookie, bookieAddress, null);
         }
 
         // for double-checking, check if any ledgers are listed as underreplicated because of this bookie
@@ -1227,7 +1224,7 @@ public class BookKeeperAdmin implements AutoCloseable {
                     + "Have to make sure that those ledger fragments are rereplicated");
             List<Long> urLedgers = new ArrayList<>();
             urLedgerIterator.forEachRemaining(urLedgers::add);
-            waitForLedgersToBeReplicated(urLedgers, bookieAddress, bkc.ledgerManager);
+            waitForLedgersToBeReplicated(urLedgers, bookieAddress, null);
         }
     }
 

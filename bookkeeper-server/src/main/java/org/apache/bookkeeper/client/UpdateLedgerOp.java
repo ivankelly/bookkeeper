@@ -119,7 +119,7 @@ public class UpdateLedgerOp {
                         if (limit != Integer.MIN_VALUE && issuedLedgerCnt.get() >= limit || !ledgerItr.hasNext()) {
                             stop.set(true);
                         }
-                        bkc.getLedgerManager().readLedgerMetadata(lId, readCb);
+                        //bkc.getLedgerManager().readLedgerMetadata(lId, readCb);
                     }
                     // waiting till all the issued ledgers are finished
                     syncObj.await();
@@ -244,7 +244,7 @@ public class UpdateLedgerOp {
                     future.set(null);
                 }
             };
-            bkc.getLedgerManager().writeLedgerMetadata(ledgerId, metadata, writeCb);
+            //bkc.getLedgerManager().writeLedgerMetadata(ledgerId, metadata, writeCb);
         }
     }
 }

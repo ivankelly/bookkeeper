@@ -121,28 +121,28 @@ class LedgerCreateOp implements GenericCallback<Void> {
          */
         metadata.addEnsemble(0L, ensemble);
         if (this.generateLedgerId) {
-            generateLedgerIdAndCreateLedger();
+            //generateLedgerIdAndCreateLedger();
         } else {
             // Create ledger with supplied ledgerId
-            bk.getLedgerManager().createLedgerMetadata(ledgerId, metadata, LedgerCreateOp.this);
+            //bk.getLedgerManager().createLedgerMetadata(ledgerId, metadata, LedgerCreateOp.this);
         }
     }
 
     void generateLedgerIdAndCreateLedger() {
         // generate a ledgerId
-        final LedgerIdGenerator ledgerIdGenerator = bk.getLedgerIdGenerator();
-        ledgerIdGenerator.generateLedgerId(new GenericCallback<Long>() {
-            @Override
-            public void operationComplete(int rc, Long ledgerId) {
-                if (BKException.Code.OK != rc) {
-                    createComplete(rc, null);
-                    return;
-                }
-                LedgerCreateOp.this.ledgerId = ledgerId;
-                // create a ledger with metadata
-                bk.getLedgerManager().createLedgerMetadata(ledgerId, metadata, LedgerCreateOp.this);
-            }
-        });
+        // final LedgerIdGenerator ledgerIdGenerator = bk.getLedgerIdGenerator();
+        // ledgerIdGenerator.generateLedgerId(new GenericCallback<Long>() {
+        //     @Override
+        //     public void operationComplete(int rc, Long ledgerId) {
+        //         if (BKException.Code.OK != rc) {
+        //             createComplete(rc, null);
+        //             return;
+        //         }
+        //         LedgerCreateOp.this.ledgerId = ledgerId;
+        //         // create a ledger with metadata
+        //         bk.getLedgerManager().createLedgerMetadata(ledgerId, metadata, LedgerCreateOp.this);
+        //     }
+        // });
     }
 
     /**

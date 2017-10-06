@@ -228,7 +228,7 @@ public class ParallelLedgerRecoveryTest extends BookKeeperClusterTestCase {
         newConf.setRecoveryReadBatchSize(batchSize);
         BookKeeper newBk = new BookKeeper(newConf);
 
-        TestLedgerManager tlm = (TestLedgerManager) newBk.getUnderlyingLedgerManager();
+        TestLedgerManager tlm = null;//(TestLedgerManager) newBk.getUnderlyingLedgerManager();
 
         final LedgerHandle lh = newBk.createLedger(numBookies, 2, 2, digestType, "".getBytes());
         CountDownLatch latch1 = new CountDownLatch(1);
@@ -509,7 +509,7 @@ public class ParallelLedgerRecoveryTest extends BookKeeperClusterTestCase {
 
         final BookKeeper newBk1 = new BookKeeper(newConf);
         final LedgerHandle lh1 = newBk1.openLedgerNoRecovery(lh0.getId(), digestType, passwd);
-        final TestLedgerManager tlm1 = (TestLedgerManager) newBk1.getUnderlyingLedgerManager();
+        final TestLedgerManager tlm1 = null;//(TestLedgerManager) newBk1.getUnderlyingLedgerManager();
 
         final BookKeeper readBk = new BookKeeper(newConf);
         final LedgerHandle readLh = readBk.openLedgerNoRecovery(lh0.getId(), digestType, passwd);

@@ -75,19 +75,19 @@ class ReadOnlyLedgerHandle extends LedgerHandle implements LedgerMetadataListene
             throws GeneralSecurityException, NumberFormatException {
         super(bk, ledgerId, metadata, digestType, password);
         if (watch) {
-            bk.getLedgerManager().registerLedgerMetadataListener(ledgerId, this);
+            //bk.getLedgerManager().registerLedgerMetadataListener(ledgerId, this);
         }
     }
 
     @Override
     public void close()
             throws InterruptedException, BKException {
-        bk.getLedgerManager().unregisterLedgerMetadataListener(ledgerId, this);
+        //bk.getLedgerManager().unregisterLedgerMetadataListener(ledgerId, this);
     }
 
     @Override
     public void asyncClose(CloseCallback cb, Object ctx) {
-        bk.getLedgerManager().unregisterLedgerMetadataListener(ledgerId, this);
+        //bk.getLedgerManager().unregisterLedgerMetadataListener(ledgerId, this);
         cb.closeComplete(BKException.Code.OK, this, ctx);
     }
 

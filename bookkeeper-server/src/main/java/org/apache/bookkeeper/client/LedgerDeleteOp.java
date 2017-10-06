@@ -74,7 +74,7 @@ class LedgerDeleteOp extends OrderedSafeGenericCallback<Void> {
     public void initiate() {
         // Asynchronously delete the ledger from meta manager
         // When this completes, it will invoke the callback method below.
-        bk.getLedgerManager().removeLedgerMetadata(ledgerId, Version.ANY, this);
+        //bk.getLedgerManager().removeLedgerMetadata(ledgerId, Version.ANY, this);
     }
 
     /**

@@ -100,7 +100,7 @@ class LedgerOpenOp implements GenericCallback<LedgerMetadata> {
         /**
          * Asynchronously read the ledger metadata node.
          */
-        bk.getLedgerManager().readLedgerMetadata(ledgerId, this);
+        //bk.getLedgerManager().readLedgerMetadata(ledgerId, this);
     }
 
     /**

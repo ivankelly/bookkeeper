@@ -303,11 +303,7 @@ public class LedgerHandle implements AutoCloseable {
     }
 
     void writeLedgerConfig(GenericCallback<Void> writeCb) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Writing metadata to ledger manager: {}, {}", this.ledgerId, metadata.getVersion());
-        }
-
-        bk.getLedgerManager().writeLedgerMetadata(ledgerId, metadata, writeCb);
+        writeCb.operationComplete(BKException.Code.UnexpectedConditionException, null);
     }
 
     /**
@@ -1628,7 +1624,7 @@ public class LedgerHandle implements AutoCloseable {
     }
 
     void rereadMetadata(final GenericCallback<LedgerMetadata> cb) {
-        bk.getLedgerManager().readLedgerMetadata(ledgerId, cb);
+        cb.operationComplete(BKException.Code.UnexpectedConditionException, null);
     }
 
     void registerOperationFailureOnBookie(BookieSocketAddress bookie, long entryId) {

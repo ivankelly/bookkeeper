@@ -112,7 +112,7 @@ public class TestBookieWatcher extends BookKeeperClusterTestCase {
         }
 
         // make zookeeper session expired
-        expireZooKeeperSession(bkc.zk, timeout);
+        expireZooKeeperSession(null, timeout);
         TimeUnit.MILLISECONDS.sleep(3 * timeout);
 
         // start four new bookies

@@ -39,7 +39,7 @@ public class BookKeeperTestClient extends BookKeeper {
     }
 
     public ZooKeeper getZkHandle() {
-        return super.getZkHandle();
+        return null;
     }
 
     public ClientConfiguration getConf() {
