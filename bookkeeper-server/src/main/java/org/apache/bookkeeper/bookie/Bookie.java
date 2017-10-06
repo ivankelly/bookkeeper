@@ -936,12 +936,12 @@ public class Bookie extends BookieCriticalThread {
      */
     private ZooKeeper instantiateZookeeperClient(ServerConfiguration conf)
             throws IOException, InterruptedException, KeeperException {
-        if (conf.getZkServers() == null) {
+        /*        if (conf.getZkServers() == null) {
             LOG.warn("No ZK servers passed to Bookie constructor so BookKeeper clients won't know about this server!");
             return null;
-        }
+            }*/
         // Create the ZooKeeper client instance
-        return newZookeeper(conf);
+        return null;// newZookeeper(conf);
     }
 
     /**

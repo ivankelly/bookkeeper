@@ -331,6 +331,7 @@ public class GarbageCollectorThread extends SafeRunnable {
 
     @Override
     public void safeRun() {
+        if (true) { return ; }
         boolean force = forceGarbageCollection.get();
         if (force) {
             LOG.info("Garbage collector thread forced to perform GC before expiry of wait time.");
