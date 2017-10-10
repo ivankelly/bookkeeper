@@ -20,6 +20,8 @@
  */
 package org.apache.bookkeeper.client;
 
+import java.security.GeneralSecurityException;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -29,6 +31,7 @@ import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.HashedWheelTimer;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -723,6 +726,25 @@ public class BookKeeper implements AutoCloseable {
         return createLedger(ensSize, writeQuorumSize, ackQuorumSize, digestType, passwd, null);
     }
 
+
+    public LedgerHandle createLedger(long lId,
+                                     List<BookieSocketAddress> bookies,
+                                     int ensSize, int writeQuorumSize,
+                                     int ackQuorumSize,
+                                     DigestType digestType, byte passwd[])
+            throws InterruptedException, BKException {
+        LedgerMetadata metadata = new LedgerMetadata(ensSize,
+                                                     writeQuorumSize,
+                                                     ackQuorumSize,
+                                                     digestType, passwd, null);
+        metadata.addEnsemble(0L, new ArrayList<>(bookies));
+        try {
+            return new LedgerHandle(this, lId, metadata, digestType, passwd);
+        } catch (GeneralSecurityException e) {
+            throw new BKException.BKDigestNotInitializedException();
+        }
+    }
+
     /**
      * Synchronous call to create ledger. Parameters match those of
      * {@link #asyncCreateLedger(int, int, int, DigestType, byte[],
@@ -1082,6 +1104,35 @@ public class BookKeeper implements AutoCloseable {
          * Calls async open ledger
          */
         asyncOpenLedger(lId, digestType, passwd, new SyncOpenCallback(), counter);
+
+        return SynchCallbackUtils.waitForResult(counter);
+    }
+
+    public LedgerHandle openLedger(long lId,
+                                   List<BookieSocketAddress> bookies,
+                                   int ensSize, int writeQuorumSize,
+                                   int ackQuorumSize,
+                                   DigestType digestType, byte passwd[])
+            throws InterruptedException, BKException {
+        CompletableFuture<LedgerHandle> counter = new CompletableFuture<>();
+        SyncOpenCallback cb = new SyncOpenCallback();
+
+        LedgerMetadata metadata = new LedgerMetadata(ensSize,
+                                                     writeQuorumSize,
+                                                     ackQuorumSize,
+                                                     digestType, passwd, null);
+        metadata.addEnsemble(0L, new ArrayList<>(bookies));
+
+        closeLock.readLock().lock();
+        try {
+            if (closed) {
+                throw BKException.create(BKException.Code.ClientClosedException);
+            }
+            new LedgerOpenOpNoZk(BookKeeper.this, lId, metadata,
+                                 cb, counter).initiate();
+        } finally {
+            closeLock.readLock().unlock();
+        }
 
         return SynchCallbackUtils.waitForResult(counter);
     }

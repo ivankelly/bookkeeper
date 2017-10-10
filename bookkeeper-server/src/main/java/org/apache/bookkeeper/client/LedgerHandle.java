@@ -64,6 +64,9 @@ import org.apache.bookkeeper.util.SafeRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.protobuf.ByteString;
+import java.util.HashMap;
+
 /**
  * Ledger handle contains ledger metadata and is used to access the read and
  * write operations to a ledger.
@@ -424,76 +427,38 @@ public class LedgerHandle implements AutoCloseable {
                               + metadata.getLastEntryId() + " with this many bytes: " + metadata.getLength());
                 }
 
-                final class CloseCb extends OrderedSafeGenericCallback<Void> {
-                    CloseCb() {
-                        super(bk.mainWorkerPool, ledgerId);
-                    }
+                final long eol = metadata.getLastEntryId();
+                Map<String, ByteString> values = new HashMap<>();
+                values.put("EOL", ByteString.copyFromUtf8(String.valueOf(eol)));
+                PaxosClient paxos = new PaxosClient(bk);
+                paxos.propose(LedgerHandle.this, values)
+                        .whenComplete((map,throwable) -> {
+                                if (throwable != null) {
+                                    LOG.error("Error closing", throwable);
+                                    cb.closeComplete(BKException.Code.UnexpectedConditionException,
+                                                     LedgerHandle.this, ctx);
+                                } else {
+                                    ByteString finalEol = values.get("EOL");
 
-                    @Override
-                    public void safeOperationComplete(final int rc, Void result) {
-                        if (rc == BKException.Code.MetadataVersionException) {
-                            rereadMetadata(new OrderedSafeGenericCallback<LedgerMetadata>(bk.mainWorkerPool,
-                                                                                          ledgerId) {
-                                @Override
-                                public void safeOperationComplete(int newrc, LedgerMetadata newMeta) {
-                                    if (newrc != BKException.Code.OK) {
-                                        LOG.error("Error reading new metadata from ledger {} when closing, code={}",
-                                                ledgerId, newrc);
-                                        cb.closeComplete(rc, LedgerHandle.this, ctx);
+                                    // look at this again and verify it is correct. it's safe,
+                                    // but we could have false negatives
+                                    if (finalEol == null
+                                        || Long.parseLong(finalEol.toStringUtf8()) != eol) {
+                                        cb.closeComplete(BKException.Code.UnexpectedConditionException,
+                                                         LedgerHandle.this, ctx);
                                     } else {
-                                        metadata.setState(prevState);
-                                        if (prevState.equals(State.CLOSED)) {
-                                            metadata.close(prevLastEntryId);
-                                        }
-
-                                        metadata.setLength(prevLength);
-                                        if (!metadata.isNewerThan(newMeta)
-                                                && !metadata.isConflictWith(newMeta)) {
-                                            // use the new metadata's ensemble, in case re-replication already
-                                            // replaced some bookies in the ensemble.
-                                            metadata.setEnsembles(newMeta.getEnsembles());
-                                            metadata.setVersion(newMeta.version);
-                                            metadata.setLength(length);
-                                            metadata.close(getLastAddConfirmed());
-                                            writeLedgerConfig(new CloseCb());
-                                            return;
-                                        } else {
-                                            metadata.setLength(length);
-                                            metadata.close(getLastAddConfirmed());
-                                            LOG.warn("Conditional update ledger metadata for ledger {} failed.", ledgerId);
-                                            cb.closeComplete(rc, LedgerHandle.this, ctx);
-                                        }
+                                        cb.closeComplete(BKException.Code.OK,
+                                                         LedgerHandle.this, ctx);
                                     }
                                 }
-
-                                @Override
-                                public String toString() {
-                                    return String.format("ReReadMetadataForClose(%d)", ledgerId);
-                                }
                             });
-                        } else if (rc != BKException.Code.OK) {
-                            LOG.error("Error update ledger metadata for ledger {} : {}", ledgerId, rc);
-                            cb.closeComplete(rc, LedgerHandle.this, ctx);
-                        } else {
-                            cb.closeComplete(BKException.Code.OK, LedgerHandle.this, ctx);
-                        }
-                    }
-
-                    @Override
-                    public String toString() {
-                        return String.format("WriteLedgerConfigForClose(%d)", ledgerId);
-                    }
-                }
-
-                writeLedgerConfig(new CloseCb());
-
             }
 
             @Override
             public String toString() {
                 return String.format("CloseLedgerHandle(%d)", ledgerId);
             }
-        });
+            });
     }
 
     /**
