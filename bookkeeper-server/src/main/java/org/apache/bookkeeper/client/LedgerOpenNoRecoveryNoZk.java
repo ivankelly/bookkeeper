@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
  * Encapsulates the ledger open operation
  *
  */
-class LedgerOpenOpNoZk {
+class LedgerOpenOpNoRecoveryNoZk {
     static final Logger LOG = LoggerFactory.getLogger(LedgerOpenOp.class);
 
     final BookKeeper bk;
@@ -65,9 +65,9 @@ class LedgerOpenOpNoZk {
      * @param cb
      * @param ctx
      */
-    public LedgerOpenOpNoZk(BookKeeper bk, long ledgerId,
-                            LedgerMetadata metadata,
-                            OpenCallback cb, Object ctx) {
+    public LedgerOpenOpNoRecoveryNoZk(BookKeeper bk, long ledgerId,
+                                      LedgerMetadata metadata,
+                                      OpenCallback cb, Object ctx) {
         this.bk = bk;
         this.ledgerId = ledgerId;
         this.metadata = metadata;
@@ -103,7 +103,18 @@ class LedgerOpenOpNoZk {
                                      null);
                     } else {
                         if (!closed.isPresent()) { // we need to recover
-                            recover();
+                            lh.asyncReadLastConfirmed(new ReadLastConfirmedCallback() {
+                                    @Override
+                                    public void readLastConfirmedComplete(
+                                            int rc, long lastConfirmed, Object ctx) {
+                                        if (rc != BKException.Code.OK) {
+                                            openComplete(bk.getReturnRc(BKException.Code.ReadException), null);
+                                        } else {
+                                            lh.lastAddConfirmed = lh.lastAddPushed = lastConfirmed;
+                                            openComplete(BKException.Code.OK, lh);
+                                        }
+                                    }
+                                }, null);
                         } else {
                             ByteString eol = closed.get();
                             String[] parts = eol.toStringUtf8().split(":");
@@ -122,33 +133,6 @@ class LedgerOpenOpNoZk {
                         }
                     }
                 });
-    }
-
-    void recover() {
-        final OrderedSafeGenericCallback<Void> finalCb
-            = new OrderedSafeGenericCallback<Void>(bk.mainWorkerPool, ledgerId) {
-                    @Override
-                    public void safeOperationComplete(int rc, Void result) {
-                        if (rc == BKException.Code.OK) {
-                            openComplete(BKException.Code.OK, lh);
-                        } else if (rc == BKException.Code.UnauthorizedAccessException) {
-                            openComplete(BKException.Code.UnauthorizedAccessException, null);
-                        } else {
-                            openComplete(bk.getReturnRc(BKException.Code.LedgerRecoveryException), null);
-                        }
-                    }
-
-                    @Override
-                    public String toString() {
-                        return String.format("Recover(%d)", ledgerId);
-                    }
-                };
-        final GenericCallback<Void> cb = new TimedGenericCallback<Void>(
-                finalCb, BKException.Code.OK, bk.getRecoverOpLogger());
-        new LedgerRecoveryOp(lh, cb)
-                    .parallelRead(lh.enableParallelRecoveryRead)
-                    .readBatchSize(lh.recoveryReadBatchSize)
-                    .initiate();
     }
 
     void openComplete(int rc, LedgerHandle lh) {

@@ -427,9 +427,11 @@ public class LedgerHandle implements AutoCloseable {
                               + metadata.getLastEntryId() + " with this many bytes: " + metadata.getLength());
                 }
 
-                final long eol = metadata.getLastEntryId();
+                final long eol = lastAddConfirmed;
+                final long length = LedgerHandle.this.length;
                 Map<String, ByteString> values = new HashMap<>();
-                values.put("EOL", ByteString.copyFromUtf8(String.valueOf(eol)));
+                values.put("EOL", ByteString.copyFromUtf8(
+                                   String.format("%d:%d", eol, length)));
                 PaxosClient paxos = new PaxosClient(bk);
                 paxos.propose(LedgerHandle.this, values)
                         .whenComplete((map,throwable) -> {
@@ -438,12 +440,14 @@ public class LedgerHandle implements AutoCloseable {
                                     cb.closeComplete(BKException.Code.UnexpectedConditionException,
                                                      LedgerHandle.this, ctx);
                                 } else {
-                                    ByteString finalEol = values.get("EOL");
+                                    ByteString readEol = map.get("EOL");
+                                    String[] parts = readEol.toStringUtf8().split(":");
+
+                                    long finalEol = Long.parseLong(parts[0]);
 
                                     // look at this again and verify it is correct. it's safe,
                                     // but we could have false negatives
-                                    if (finalEol == null
-                                        || Long.parseLong(finalEol.toStringUtf8()) != eol) {
+                                    if (finalEol != eol) {
                                         cb.closeComplete(BKException.Code.UnexpectedConditionException,
                                                          LedgerHandle.this, ctx);
                                     } else {

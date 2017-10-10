@@ -69,7 +69,7 @@ public class Log0Test extends Log0TestBase {
     }
 
     @Test
-    public void doTest() throws Exception {
+    public void testCreateCloseAndOpen() throws Exception {
         LOG.info("client client");
         BookKeeper client = BookKeeper.forConfig(new ClientConfiguration()).build();
 
@@ -93,6 +93,68 @@ public class Log0Test extends Log0TestBase {
         LOG.info("Read last add confirmed");
         assertEquals("last add confirmed should be last entry",
                      lac, lh.getLastAddConfirmed());
+    }
+
+    @Test
+    public void testCreateAndOpenWithRecovery() throws Exception {
+        LOG.info("client client");
+        BookKeeper client = BookKeeper.forConfig(new ClientConfiguration()).build();
+
+        // write a ledger and close it
+        List<BookieSocketAddress> bookies = getBookieAddresses();
+        LOG.info("Create ledger");
+        LedgerHandle lh = client.createLedger(1L, bookies, 5, 5, 3,
+                                              BookKeeper.DigestType.MAC, "foobar".getBytes());
+        long lac = 0;
+        LOG.info("Write to ledger");
+        for (int i = 0; i < 100; i++) {
+            lac = lh.addEntry(("foobar"+i).getBytes());
+        }
+        // open a bookie and read it
+        LOG.info("Open ledger");
+        LedgerHandle openlh = client.openLedger(1L, bookies, 5, 5, 3,
+                               BookKeeper.DigestType.MAC, "foobar".getBytes());
+        LOG.info("Read last add confirmed");
+        assertEquals("last add confirmed should be last entry",
+                     lac, openlh.getLastAddConfirmed());
+        assertEquals("create lac also be the same",
+                     lac, lh.getLastAddConfirmed());
+
+        try {
+            lh.addEntry("shouldn't succeed".getBytes());
+            fail("Shouldn't have been able to add more entries");
+        } catch (Exception e) {
+            // correct behaviour
+        }
+    }
+
+    @Test
+    public void testCreateAndTailing() throws Exception {
+        BookKeeper client = BookKeeper.forConfig(new ClientConfiguration()).build();
+
+        // write a ledger and close it
+        List<BookieSocketAddress> bookies = getBookieAddresses();
+        LedgerHandle lh = client.createLedger(1L, bookies, 5, 5, 3,
+                                              BookKeeper.DigestType.MAC, "foobar".getBytes());
+        LedgerHandle tailer = client.openLedgerNoRecovery(1L, bookies, 5, 5, 3,
+                BookKeeper.DigestType.MAC, "foobar".getBytes());
+        long lac = 0;
+        for (int i = 0; i < 100; i++) {
+            lac = lh.addEntry(("foobar"+i).getBytes());
+            if (i == 0) {
+                assertEquals("no entries confirmed yet",
+                             LedgerHandle.INVALID_ENTRY_ID, tailer.readLastConfirmed());
+            } else {
+                assertEquals("previous entry is confirmed",
+                             lac - 1, tailer.readLastConfirmed());
+            }
+        }
+
+        lh.close();
+        assertEquals("last entry is confirmed",
+                     lac, tailer.readLastConfirmed());
+        assertTrue("tailer is now closed",
+                   tailer.isClosed());
     }
 
     @Test

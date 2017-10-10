@@ -1137,6 +1137,35 @@ public class BookKeeper implements AutoCloseable {
         return SynchCallbackUtils.waitForResult(counter);
     }
 
+    public LedgerHandle openLedgerNoRecovery(long lId,
+                                             List<BookieSocketAddress> bookies,
+                                             int ensSize, int writeQuorumSize,
+                                             int ackQuorumSize,
+                                             DigestType digestType, byte passwd[])
+            throws InterruptedException, BKException {
+        CompletableFuture<LedgerHandle> counter = new CompletableFuture<>();
+        SyncOpenCallback cb = new SyncOpenCallback();
+
+        LedgerMetadata metadata = new LedgerMetadata(ensSize,
+                                                     writeQuorumSize,
+                                                     ackQuorumSize,
+                                                     digestType, passwd, null);
+        metadata.addEnsemble(0L, new ArrayList<>(bookies));
+
+        closeLock.readLock().lock();
+        try {
+            if (closed) {
+                throw BKException.create(BKException.Code.ClientClosedException);
+            }
+            new LedgerOpenOpNoRecoveryNoZk(BookKeeper.this, lId, metadata,
+                                           cb, counter).initiate();
+        } finally {
+            closeLock.readLock().unlock();
+        }
+
+        return SynchCallbackUtils.waitForResult(counter);
+    }
+
     /**
      * Synchronous, unsafe open ledger call
      *

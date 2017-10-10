@@ -20,10 +20,15 @@ package org.apache.bookkeeper.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
 
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
 import org.apache.bookkeeper.client.BKException.BKDigestMatchException;
 import org.apache.bookkeeper.client.DigestManager.RecoveryData;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.proto.BookieProtocol;
+import com.google.protobuf.ByteString;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +43,7 @@ class ReadLastConfirmedOp implements ReadEntryCallback {
     RecoveryData maxRecoveredData;
     volatile boolean completed = false;
     int lastSeenError = BKException.Code.ReadException;
+    CompletableFuture<Optional<ByteString>> paxosFuture;
 
     LastConfirmedDataCallback cb;
     final DistributionSchedule.QuorumCoverageSet coverageSet;
@@ -53,11 +59,37 @@ class ReadLastConfirmedOp implements ReadEntryCallback {
         this.cb = cb;
         this.maxRecoveredData = new RecoveryData(LedgerHandle.INVALID_ENTRY_ID, 0);
         this.lh = lh;
-        this.numResponsesPending = lh.metadata.getEnsembleSize();
+        this.numResponsesPending = lh.metadata.getEnsembleSize() + 1;
         this.coverageSet = lh.distributionSchedule.getCoverageSet();
     }
 
+    void readEol() {
+        PaxosClient paxos = new PaxosClient(lh.bk);
+        paxosFuture = paxos.get(lh, "EOL");
+        paxosFuture.whenComplete((closed, throwable) -> {
+                synchronized (ReadLastConfirmedOp.this) {
+                    numResponsesPending--;
+                    if (throwable != null) {
+                        LOG.error("Error reading closed state", throwable);
+                    } else {
+                        if (closed.isPresent()) {
+                            ByteString eol = closed.get();
+                            String[] parts = eol.toStringUtf8().split(":");
+                            lh.metadata.setLength(Long.parseLong(parts[1]));
+                            lh.metadata.close(Long.parseLong(parts[0]));
+
+                            maxRecoveredData = new RecoveryData(
+                                    lh.metadata.getLastEntryId(),
+                                    lh.metadata.getLength());
+                        }
+                    }
+                    maybeComplete(true, maxRecoveredData);
+                }
+            });
+    }
+
     public void initiate() {
+        readEol();
         for (int i = 0; i < lh.metadata.currentEnsemble.size(); i++) {
             lh.bk.bookieClient.readEntry(lh.metadata.currentEnsemble.get(i),
                                          lh.ledgerId,
@@ -67,6 +99,7 @@ class ReadLastConfirmedOp implements ReadEntryCallback {
     }
 
     public void initiateWithFencing() {
+        readEol();
         for (int i = 0; i < lh.metadata.currentEnsemble.size(); i++) {
             lh.bk.bookieClient.readEntryAndFenceLedger(lh.metadata.currentEnsemble.get(i),
                                                        lh.ledgerId,
@@ -117,23 +150,32 @@ class ReadLastConfirmedOp implements ReadEntryCallback {
             lastSeenError = rc;
         }
 
+        maybeComplete(heardValidResponse, maxRecoveredData);
+    }
+
+    synchronized void maybeComplete(boolean heardValidResponse,
+                                    RecoveryData maxRecoveredData) {
+
         // other return codes dont count as valid responses
         if (heardValidResponse
             && coverageSet.checkCovered()
-            && !completed) {
+            && !completed
+            && paxosFuture != null
+            && paxosFuture.isDone()) {
             completed = true;
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Read Complete with enough validResponses for ledger: {}, entry: {}",
-                        ledgerId, entryId);
+                LOG.debug("Read Complete with enough validResponses for ledger: {}",
+                          lh.getId());
             }
 
             cb.readLastConfirmedDataComplete(BKException.Code.OK, maxRecoveredData);
             return;
         }
 
-        if (numResponsesPending == 0 && !completed) {
+        if (numResponsesPending == 0 && !completed
+            && paxosFuture != null && paxosFuture.isDone()) {
             // Have got all responses back but was still not enough, just fail the operation
-            LOG.error("While readLastConfirmed ledger: " + ledgerId + " did not hear success responses from all quorums");
+            LOG.error("While readLastConfirmed ledger: {} did not hear success responses from all quorums", lh.getId());
             cb.readLastConfirmedDataComplete(lastSeenError, maxRecoveredData);
         }
 
