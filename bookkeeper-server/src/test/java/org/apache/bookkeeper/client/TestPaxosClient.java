@@ -33,6 +33,7 @@ import com.google.protobuf.ByteString;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
+import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.proto.WriterId;
 import org.apache.bookkeeper.proto.PaxosValue;
@@ -44,22 +45,30 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TestPaxosClient extends BookKeeperClusterTestCase {
+public class TestPaxosClient extends Log0TestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(
             TestPaxosClient.class);
-    private DigestType digestType = DigestType.CRC32;
-    private static final String PASSWORD = "testPasswd";
-    private static final int numOfBookies = 6;
 
-    public TestPaxosClient() {
+    private static final int numOfBookies = 5;
+    private long ledgerId = 1;
+    private BookKeeper bkc;
+
+    public TestPaxosClient() throws Exception {
         super(numOfBookies);
+        bkc = BookKeeper.forConfig(new ClientConfiguration()).build();
+    }
+
+    LedgerHandle createLedger() throws Exception {
+        return bkc.createLedger(ledgerId++, getBookieAddresses(),
+                                numOfBookies, numOfBookies,
+                                (int)Math.ceil((numOfBookies + 0.1)/2),
+                                DigestType.CRC32, "testPasswd".getBytes());
     }
 
     @Test
     public void singleRoundSucceeds() throws Exception {
-        LedgerHandle lh = bkc.createLedger(3, 2, digestType,
-                                           PASSWORD.getBytes());
+        LedgerHandle lh = createLedger();
 
         PaxosClient client = new PaxosClient(bkc);
         PaxosClient client2 = new PaxosClient(bkc);
@@ -82,8 +91,7 @@ public class TestPaxosClient extends BookKeeperClusterTestCase {
 
     @Test
     public void manyProposers() throws Exception {
-        LedgerHandle lh = bkc.createLedger(3, 2, digestType,
-                                           PASSWORD.getBytes());
+        LedgerHandle lh = createLedger();
         List<CompletableFuture<Map<String,ByteString>>> futures
             = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
@@ -139,5 +147,33 @@ public class TestPaxosClient extends BookKeeperClusterTestCase {
                         "fizzbuzz", ByteString.copyFromUtf8("fff"),
                         "flipflop", ByteString.copyFromUtf8("zzz")),
                 result);
+    }
+
+    @Test
+    public void testGet() throws Exception {
+        LedgerHandle lh = createLedger();
+
+        PaxosClient writer = new PaxosClient(bkc);
+        PaxosClient reader = new PaxosClient(bkc);
+
+        Map<String,ByteString> proposedValues = new HashMap<>();
+        proposedValues.put("foobar", ByteString.copyFromUtf8("barbob"));
+        proposedValues.put("fizzbuzz", ByteString.copyFromUtf8("bamboo"));
+
+        assertEquals("Original proposed values are set",
+                     proposedValues,
+                     writer.propose(lh, proposedValues).get());
+        assertEquals("Reader client can read",
+                     proposedValues.get("foobar"),
+                     reader.get(lh, "foobar").get().get());
+        assertEquals("Reader client can read",
+                     proposedValues.get("fizzbuzz"),
+                     reader.get(lh, "fizzbuzz").get().get());
+        assertEquals("Writer client can read",
+                     proposedValues.get("foobar"),
+                     reader.get(lh, "foobar").get().get());
+        assertEquals("Writer client can read",
+                     proposedValues.get("fizzbuzz"),
+                     reader.get(lh, "fizzbuzz").get().get());
     }
 }

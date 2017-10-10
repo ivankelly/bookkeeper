@@ -46,6 +46,8 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.NewWriterCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ProposeValuesCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.CommitValuesCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetCommittedValuesCallback;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.tls.SecurityException;
@@ -516,6 +518,75 @@ public class BookieClient implements PerChannelBookieClientFactory {
                     pcbc.proposeValues(ledgerId, masterKey,
                                        writer, values,
                                        cb, ctx);
+                }
+            }, ledgerId);
+        } finally {
+            closeLock.readLock().unlock();
+        }
+    }
+
+    public void commitValues(final BookieSocketAddress addr,
+                             final long ledgerId,
+                             final byte[] masterKey,
+                             final Map<String,ByteString> values,
+                             final CommitValuesCallback cb,
+                             final Object ctx) {
+        closeLock.readLock().lock();
+        try {
+            final PerChannelBookieClientPool client = lookupClient(
+                    addr, BookkeeperProtocol.OperationType.COMMIT_VALUES);
+            if (client == null) {
+                cb.commitValuesComplete(
+                        BKException.Code.BookieHandleNotAvailableException,
+                        ctx);
+                return;
+            }
+
+            client.obtain(new GenericCallback<PerChannelBookieClient>() {
+                @Override
+                public void operationComplete(final int rc,
+                                              PerChannelBookieClient pcbc) {
+                    if (rc != BKException.Code.OK) {
+                        cb.commitValuesComplete(rc, ctx);
+                        return;
+                    }
+                    pcbc.commitValues(ledgerId, masterKey,
+                                      values, cb, ctx);
+                }
+            }, ledgerId);
+        } finally {
+            closeLock.readLock().unlock();
+        }
+    }
+
+    public void getCommittedValues(final BookieSocketAddress addr,
+                                   final long ledgerId,
+                                   final byte[] masterKey,
+                                   final Set<String> keys,
+                                   final GetCommittedValuesCallback cb,
+                                   final Object ctx) {
+        closeLock.readLock().lock();
+        try {
+            final PerChannelBookieClientPool client = lookupClient(
+                    addr, BookkeeperProtocol.OperationType.COMMIT_VALUES);
+            if (client == null) {
+                cb.getCommittedValuesComplete(
+                        BKException.Code.BookieHandleNotAvailableException,
+                        null,
+                        ctx);
+                return;
+            }
+
+            client.obtain(new GenericCallback<PerChannelBookieClient>() {
+                @Override
+                public void operationComplete(final int rc,
+                                              PerChannelBookieClient pcbc) {
+                    if (rc != BKException.Code.OK) {
+                        cb.getCommittedValuesComplete(rc, null, ctx);
+                        return;
+                    }
+                    pcbc.getCommittedValues(ledgerId, masterKey,
+                                            keys, cb, ctx);
                 }
             }, ledgerId);
         } finally {

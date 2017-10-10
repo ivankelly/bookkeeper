@@ -26,14 +26,21 @@ import com.google.protobuf.ByteString;
 public class PaxosValue implements Comparable<PaxosValue> {
     final ByteString value;
     final WriterId writer;
+    final boolean committed;
 
-    public PaxosValue(ByteString value, WriterId writer) {
+    public PaxosValue(ByteString value, WriterId writer, boolean committed) {
         this.value = value;
         this.writer = writer;
+        this.committed = committed;
+    }
+
+    public PaxosValue(ByteString value, WriterId writer) {
+        this(value, writer, false);
     }
 
     public ByteString getValue() { return value; }
     public WriterId getWriter() { return writer; }
+    public boolean isCommitted() { return committed; }
 
     @Override
     public int compareTo(PaxosValue other) {

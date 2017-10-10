@@ -36,6 +36,7 @@ import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.zookeeper.AsyncCallback;
+import com.google.protobuf.ByteString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,6 +160,16 @@ public class BookkeeperInternalCallbacks {
     public interface ProposeValuesCallback {
         void proposeValuesComplete(int rc, WriterId higherWriter,
                                    Object ctx);
+    }
+
+    public interface CommitValuesCallback {
+        void commitValuesComplete(int rc, Object ctx);
+    }
+
+    public interface GetCommittedValuesCallback {
+        void getCommittedValuesComplete(int rc,
+                                        Map<String,ByteString> values,
+                                        Object ctx);
     }
 
     /**

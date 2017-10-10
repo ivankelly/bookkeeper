@@ -71,5 +71,11 @@ public interface BookKeeperClientStats {
     public final static String CHANNEL_PROPOSE_VALUES_OP = "PROPOSE_VALUES";
     public final static String CHANNEL_TIMEOUT_PROPOSE_VALUES_OP
         = "TIMEOUT_PROPOSE_VALUES";
-
+    public final static String CHANNEL_COMMIT_VALUES_OP = "COMMIT_VALUES";
+    public final static String CHANNEL_TIMEOUT_COMMIT_VALUES_OP
+        = "TIMEOUT_COMMIT_VALUES";
+    public final static String CHANNEL_GET_COMMITTED_VALUES_OP
+        = "GET_COMMITTED_VALUES";
+    public final static String CHANNEL_TIMEOUT_GET_COMMITTED_VALUES_OP
+        = "TIMEOUT_GET_COMMITTED_VALUES";
 }

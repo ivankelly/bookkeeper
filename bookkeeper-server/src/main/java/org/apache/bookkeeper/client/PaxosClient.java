@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -52,6 +53,23 @@ public class PaxosClient {
         return future;
     }
 
+    public CompletableFuture<Optional<ByteString>> get(
+            LedgerHandle ledger, String key) {
+        final CompletableFuture<Optional<ByteString>> future
+            = new CompletableFuture<>();
+        GetValuesOp op = new GetValuesOp(
+                ledger.getId(),
+                ledger.metadata.currentEnsemble,
+                ledger.metadata.getPassword(),
+                key, future);
+        scheduler.submit(op);
+        return future;
+    }
+
+    static int majoritySize(int ensembleSize) {
+        return (int)Math.ceil((ensembleSize+0.1)/2);
+    }
+
     private class Context {
         final List<BookieSocketAddress> bookies;
         final long ledgerId;
@@ -71,7 +89,7 @@ public class PaxosClient {
         }
 
         int majoritySize() {
-            return (int)Math.ceil((bookies.size()+0.1)/2);
+            return PaxosClient.majoritySize(bookies.size());
         }
 
         void success(Map<String,ByteString> values) {
@@ -235,6 +253,11 @@ public class PaxosClient {
 
                 if (respondedOk.size() >= context.majoritySize()) {
                     complete = true;
+
+                    // this can occur in background, once accepted
+                    // by a majority, the values can't change
+                    scheduler.submit(new CommitValuesOp(context, values));
+
                     context.success(values);
                 }
             } else if (rc == BKException.Code.OldWriterException) {
@@ -251,5 +274,95 @@ public class PaxosClient {
             return String.format("ProposeValuesOp(ctx=%s,writer=%s)",
                                  context, writerId);
         }
+    }
+
+    private class CommitValuesOp implements Runnable {
+        private final Context context;
+        private final Map<String,ByteString> values;
+
+        CommitValuesOp(Context context,
+                       Map<String,ByteString> values) {
+            this.context = context;
+            this.values = values;
+        }
+
+        @Override
+        public void run() {
+            LOG.info("{} sending requests", this);
+            for (final BookieSocketAddress addr : context.bookies) {
+                bookieClient.commitValues(
+                        addr,
+                        context.ledgerId,
+                        context.masterKey,
+                        values,
+                        (int rc, Object ctx) -> {
+                            LOG.debug("{}, got response ({}: {} from {}",
+                                      this, rc,
+                                      BKException.getMessage(rc), addr);
+                        }, null);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return String.format("CommitValuesOp(ctx=%s)", context);
+        }
+    }
+
+    private class GetValuesOp implements Runnable {
+        final long ledgerId;
+        final List<BookieSocketAddress> bookies;
+        final byte[] masterKey;
+        final String key;
+        final Set<String> keys;
+        final CompletableFuture<Optional<ByteString>> future;
+        int responses;
+        boolean complete;
+
+        GetValuesOp(long ledgerId, List<BookieSocketAddress> bookies,
+                    byte[] masterKey,
+                    String key,
+                    CompletableFuture<Optional<ByteString>> future) {
+            this.ledgerId = ledgerId;
+            this.bookies = bookies;
+            this.masterKey = masterKey;
+            this.key = key;
+            this.keys = new HashSet<>();
+            this.keys.add(key);
+            this.future = future;
+            responses = 0;
+            complete = false;
+        }
+
+        @Override
+        public void run() {
+            LOG.info("{} sending requests", this);
+            for (final BookieSocketAddress addr : bookies) {
+                bookieClient.getCommittedValues(
+                        addr, ledgerId, masterKey, keys,
+                        (int rc, Map<String,ByteString> values, Object ctx) -> {
+                            handleResponse(rc, values);
+                        }, null);
+            }
+        }
+
+        private synchronized void handleResponse(int rc,
+                                                 Map<String,ByteString> values) {
+            if (complete) { return; }
+            responses++;
+            if (rc == BKException.Code.OK
+                && values.containsKey(key)) {
+                complete = true;
+                future.complete(Optional.of(values.get(key)));
+            } else if (responses >= majoritySize(bookies.size())) {
+                future.complete(Optional.empty());
+            }
+        }
+
+        @Override
+        public String toString() {
+            return String.format("GetValuesOp(ledger=%s)", ledgerId);
+        }
+
     }
 }

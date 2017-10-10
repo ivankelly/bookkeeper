@@ -4,6 +4,9 @@ import java.util.UUID;
 import com.google.common.hash.Hashing;
 
 public class WriterId implements Comparable<WriterId> {
+    public static final WriterId MAX_WRITER = new WriterId(Long.MAX_VALUE,
+                                                           new UUID(Long.MAX_VALUE,
+                                                                    Long.MAX_VALUE));
     final long epoch;
     final UUID unique;
 

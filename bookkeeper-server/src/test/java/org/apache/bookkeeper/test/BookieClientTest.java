@@ -54,6 +54,8 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.NewWriterCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ProposeValuesCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.CommitValuesCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetCommittedValuesCallback;
 import org.apache.bookkeeper.proto.WriterId;
 import org.apache.bookkeeper.proto.PaxosValue;
 
@@ -353,6 +355,38 @@ public class BookieClientTest {
         }
     }
 
+    class TestCommitCallback
+        extends CountDownLatch
+        implements CommitValuesCallback {
+        int rc;
+
+        TestCommitCallback() { super(1); }
+
+        @Override
+        public void commitValuesComplete(int rc, Object ctx) {
+            this.rc = rc;
+            countDown();
+        }
+    }
+
+    class TestGetCommittedCallback
+        extends CountDownLatch
+        implements GetCommittedValuesCallback {
+        int rc;
+        Map<String,ByteString> values;
+
+        TestGetCommittedCallback() { super(1); }
+
+        @Override
+        public void getCommittedValuesComplete(int rc,
+                                               Map<String,ByteString> values,
+                                               Object ctx) {
+            this.rc = rc;
+            this.values = values;
+            countDown();
+        }
+    }
+
     @Test
     public void testNewWriter() throws Exception {
         long ledgerId = 100;
@@ -512,5 +546,30 @@ public class BookieClientTest {
         assertEquals("Previous value was written by writer 1",
                      w2_2,
                      cb9.currentValues.get("foobar").getWriter());
+    }
+
+    @Test
+    public void testCommitAndGet() throws Exception {
+        long ledgerId = 101;
+        byte[] masterKey = new byte[0];
+
+        BookieSocketAddress addr = new BookieSocketAddress("127.0.0.1", port);
+        BookieClient bc = new BookieClient(new ClientConfiguration(),
+                                           new NioEventLoopGroup(), executor);
+
+        Map<String,ByteString> committedValues = new HashMap<>();
+        committedValues.put("foobar", ByteString.copyFromUtf8("barfoo"));
+
+        TestCommitCallback cb1 = new TestCommitCallback();
+        bc.commitValues(addr, ledgerId, masterKey, committedValues, cb1, null);
+        assertTrue("Commit should complete", cb1.await(10, TimeUnit.SECONDS));
+
+        TestGetCommittedCallback cb2 = new TestGetCommittedCallback();
+        bc.getCommittedValues(addr, ledgerId, masterKey,
+                              committedValues.keySet(), cb2, null);
+        assertTrue("Get should complete", cb2.await(10, TimeUnit.SECONDS));
+        assertEquals("Value should be correct",
+                     committedValues.get("foobar"),
+                     cb2.values.get("foobar"));
     }
 }

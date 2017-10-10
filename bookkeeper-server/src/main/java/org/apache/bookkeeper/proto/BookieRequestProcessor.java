@@ -242,6 +242,12 @@ public class BookieRequestProcessor implements RequestProcessor {
                 case PROPOSE_VALUES:
                     processProposeValues(r, c);
                     break;
+                case COMMIT_VALUES:
+                    processCommitValues(r, c);
+                    break;
+                case GET_COMMITTED_VALUES:
+                    processGetCommittedValues(r, c);
+                    break;
                 default:
                     LOG.info("Unknown operation type {}", header.getOperation());
                     BookkeeperProtocol.Response.Builder response =
@@ -349,6 +355,63 @@ public class BookieRequestProcessor implements RequestProcessor {
                 currentWriter.toProtobuf(response
                                          .getProposeValuesResponseBuilder()
                                          .getHigherWriterIdBuilder());
+            }
+        }
+        c.writeAndFlush(response.build());
+    }
+
+    private void processCommitValues(final BookkeeperProtocol.Request r,
+                                     final Channel c) {
+        BookkeeperProtocol.Response.Builder response = BookkeeperProtocol.Response.newBuilder();
+        BookkeeperProtocol.BKPacketHeader.Builder header = BookkeeperProtocol.BKPacketHeader.newBuilder();
+        header.setVersion(BookkeeperProtocol.ProtocolVersion.VERSION_THREE);
+        header.setOperation(r.getHeader().getOperation());
+        header.setTxnId(r.getHeader().getTxnId());
+        response.setHeader(header.build());
+
+        synchronized(writerIds) {
+            BookkeeperProtocol.CommitValuesRequest cvr
+                = r.getCommitValuesRequest();
+            long ledgerId = cvr.getLedgerId();
+
+            response.setStatus(BookkeeperProtocol.StatusCode.EOK);
+            if (!values.containsKey(ledgerId)) {
+                values.put(ledgerId, new HashMap<>());
+            }
+            for (BookkeeperProtocol.KeyValue kv : cvr.getCommittedUpdateList()) {
+                values.get(ledgerId).put(kv.getKey(),
+                                         new PaxosValue(kv.getValue(),
+                                                        WriterId.MAX_WRITER,
+                                                        true));
+            }
+        }
+        c.writeAndFlush(response.build());
+    }
+
+    private void processGetCommittedValues(final BookkeeperProtocol.Request r,
+                                           final Channel c) {
+        BookkeeperProtocol.Response.Builder response = BookkeeperProtocol.Response.newBuilder();
+        BookkeeperProtocol.BKPacketHeader.Builder header = BookkeeperProtocol.BKPacketHeader.newBuilder();
+        header.setVersion(BookkeeperProtocol.ProtocolVersion.VERSION_THREE);
+        header.setOperation(r.getHeader().getOperation());
+        header.setTxnId(r.getHeader().getTxnId());
+        response.setHeader(header.build());
+
+        synchronized(writerIds) {
+            BookkeeperProtocol.GetCommittedValuesRequest gcvr
+                = r.getGetCommittedValuesRequest();
+            long ledgerId = gcvr.getLedgerId();
+
+            response.setStatus(BookkeeperProtocol.StatusCode.EOK);
+            if (!values.containsKey(ledgerId)) {
+                values.put(ledgerId, new HashMap<>());
+            }
+            for (String key : gcvr.getKeyList()) {
+                PaxosValue pv = values.get(ledgerId).get(key);
+                if (pv != null && pv.isCommitted()) {
+                    response.getGetCommittedValuesResponseBuilder()
+                        .addValueBuilder().setKey(key).setValue(pv.getValue());
+                }
             }
         }
         c.writeAndFlush(response.build());

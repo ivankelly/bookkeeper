@@ -88,6 +88,8 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.StartTLSCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.NewWriterCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ProposeValuesCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.CommitValuesCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetCommittedValuesCallback;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader;
@@ -180,6 +182,10 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     private final OpStatsLogger newWriterTimeoutOpLogger;
     private final OpStatsLogger proposeValuesOpLogger;
     private final OpStatsLogger proposeValuesTimeoutOpLogger;
+    private final OpStatsLogger commitValuesOpLogger;
+    private final OpStatsLogger commitValuesTimeoutOpLogger;
+    private final OpStatsLogger getCommittedValuesOpLogger;
+    private final OpStatsLogger getCommittedValuesTimeoutOpLogger;
 
     private final boolean useV2WireProtocol;
 
@@ -288,6 +294,14 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                 BookKeeperClientStats.CHANNEL_PROPOSE_VALUES_OP);
         proposeValuesTimeoutOpLogger = statsLogger.getOpStatsLogger(
                 BookKeeperClientStats.CHANNEL_TIMEOUT_PROPOSE_VALUES_OP);
+        commitValuesOpLogger = statsLogger.getOpStatsLogger(
+                BookKeeperClientStats.CHANNEL_COMMIT_VALUES_OP);
+        commitValuesTimeoutOpLogger = statsLogger.getOpStatsLogger(
+                BookKeeperClientStats.CHANNEL_TIMEOUT_COMMIT_VALUES_OP);
+        getCommittedValuesOpLogger = statsLogger.getOpStatsLogger(
+                BookKeeperClientStats.CHANNEL_GET_COMMITTED_VALUES_OP);
+        getCommittedValuesTimeoutOpLogger = statsLogger.getOpStatsLogger(
+                BookKeeperClientStats.CHANNEL_TIMEOUT_GET_COMMITTED_VALUES_OP);
 
         this.pcbcPool = pcbcPool;
 
@@ -828,6 +842,61 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         for (Map.Entry<String,ByteString> e : values.entrySet()) {
             builder.getProposeValuesRequestBuilder()
                 .addUpdateBuilder().setKey(e.getKey()).setValue(e.getValue());
+        }
+        writeAndFlush(channel, completionKey, builder.build());
+    }
+
+    void commitValues(final long ledgerId, byte[] masterKey,
+                      final Map<String,ByteString> values,
+                      final CommitValuesCallback cb,
+                      final Object ctx) {
+        final long txnId = getTxnId();
+        CompletionKey completionKey = new V3CompletionKey(
+                txnId, OperationType.COMMIT_VALUES);
+        completionObjects.put(completionKey,
+                              new CommitValuesCompletion(completionKey,
+                                                         cb, ctx));
+
+        Request.Builder builder = Request.newBuilder();
+
+        builder.getHeaderBuilder()
+            .setVersion(ProtocolVersion.VERSION_THREE)
+            .setOperation(OperationType.COMMIT_VALUES)
+            .setTxnId(txnId);
+
+        builder.getCommitValuesRequestBuilder()
+            .setLedgerId(ledgerId)
+            .setMasterKey(ByteString.copyFrom(masterKey));
+        for (Map.Entry<String,ByteString> e : values.entrySet()) {
+            builder.getCommitValuesRequestBuilder()
+                .addCommittedUpdateBuilder().setKey(e.getKey()).setValue(e.getValue());
+        }
+        writeAndFlush(channel, completionKey, builder.build());
+    }
+
+    void getCommittedValues(final long ledgerId, byte[] masterKey,
+                            final Set<String> keys,
+                            final GetCommittedValuesCallback cb,
+                            final Object ctx) {
+        final long txnId = getTxnId();
+        CompletionKey completionKey = new V3CompletionKey(
+                txnId, OperationType.GET_COMMITTED_VALUES);
+        completionObjects.put(completionKey,
+                              new GetCommittedValuesCompletion(completionKey,
+                                                               cb, ctx));
+
+        Request.Builder builder = Request.newBuilder();
+
+        builder.getHeaderBuilder()
+            .setVersion(ProtocolVersion.VERSION_THREE)
+            .setOperation(OperationType.GET_COMMITTED_VALUES)
+            .setTxnId(txnId);
+
+        builder.getGetCommittedValuesRequestBuilder()
+            .setLedgerId(ledgerId)
+            .setMasterKey(ByteString.copyFrom(masterKey));
+        for (String k : keys) {
+            builder.getGetCommittedValuesRequestBuilder().addKey(k);
         }
         writeAndFlush(channel, completionKey, builder.build());
     }
@@ -1756,6 +1825,98 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             WriterId higherWriter = pvr.hasHigherWriterId() ?
                 WriterId.fromProtobuf(pvr.getHigherWriterId()) : null;
             cb.proposeValuesComplete(rc, higherWriter, ctx);
+        }
+    }
+
+    class CommitValuesCompletion extends CompletionValue {
+        final CommitValuesCallback cb;
+
+        public CommitValuesCompletion(CompletionKey key,
+                                      final CommitValuesCallback origCallback,
+                                      final Object origCtx) {
+            super("CommitValues", origCtx, 0L, 0L,
+                  commitValuesOpLogger, commitValuesTimeoutOpLogger,
+                  scheduleTimeout(key, addEntryTimeout));
+            this.cb = new CommitValuesCallback() {
+                        @Override
+                        public void commitValuesComplete(
+                                int rc,
+                                Object ctx) {
+                            cancelTimeoutAndLogOp(rc);
+
+                            origCallback.commitValuesComplete(
+                                    rc, origCtx);
+                        }
+                    };
+        }
+
+        @Override
+        public void errorOut() {
+            errorOut(BKException.Code.BookieHandleNotAvailableException);
+        }
+
+        @Override
+        public void errorOut(final int rc) {
+            errorOutAndRunCallback(
+                    () -> cb.commitValuesComplete(rc, ctx));
+        }
+
+        @Override
+        public void handleV3Response(BookkeeperProtocol.Response response) {
+            int rc = logAndConvertStatus(response.getStatus(),
+                                         BKException.Code.WriteException);
+
+            cb.commitValuesComplete(rc, ctx);
+        }
+    }
+
+    class GetCommittedValuesCompletion extends CompletionValue {
+        final GetCommittedValuesCallback cb;
+
+        public GetCommittedValuesCompletion(
+                CompletionKey key,
+                final GetCommittedValuesCallback origCallback,
+                final Object origCtx) {
+            super("GetCommittedValues", origCtx, 0L, 0L,
+                  getCommittedValuesOpLogger,
+                  getCommittedValuesTimeoutOpLogger,
+                  scheduleTimeout(key, readEntryTimeout));
+            this.cb = new GetCommittedValuesCallback() {
+                        @Override
+                        public void getCommittedValuesComplete(
+                                int rc,
+                                Map<String,ByteString> values,
+                                Object ctx) {
+                            cancelTimeoutAndLogOp(rc);
+
+                            origCallback.getCommittedValuesComplete(
+                                    rc, values, origCtx);
+                        }
+                    };
+        }
+
+        @Override
+        public void errorOut() {
+            errorOut(BKException.Code.BookieHandleNotAvailableException);
+        }
+
+        @Override
+        public void errorOut(final int rc) {
+            errorOutAndRunCallback(
+                    () -> cb.getCommittedValuesComplete(rc, null, ctx));
+        }
+
+        @Override
+        public void handleV3Response(BookkeeperProtocol.Response response) {
+            BookkeeperProtocol.GetCommittedValuesResponse valuesResp
+                = response.getGetCommittedValuesResponse();
+            int rc = logAndConvertStatus(response.getStatus(),
+                                         BKException.Code.WriteException);
+            Map<String,ByteString> values = new HashMap<>();
+            for (BookkeeperProtocol.KeyValue kv : valuesResp.getValueList()) {
+                values.put(kv.getKey(), kv.getValue());
+            }
+            cb.getCommittedValuesComplete(rc, values, ctx);
         }
     }
 

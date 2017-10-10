@@ -68,6 +68,8 @@ enum OperationType {
 
     NEW_WRITER = 10;
     PROPOSE_VALUES = 11;
+    COMMIT_VALUES = 12;
+    GET_COMMITTED_VALUES = 13;
 }
 
 /**
@@ -91,6 +93,8 @@ message Request {
     optional StartTLSRequest startTLSRequest = 106;
     optional NewWriterRequest newWriterRequest = 107;
     optional ProposeValuesRequest proposeValuesRequest = 108;
+    optional CommitValuesRequest commitValuesRequest = 109;
+    optional GetCommittedValuesRequest getCommittedValuesRequest = 110;
 }
 
 message ReadRequest {
@@ -169,6 +173,18 @@ message ProposeValuesRequest {
     repeated KeyValue update = 4;
 }
 
+message CommitValuesRequest {
+    required int64 ledgerId = 1;
+    required bytes masterKey = 2;
+    repeated KeyValue committedUpdate = 3;
+}
+
+message GetCommittedValuesRequest {
+    required int64 ledgerId = 1;
+    required bytes masterKey = 2;
+    repeated string key = 3;
+}
+
 message Response {
 
     required BKPacketHeader header = 1;
@@ -185,6 +201,8 @@ message Response {
     optional StartTLSResponse startTLSResponse = 106;
     optional NewWriterResponse newWriterResponse = 107;
     optional ProposeValuesResponse proposeValuesResponse = 108;
+    optional CommitValuesResponse commitValuesResponse = 109;
+    optional GetCommittedValuesResponse getCommittedValuesResponse = 110;
 }
 
 message ReadResponse {
@@ -236,4 +254,11 @@ message NewWriterResponse {
 
 message ProposeValuesResponse {
     optional WriterId higherWriterId = 1;
+}
+
+message CommitValuesResponse {
+}
+
+message GetCommittedValuesResponse {
+    repeated KeyValue value = 1;
 }
