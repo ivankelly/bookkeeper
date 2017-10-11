@@ -1108,15 +1108,12 @@ public class BookKeeper implements AutoCloseable {
         return SynchCallbackUtils.waitForResult(counter);
     }
 
-    public LedgerHandle openLedger(long lId,
-                                   List<BookieSocketAddress> bookies,
-                                   int ensSize, int writeQuorumSize,
-                                   int ackQuorumSize,
-                                   DigestType digestType, byte passwd[])
-            throws InterruptedException, BKException {
-        CompletableFuture<LedgerHandle> counter = new CompletableFuture<>();
-        SyncOpenCallback cb = new SyncOpenCallback();
-
+    public void asyncOpenLedger(long lId,
+                                List<BookieSocketAddress> bookies,
+                                int ensSize, int writeQuorumSize,
+                                int ackQuorumSize,
+                                DigestType digestType, byte passwd[],
+                                final OpenCallback cb, final Object ctx) {
         LedgerMetadata metadata = new LedgerMetadata(ensSize,
                                                      writeQuorumSize,
                                                      ackQuorumSize,
@@ -1133,6 +1130,19 @@ public class BookKeeper implements AutoCloseable {
         } finally {
             closeLock.readLock().unlock();
         }
+    }
+
+    public LedgerHandle openLedger(long lId,
+                                   List<BookieSocketAddress> bookies,
+                                   int ensSize, int writeQuorumSize,
+                                   int ackQuorumSize,
+                                   DigestType digestType, byte passwd[])
+            throws InterruptedException, BKException {
+        CompletableFuture<LedgerHandle> counter = new CompletableFuture<>();
+        SyncOpenCallback cb = new SyncOpenCallback();
+
+        asyncOpenLedger(lId, bookies, ensSize, writeQuorumSize,
+                        ackQuorumSize, digestType, passwd, cb, counter);
 
         return SynchCallbackUtils.waitForResult(counter);
     }
