@@ -1123,10 +1123,11 @@ public class BookKeeper implements AutoCloseable {
         closeLock.readLock().lock();
         try {
             if (closed) {
-                throw BKException.create(BKException.Code.ClientClosedException);
+                cb.openComplete(BKException.Code.ClientClosedException, null, ctx);
+                return;
             }
             new LedgerOpenOpNoZk(BookKeeper.this, lId, metadata,
-                                 cb, counter).initiate();
+                                 cb, ctx).initiate();
         } finally {
             closeLock.readLock().unlock();
         }
@@ -1147,15 +1148,12 @@ public class BookKeeper implements AutoCloseable {
         return SynchCallbackUtils.waitForResult(counter);
     }
 
-    public LedgerHandle openLedgerNoRecovery(long lId,
-                                             List<BookieSocketAddress> bookies,
-                                             int ensSize, int writeQuorumSize,
-                                             int ackQuorumSize,
-                                             DigestType digestType, byte passwd[])
-            throws InterruptedException, BKException {
-        CompletableFuture<LedgerHandle> counter = new CompletableFuture<>();
-        SyncOpenCallback cb = new SyncOpenCallback();
-
+    public void asyncOpenLedgerNoRecovery(long lId,
+                                          List<BookieSocketAddress> bookies,
+                                          int ensSize, int writeQuorumSize,
+                                          int ackQuorumSize,
+                                          DigestType digestType, byte passwd[],
+                                          final OpenCallback cb, final Object ctx) {
         LedgerMetadata metadata = new LedgerMetadata(ensSize,
                                                      writeQuorumSize,
                                                      ackQuorumSize,
@@ -1165,14 +1163,27 @@ public class BookKeeper implements AutoCloseable {
         closeLock.readLock().lock();
         try {
             if (closed) {
-                throw BKException.create(BKException.Code.ClientClosedException);
+                cb.openComplete(BKException.Code.ClientClosedException, null, ctx);
+                return;
             }
             new LedgerOpenOpNoRecoveryNoZk(BookKeeper.this, lId, metadata,
-                                           cb, counter).initiate();
+                                           cb, ctx).initiate();
         } finally {
             closeLock.readLock().unlock();
         }
+    }
 
+    public LedgerHandle openLedgerNoRecovery(long lId,
+                                             List<BookieSocketAddress> bookies,
+                                             int ensSize, int writeQuorumSize,
+                                             int ackQuorumSize,
+                                             DigestType digestType, byte passwd[])
+            throws InterruptedException, BKException {
+        CompletableFuture<LedgerHandle> counter = new CompletableFuture<>();
+        SyncOpenCallback cb = new SyncOpenCallback();
+
+        asyncOpenLedgerNoRecovery(lId, bookies, ensSize, writeQuorumSize,
+                                  ackQuorumSize, digestType, passwd, cb, counter);
         return SynchCallbackUtils.waitForResult(counter);
     }
 

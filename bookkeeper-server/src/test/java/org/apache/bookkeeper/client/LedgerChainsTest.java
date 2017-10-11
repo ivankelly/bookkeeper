@@ -61,91 +61,67 @@ import static org.junit.Assert.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Log0Test extends Log0TestBase {
+public class LedgerChainsTest extends Log0TestBase {
     static final Logger LOG = LoggerFactory.getLogger(Log0Test.class);
 
-    public Log0Test() {
+    public LedgerChainsTest() {
         super(5);
     }
 
     @Test
     public void testCantWriteToLedger0() throws Exception {
-        LOG.info("client client");
         BookKeeper client = BookKeeper.forConfig(new ClientConfiguration()).build();
 
         // write a ledger and close it
         List<BookieSocketAddress> bootstrapEnsemble = getBookieAddresses();
 
-        
-    }
+        LedgerChains chains = new LedgerChains(client);
 
-    @Test
-    public void testCreateAndOpenWithRecovery() throws Exception {
-        LOG.info("client client");
-        BookKeeper client = BookKeeper.forConfig(new ClientConfiguration()).build();
-
-        // write a ledger and close it
-        List<BookieSocketAddress> bookies = getBookieAddresses();
-        LOG.info("Create ledger");
-        LedgerHandle lh = client.createLedger(1L, bookies, 5, 5, 3,
-                                              BookKeeper.DigestType.MAC, "foobar".getBytes());
-        long lac = 0;
-        LOG.info("Write to ledger");
-        for (int i = 0; i < 100; i++) {
-            lac = lh.addEntry(("foobar"+i).getBytes());
-        }
-        // open a bookie and read it
-        LOG.info("Open ledger");
-        LedgerHandle openlh = client.openLedger(1L, bookies, 5, 5, 3,
-                               BookKeeper.DigestType.MAC, "foobar".getBytes());
-        LOG.info("Read last add confirmed");
-        assertEquals("last add confirmed should be last entry",
-                     lac, openlh.getLastAddConfirmed());
-        assertEquals("create lac also be the same",
-                     lac, lh.getLastAddConfirmed());
-
+        LedgerHandle ledger0 = chains.ledger0(bootstrapEnsemble).get();
+        assertTrue(ledger0.isClosed());
+        assertEquals("Ledger0 should be emtpy",
+                     LedgerHandle.INVALID_ENTRY_ID, ledger0.getLastAddConfirmed());
         try {
-            lh.addEntry("shouldn't succeed".getBytes());
-            fail("Shouldn't have been able to add more entries");
+            ledger0.addEntry("foobar".getBytes());
+            fail("Shouldn't have been able to write anything");
         } catch (Exception e) {
-            // correct behaviour
+            // correct
         }
     }
 
     @Test
-    public void testCreateAndTailing() throws Exception {
+    public void testBuildingChains() throws Exception {
         BookKeeper client = BookKeeper.forConfig(new ClientConfiguration()).build();
 
         // write a ledger and close it
-        List<BookieSocketAddress> bookies = getBookieAddresses();
-        LedgerHandle lh = client.createLedger(1L, bookies, 5, 5, 3,
-                                              BookKeeper.DigestType.MAC, "foobar".getBytes());
-        LedgerHandle tailer = client.openLedgerNoRecovery(1L, bookies, 5, 5, 3,
-                BookKeeper.DigestType.MAC, "foobar".getBytes());
-        long lac = 0;
-        for (int i = 0; i < 100; i++) {
-            lac = lh.addEntry(("foobar"+i).getBytes());
-            if (i == 0) {
-                assertEquals("no entries confirmed yet",
-                             LedgerHandle.INVALID_ENTRY_ID, tailer.readLastConfirmed());
-            } else {
-                assertEquals("previous entry is confirmed",
-                             lac - 1, tailer.readLastConfirmed());
-            }
+        List<BookieSocketAddress> bootstrapEnsemble = getBookieAddresses();
+
+        LedgerChains chains = new LedgerChains(client);
+        LedgerHandle ledger0 = chains.ledger0(bootstrapEnsemble).get();
+        LedgerHandle firstLedger = chains.writeNextLedger(ledger0).get();
+        try {
+            chains.writeNextLedger(ledger0).get();
+            fail("shouldn't be able to chain again");
+        } catch (Exception e) {
+            // correct
         }
+        assertNotEquals("ledger ids should differ",
+                        ledger0.getId(), firstLedger.getId());
 
-        lh.close();
-        assertEquals("last entry is confirmed",
-                     lac, tailer.readLastConfirmed());
-        assertTrue("tailer is now closed",
-                   tailer.isClosed());
-    }
+        firstLedger.addEntry("foobar".getBytes());
 
-    @Test
-    public void testEnsembleDoesntChange() throws Exception {
-
-        // remove two nodes, works fine
-
-        // remove third node, write fails
+        LedgerHandle secondLedger = chains.writeNextLedger(firstLedger).get();
+        assertNotEquals("ledger ids should differ",
+                        secondLedger.getId(), firstLedger.getId());
+        LedgerHandle thirdLedger = chains.writeNextLedger(secondLedger).get();
+        assertNotEquals("ledger ids should differ",
+                        thirdLedger.getId(), secondLedger.getId());
+        try {
+            secondLedger.addEntry("foobar".getBytes());
+            fail("Shouldn't be able to write to previous ledger");
+        } catch (Exception e) {
+            // correct
+        }
+        thirdLedger.addEntry("foobar".getBytes());
     }
 }

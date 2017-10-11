@@ -105,6 +105,10 @@ public abstract class BKException extends Exception {
             return new BKLedgerIdOverflowException();
         case Code.SecurityException:
             return new BKSecurityException();
+        case Code.OldWriterException:
+            return new BKOldWriterException();
+        case Code.ConflictingWriterException:
+            return new BKConflictingWriterException();
         default:
             return new BKUnexpectedConditionException();
         }
@@ -215,6 +219,7 @@ public abstract class BKException extends Exception {
          * Bookie's writer is newer than that passed
          */
         int OldWriterException = -300;
+        int ConflictingWriterException = -301;
 
         /**
          * Unexpected condition.
@@ -298,6 +303,8 @@ public abstract class BKException extends Exception {
             return "Failed to establish a secure connection";
         case Code.OldWriterException:
             return "Bookie has newer writer";
+        case Code.ConflictingWriterException:
+            return "Another writer succeeded";
         default:
             return "Unexpected condition";
         }
@@ -491,6 +498,18 @@ public abstract class BKException extends Exception {
     public static class BKLedgerIdOverflowException extends BKException {
         public BKLedgerIdOverflowException() {
             super(Code.LedgerIdOverflowException);
+        }
+    }
+
+    public static class BKOldWriterException extends BKException {
+        public BKOldWriterException() {
+            super(Code.OldWriterException);
+        }
+    }
+
+    public static class BKConflictingWriterException extends BKException {
+        public BKConflictingWriterException() {
+            super(Code.ConflictingWriterException);
         }
     }
 }

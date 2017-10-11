@@ -92,3 +92,18 @@ message LockDataFormat {
 message AuditorVoteFormat {
     optional string bookieId = 1;
 }
+
+message LedgerSpec {
+    required int32 ensembleSize = 1;
+    required int32 writeQuorumSize = 2;
+    required int32 ackQuorumSize = 3;
+
+    required int64 ledgerId = 4;
+    required int64 writerMsb = 5;
+    required int64 writerLsb = 6;
+    
+    repeated string bookie = 7;
+
+    // TODO add more metadata that could be useful for debugging
+    // such as time, node generating etc
+}
