@@ -60,6 +60,7 @@
     <module>bookkeeper-http</module>
     <module>tests</module>
     <module>streamstore</module>
+    <module>bookkeeper-dist</module>
   </modules>
   <mailingLists>
     <mailingList>
@@ -103,6 +104,7 @@
     <freebuilder.version>1.12.3</freebuilder.version>
     <google.code.version>3.0.2</google.code.version>
     <grpc-all.version>1.0.3</grpc-all.version>
+    <google.code.version>3.0.2</google.code.version>
     <guava.version>20.0</guava.version>
     <hamcrest.version>1.3</hamcrest.version>
     <helix-core.version>0.6.7</helix-core.version>
@@ -110,6 +112,8 @@
     <junit.version>4.12</junit.version>
     <lombok.version>1.16.12</lombok.version>
     <mockito-core.version>2.8.9</mockito-core.version>
+
+    <powermock.version>1.7.3</powermock.version>
     <protobuf.version>3.4.0</protobuf.version>
     <netty.version>4.1.12.Final</netty.version>
     <netty-boringssl.version>2.0.3.Final</netty-boringssl.version>
@@ -127,6 +131,7 @@
     <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
     <maven-source-plugin.version>2.2.1</maven-source-plugin.version>
     <maven-surefire-plugin.version>2.19.1</maven-surefire-plugin.version>
+    <maven-assembly-plugin.version>2.2.1</maven-assembly-plugin.version>
   </properties>
 
   <!-- dependencies for all modules -->
@@ -177,6 +182,18 @@
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
       <version>${mockito-core.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-api-mockito2</artifactId>
+      <version>${powermock.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-module-junit4</artifactId>
+      <version>${powermock.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -268,7 +285,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
-        <version>2.2.1</version>
+        <version>${maven-assembly-plugin.version}</version>
         <configuration>
 	  <tarLongFileMode>gnu</tarLongFileMode>
           <descriptors>

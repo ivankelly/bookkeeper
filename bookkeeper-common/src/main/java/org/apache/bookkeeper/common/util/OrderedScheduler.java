@@ -82,7 +82,7 @@ public class OrderedScheduler {
      * Abstract builder class to build {@link OrderedScheduler}.
      */
     public abstract static class AbstractBuilder<T extends OrderedScheduler> {
-        protected String name = "OrderedSafeExecutor";
+        protected String name = getClass().getSimpleName();
         protected int numThreads = Runtime.getRuntime().availableProcessors();
         protected ThreadFactory threadFactory = null;
         protected StatsLogger statsLogger = NullStatsLogger.INSTANCE;
@@ -190,7 +190,7 @@ public class OrderedScheduler {
         for (int i = 0; i < numThreads; i++) {
             final ScheduledThreadPoolExecutor thread =  new ScheduledThreadPoolExecutor(1,
                     new ThreadFactoryBuilder()
-                        .setNameFormat(name + "-orderedsafeexecutor-" + i + "-%d")
+                        .setNameFormat(name + "-" + getClass().getSimpleName() + "-" + i + "-%d")
                         .setThreadFactory(threadFactory)
                         .build());
             threads[i] = MoreExecutors.listeningDecorator(thread);
