@@ -58,7 +58,40 @@ public class LedgerChains {
     }
 
     CompletableFuture<LedgerHandle> readNextLedger(LedgerHandle current) {
-        return null;
+        final CompletableFuture<LedgerHandle> future = new CompletableFuture<>();
+        if (current.isClosed()) {
+            PaxosClient paxos = new PaxosClient(bk);
+            paxos.get(current, "nextLedger").whenComplete(
+                    (optional, throwable) -> {
+                        if (throwable != null) {
+                            LOG.error("Exception reading nextLedger", throwable);
+                            future.completeExceptionally(new BKException.BKUnexpectedConditionException());
+                        } else if (!optional.isPresent()) {
+                            future.completeExceptionally(new BKException.BKUnexpectedConditionException());
+                        } else {
+                            try {
+                                LedgerSpec spec = LedgerSpec.newBuilder()
+                                    .mergeFrom(optional.get()).build();
+                                List<BookieSocketAddress> bookies = new ArrayList<>();
+                                for (String b : spec.getBookieList()) {
+                                    bookies.add(new BookieSocketAddress(b));
+                                }
+                                LedgerHandle lh = bk.createLedger(spec.getLedgerId(),
+                                                                  bookies, spec.getEnsembleSize(), spec.getWriteQuorumSize(),
+                                                                  spec.getAckQuorumSize(), DIGEST_TYPE, PASSWORD);
+                                future.complete(lh);
+                            } catch (Exception e) {
+                                LOG.error("Error reading returned values when setting nextLedger",
+                                          e);
+                                future.completeExceptionally(
+                                                             new BKException.BKUnexpectedConditionException());
+                            }
+                        }
+                    });
+        } else {
+            future.completeExceptionally(new BKException.BKUnexpectedConditionException());
+        }
+        return future;
     }
 
     CompletableFuture<LedgerHandle> writeNextLedger(LedgerHandle current) {

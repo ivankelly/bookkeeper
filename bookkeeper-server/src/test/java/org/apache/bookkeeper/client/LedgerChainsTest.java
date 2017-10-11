@@ -124,4 +124,49 @@ public class LedgerChainsTest extends Log0TestBase {
         }
         thirdLedger.addEntry("foobar".getBytes());
     }
+
+    @Test
+    public void testTailingChain() throws Exception {
+        BookKeeper client = BookKeeper.forConfig(new ClientConfiguration()).build();
+
+        // write a ledger and close it
+        List<BookieSocketAddress> bootstrapEnsemble = getBookieAddresses();
+
+        LedgerChains chains = new LedgerChains(client);
+        LedgerHandle ledger0 = chains.ledger0(bootstrapEnsemble).get();
+        LedgerHandle writer1 = chains.writeNextLedger(ledger0).get();
+        LedgerHandle tail1 = chains.readNextLedger(ledger0).get();
+
+        long e1 = writer1.addEntry("foobar".getBytes());
+        assertEquals("Shouldn't be anything visible yet",
+                     LedgerHandle.INVALID_ENTRY_ID, tail1.readLastConfirmed());
+        try {
+            // try to move to next ledger, even though not closed
+            chains.readNextLedger(tail1).get();
+            fail("Should fail to move, current ledger is closed");
+        } catch (Exception e) {
+            // correct
+        }
+        long e2 = writer1.addEntry("foobar".getBytes());
+
+        assertEquals("First entry should now be visible",
+                     e1, tail1.readLastConfirmed());
+
+        LedgerHandle writer2 = chains.writeNextLedger(writer1).get();
+        Thread.sleep(1000); // wait a little for the commit to happen
+        assertEquals("Second entry should now be visible",
+                     e2, tail1.readLastConfirmed());
+
+        assertTrue("tail1 should be closed", tail1.isClosed());
+
+        LedgerHandle tail2 = chains.readNextLedger(tail1).get();
+        assertEquals("Shouldn't be anything visible yet",
+                     LedgerHandle.INVALID_ENTRY_ID, tail2.readLastConfirmed());
+        long e3 = writer2.addEntry("barfoo".getBytes());
+        assertEquals("Shouldn't be anything visible yet",
+                     LedgerHandle.INVALID_ENTRY_ID, tail2.readLastConfirmed());
+        writer2.addEntry("foobar".getBytes());
+        assertEquals("Third entry should now be visible",
+                     e3, tail2.readLastConfirmed());
+    }
 }
