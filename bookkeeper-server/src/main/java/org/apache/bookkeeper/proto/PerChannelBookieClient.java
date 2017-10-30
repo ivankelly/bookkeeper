@@ -1164,7 +1164,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     abstract class CompletionValue {
         private final OpStatsLogger opLogger;
         private final OpStatsLogger timeoutOpLogger;
-        private final String operationName;
+        private final String operationName; // adding a comment
         protected Object ctx;
         protected long ledgerId;
         protected long entryId;
