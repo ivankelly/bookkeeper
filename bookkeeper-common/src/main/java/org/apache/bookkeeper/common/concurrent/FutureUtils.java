@@ -23,7 +23,6 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -377,6 +376,36 @@ public final class FutureUtils {
     public static <T, R> CompletableFuture<R> fromListenableFuture(
         ListenableFuture<T> listenableFuture,
         ExceptionalFunction<? super T, ? extends R> mapFn) {
+        CompletableFuture<R> completableFuture = createFuture();
+        Futures.addCallback(listenableFuture, new FutureCallback<T>() {
+            @Override
+            public void onSuccess(T result) {
+                try {
+                    R uResult = mapFn.apply(result);
+                    completableFuture.complete(uResult);
+                } catch (Exception e) {
+                    completableFuture.completeExceptionally(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                completableFuture.completeExceptionally(t);
+            }
+        });
+        return completableFuture;
+    }
+
+    /**
+     * Convert a {@link ListenableFuture} to a {@link CompletableFuture} and do a transformation.
+     *
+     * @param listenableFuture listenable future
+     * @param mapFn a map function that transform results
+     * @return the completable future after transformation.
+     */
+    public static <T, R> CompletableFuture<R> fromListenableFuture(
+        ListenableFuture<T> listenableFuture,
+        Function<? super T, ? extends R> mapFn) {
         CompletableFuture<R> completableFuture = createFuture();
         Futures.addCallback(listenableFuture, new FutureCallback<T>() {
             @Override
