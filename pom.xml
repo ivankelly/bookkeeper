@@ -120,11 +120,12 @@
     <netty-buffer.version>4.1.12.Final</netty-buffer.version>
     <slf4j.version>1.7.25</slf4j.version>
     <zookeeper.version>3.5.3-beta</zookeeper.version>
+    <findbugs-jsr305.version>3.0.0</findbugs-jsr305.version>
     <!-- plugin dependencies -->
-    <findbugs-maven-plugin.version>3.0.4</findbugs-maven-plugin.version>
+    <findbugs-maven-plugin.version>3.0.5</findbugs-maven-plugin.version>
     <puppycrawl.checkstyle.version>6.19</puppycrawl.checkstyle.version>
     <maven-checkstyle-plugin.version>2.17</maven-checkstyle-plugin.version>
-    <maven-compiler-plugin.version>3.5.1</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
     <maven-deploy-plugin.version>2.7</maven-deploy-plugin.version>
     <maven-jar-plugin.version>2.2</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>2.10.4</maven-javadoc-plugin.version>
@@ -218,6 +219,8 @@
             <compilerArg>-Werror</compilerArg>
             <compilerArg>-Xlint:deprecation</compilerArg>
             <compilerArg>-Xlint:unchecked</compilerArg>
+            <!-- https://issues.apache.org/jira/browse/MCOMPILER-205 -->
+            <compilerArg>-Xpkginfo:always</compilerArg>
 	  </compilerArgs>
         </configuration>
       </plugin>
@@ -239,7 +242,7 @@
         <configuration>
           <!-- Prevent missing javadoc comments from being marked as errors -->
           <additionalparam>-Xdoclint:none -notimestamp</additionalparam>
-          <subpackages>org.apache.bookkeeper.client:org.apache.bookkeeper.common.annotation:org.apache.bookkeeper.conf:org.apache.bookkeeper.feature:org.apache.bookkeeper.stats</subpackages>
+          <subpackages>org.apache.bookkeeper.client:org.apache.bookkeeper.client.api:org.apache.bookkeeper.common.annotation:org.apache.bookkeeper.conf:org.apache.bookkeeper.feature:org.apache.bookkeeper.stats</subpackages>
           <groups>
             <group>
               <title>Bookkeeper Client</title>
