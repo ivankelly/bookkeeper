@@ -92,7 +92,7 @@ public final class Retries {
                 retryPredicate,
                 task,
                 scheduler,
-                null);
+                new Object());
         } else {
             scheduler.submitOrdered(key, () -> execute(
                 future,
