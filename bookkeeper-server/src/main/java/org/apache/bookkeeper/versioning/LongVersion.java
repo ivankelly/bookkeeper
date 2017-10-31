@@ -27,6 +27,24 @@ public class LongVersion implements Version {
         this.version = v;
     }
 
+    private LongVersion() {
+    }
+    public static final long ANY_LONG_VALUE = -1L;
+    public static final LongVersion ANY_LONG = new LongVersion() {
+        @Override
+        public Occurred compare(Version v) {
+            if (null == v) {
+                throw new NullPointerException("Version is not allowed to be null.");
+            }
+            return Occurred.CONCURRENTLY;
+        }
+
+        @Override
+        public long getLongVersion() {
+            return ANY_LONG_VALUE;
+        }
+    };
+
     @Override
     public Occurred compare(Version v) {
         if (null == v) {
