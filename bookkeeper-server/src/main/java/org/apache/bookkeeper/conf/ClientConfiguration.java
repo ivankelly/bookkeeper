@@ -20,7 +20,10 @@ package org.apache.bookkeeper.conf;
 import static com.google.common.base.Charsets.UTF_8;
 import static org.apache.bookkeeper.util.BookKeeperConstants.FEATURE_DISABLE_ENSEMBLE_CHANGE;
 
+
+import com.google.common.collect.Lists;
 import io.netty.buffer.ByteBuf;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +32,7 @@ import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.EnsemblePlacementPolicy;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.RackawareEnsemblePlacementPolicy;
+import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.replication.Auditor;
 import org.apache.bookkeeper.util.ReflectionUtils;
 import org.apache.commons.configuration.ConfigurationException;
@@ -125,6 +129,9 @@ public class ClientConfiguration extends AbstractConfiguration {
 
     // Role of the client
     protected final static String CLIENT_ROLE = "clientRole";
+
+    // Name Resolver
+    protected final static String BOOTSTRAP_BOOKIES = "clientBootstrapBookies";
 
     /**
      * This client will act as a standard client
@@ -1618,6 +1625,51 @@ public class ClientConfiguration extends AbstractConfiguration {
      */
     public ClientConfiguration setNettyUsePooledBuffers(boolean enabled) {
         setProperty(NETTY_USE_POOLED_BUFFERS, enabled);
+        return this;
+    }
+
+    /**
+     * Get a comma-separated list of host and port pairs that are the addresses of the bookies
+     * in a <i>bootstrap</i> bookkeeper cluster that a bookkeeper client connects to initially
+     * to bootstrap itself.
+     *
+     * <p>A host and port pair uses <i>:</i> as the separator.
+     *
+     * <p><i>bootstrapBookies</i> provides the initial hosts that act as the starting point for
+     * a bookkeeper client to discover the full set of alive bookies in the cluster. The bootstrap
+     * server can simply be a DNS name for all the bookies.
+     *
+     * @return a list of bookie addresses used for bootstrap.
+     */
+    public List<BookieSocketAddress> getClientBootstrapBookies() {
+        List bootstrapBookieNames = getList(BOOTSTRAP_BOOKIES, null);
+        if (null == bootstrapBookieNames) {
+            return null;
+        }
+        return Lists.transform(
+            bootstrapBookieNames,
+            bookieName -> {
+                try {
+                    return new BookieSocketAddress(bookieName.toString());
+                } catch (UnknownHostException e) {
+                    throw new RuntimeException("Unknown bookie address : " + bookieName, e);
+                }
+            });
+    }
+
+    /**
+     * Set a list of bookies addresses as the bootstrap bookies for bootstrapping a bookkeeper client.
+     *
+     * @return client configuration.
+     * @see #getClientBootstrapBookies()
+     */
+    public ClientConfiguration setClientBootstrapBookies(List<BookieSocketAddress> addresses) {
+        String bookiesList = StringUtils.join(
+            Lists.transform(
+                addresses,
+                address -> address.toString()),
+            ",");
+        setProperty(BOOTSTRAP_BOOKIES, bookiesList);
         return this;
     }
 }
