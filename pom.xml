@@ -103,7 +103,7 @@
     <distributedlog.version>0.5.0</distributedlog.version>
     <freebuilder.version>1.12.3</freebuilder.version>
     <google.code.version>3.0.2</google.code.version>
-    <grpc-all.version>1.0.3</grpc-all.version>
+    <grpc-all.version>1.5.0</grpc-all.version>
     <google.code.version>3.0.2</google.code.version>
     <guava.version>20.0</guava.version>
     <hamcrest.version>1.3</hamcrest.version>

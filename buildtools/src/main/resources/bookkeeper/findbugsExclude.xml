@@ -26,6 +26,10 @@
   </Match>
   <Match>
     <!-- generated code, we can't be held responsible for findbugs in it //-->
+    <Class name="~org\.apache\.bookkeeper\.proto\.rpc\.metadata.*" />
+  </Match>
+  <Match>
+    <!-- generated code, we can't be held responsible for findbugs in it //-->
     <Class name="~org\.apache\.bookkeeper\.tests\.generated.*" />
   </Match>
   <Match>

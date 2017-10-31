@@ -1,0 +1,84 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+syntax = "proto3";
+
+import "DataFormats.proto";
+import "RpcCommon.proto";
+
+package bookkeeper.proto.rpc.metadata;
+
+option java_multiple_files = true;
+option java_package = "org.apache.bookkeeper.proto.rpc.metadata";
+
+message LedgerIdAllocateRequest {
+}
+
+message LedgerIdAllocateResponse {
+    // status code
+    common.StatusCode code              = 1;
+    int64 ledger_id                     = 2;
+}
+
+message LedgerMetadataRequest {
+    // if ledger id is omitted, a new ledger id will be generated and returned.
+    int64 ledger_id                     = 1;
+    // ledger metadata 
+    LedgerMetadataFormat metadata       = 2;
+    // expected version
+    int64 expected_version              = 3;
+}
+
+message LedgerMetadataResponse {
+    // status code
+    common.StatusCode code              = 1;
+    // ledger id
+    int64 ledger_id                     = 2;
+    // the version of the metadata (we can add another field if we want to support non-integer version)
+    int64 version                       = 3;
+    // ledger metadata 
+    LedgerMetadataFormat metadata       = 4;
+}
+
+message GetLedgerRangesRequest {
+    // limit is a limit on the number of ledgers returned per response
+    int32 limit_per_response = 1;
+}
+
+// each response will contains server ledgers and they will consist one LedgerRange
+message GetLedgerRangesResponse {
+    message LedgerRangeFormat {
+        repeated int64 ledger_ids = 1;
+    }
+    // status code
+    common.StatusCode code              = 1;
+    // count is set to the number of led returned
+    LedgerRangeFormat ledger_range      = 2;
+}
+
+service LedgerMetadataService {
+    rpc Allocate(LedgerIdAllocateRequest) returns (LedgerIdAllocateResponse);
+    rpc Create(LedgerMetadataRequest) returns (LedgerMetadataResponse);
+    rpc Remove(LedgerMetadataRequest) returns (LedgerMetadataResponse);
+    rpc Read(LedgerMetadataRequest) returns (LedgerMetadataResponse);
+    rpc Write(LedgerMetadataRequest) returns (LedgerMetadataResponse);
+    // Although `WatchOne` is using `stream` for receiving requests, it is designed to receive one
+    // watch request. It is using `stream` for detecting the `session` connectivities - when a watch
+    // session is broken, it can clean up the resources at the server side.
+    rpc WatchOne(stream LedgerMetadataRequest) returns (stream LedgerMetadataResponse);
+    rpc Iterate(GetLedgerRangesRequest) returns (stream GetLedgerRangesResponse);
+}
