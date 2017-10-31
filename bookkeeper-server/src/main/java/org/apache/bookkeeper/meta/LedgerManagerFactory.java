@@ -162,6 +162,7 @@ public abstract class LedgerManagerFactory {
 
         // handle V2 layout case
         if (factoryClass != null &&
+            !factoryClass.getName().equals("org.apache.bookkeeper.client.meta.RpcLedgerManagerFactory") &&
             !layout.getManagerFactoryClass().equals(factoryClass.getName()) &&
             conf.getProperty(AbstractConfiguration.LEDGER_MANAGER_FACTORY_DISABLE_CLASS_CHECK) == null) { // Disable should ONLY happen during compatibility testing.
 
