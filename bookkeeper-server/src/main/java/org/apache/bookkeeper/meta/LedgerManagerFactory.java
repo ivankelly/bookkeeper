@@ -1,5 +1,3 @@
-package org.apache.bookkeeper.meta;
-
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -17,13 +15,11 @@ package org.apache.bookkeeper.meta;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.bookkeeper.meta;
 
 import java.io.IOException;
 import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.replication.ReplicationException;
 import org.apache.bookkeeper.conf.AbstractConfiguration;
 import org.apache.bookkeeper.util.ReflectionUtils;
@@ -33,9 +29,9 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.ACL;
 
+@Slf4j
 public abstract class LedgerManagerFactory {
 
-    static final Logger LOG = LoggerFactory.getLogger(LedgerManagerFactory.class);
     // v1 layout
     static final int V1 = 1;
 
@@ -138,8 +134,8 @@ public abstract class LedgerManagerFactory {
             return lmFactory
                     .initialize(conf, zk, lmFactory.getCurrentVersion());
         }
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("read ledger layout {}", layout);
+        if (log.isDebugEnabled()) {
+            log.debug("read ledger layout {}", layout);
         }
 
         // there is existing layout, we need to look into the layout.
