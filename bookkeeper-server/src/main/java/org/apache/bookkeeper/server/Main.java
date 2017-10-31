@@ -27,15 +27,20 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.ExitCode;
 import org.apache.bookkeeper.common.component.ComponentStarter;
 import org.apache.bookkeeper.common.component.LifecycleComponent;
 import org.apache.bookkeeper.common.component.LifecycleComponentStack;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.http.BKHttpServiceProvider;
+import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.server.component.ServerLifecycleComponent;
 import org.apache.bookkeeper.server.conf.BookieConfiguration;
+import org.apache.bookkeeper.server.conf.RpcConfiguration;
+import org.apache.bookkeeper.server.rpc.BookieRpcServerSpec;
 import org.apache.bookkeeper.server.service.AutoRecoveryService;
+import org.apache.bookkeeper.server.service.BookieRpcService;
 import org.apache.bookkeeper.server.service.BookieService;
 import org.apache.bookkeeper.server.service.HttpService;
 import org.apache.bookkeeper.server.service.StatsProviderService;
@@ -285,6 +290,8 @@ public class Main {
         log.info("Load lifecycle component : {}", StatsProviderService.class.getName());
 
         // 2. build bookie server
+        // create the server resources
+        ServerResources serverResources = ServerResources.create(rootStatsLogger);
         BookieService bookieService =
             new BookieService(conf, rootStatsLogger);
 
@@ -313,7 +320,33 @@ public class Main {
             log.info("Load lifecycle component : {}", HttpService.class.getName());
         }
 
-        // 5. build extra services
+
+        // 5. build the rpc service
+        if (conf.getServerConf().isRpcServerEnabled()) {
+            int rpcPort = conf.getServerConf().getRpcServerPort();
+            BookieSocketAddress bookieAddr = Bookie.getBookieAddress(conf.getServerConf());
+            BookieSocketAddress rpcAddr = new BookieSocketAddress(
+              bookieAddr.getHostName(),
+              rpcPort);
+            RpcConfiguration rpcConf = new RpcConfiguration(conf.getServerConf());
+            StatsLogger rpcStatsLogger = rootStatsLogger.scope("rpc");
+            BookieRpcServerSpec spec = BookieRpcServerSpec.newBuilder()
+              .bookieSupplier(() -> bookieService.getServer().getBookie())
+              .rpcConf(rpcConf)
+              .endpoint(rpcAddr)
+              .statsLogger(rpcStatsLogger)
+              .schedulerResource(serverResources.scheduler())
+              .build();
+
+            BookieRpcService rpcService = new BookieRpcService(
+              rpcConf,
+              spec,
+              rpcStatsLogger);
+
+            serverBuilder.addComponent(rpcService);
+        }
+
+        // 6. build extra services
         String[] extraComponents = conf.getServerConf().getExtraServerComponents();
         if (null != extraComponents) {
             List<ServerLifecycleComponent> components = loadServerComponents(

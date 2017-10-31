@@ -167,6 +167,10 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String HTTP_SERVER_ENABLED = "httpServerEnabled";
     protected final static String HTTP_SERVER_PORT = "httpServerPort";
 
+    // Rpc Server parameters
+    protected final static String RPC_SERVER_ENABLED = "rpcServerEnabled";
+    protected final static String RPC_SERVER_PORT = "rpcServerPort";
+
     // TLS parameters
     protected final static String TLS_KEYSTORE_TYPE = "tlsKeyStoreType";
     protected final static String TLS_KEYSTORE = "tlsKeyStore";
@@ -2454,6 +2458,48 @@ public class ServerConfiguration extends AbstractConfiguration {
         return ReflectionUtils.getClass(this, REGISTRATION_MANAGER_CLASS,
                 ZKRegistrationManager.class, RegistrationManager.class,
                 defaultLoader);
+    }
+
+    /*
+     * Get whether to start the rpc server or not
+     *
+     * @return true - if rpc server should start
+     */
+    public boolean isRpcServerEnabled() {
+        return getBoolean(RPC_SERVER_ENABLED, false);
+    }
+
+    /**
+     * Set whether to start the rpc server or not
+     *
+     * @param enabled
+     *            - true if we should start rpc server
+     * @return ServerConfiguration
+     */
+    public ServerConfiguration setRpcServerEnabled(boolean enabled) {
+        setProperty(RPC_SERVER_ENABLED, enabled);
+        return this;
+    }
+
+    /**
+     * Get the rpc server port
+     *
+     * @return rpc server port
+     */
+    public int getRpcServerPort() {
+        return getInt(RPC_SERVER_PORT, 3281);
+    }
+
+    /**
+     * Set Rpc server port listening on
+     *
+     * @param port
+     *          Port to listen on
+     * @return server configuration
+     */
+    public ServerConfiguration setRpcServerPort(int port) {
+        setProperty(RPC_SERVER_PORT, port);
+        return this;
     }
 
 }

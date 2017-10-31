@@ -742,6 +742,14 @@ public class Bookie extends BookieCriticalThread {
         });
     }
 
+    public LedgerManagerFactory getLedgerManagerFactory() {
+        return ledgerManagerFactory;
+    }
+
+    public LedgerManager getLedgerManager() {
+        return ledgerManager;
+    }
+
     private String getMyId() throws UnknownHostException {
         return Bookie.getBookieAddress(conf).toString();
     }
