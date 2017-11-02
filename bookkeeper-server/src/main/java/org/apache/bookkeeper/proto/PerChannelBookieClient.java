@@ -24,7 +24,7 @@ import com.google.common.collect.Sets;
 import com.google.common.base.Joiner;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ExtensionRegistry;
-import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.Bootstrap; // comment A
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
