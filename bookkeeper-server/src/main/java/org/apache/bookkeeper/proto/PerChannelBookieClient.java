@@ -1169,7 +1169,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         protected long ledgerId;
         protected long entryId;
         protected long startTime;
-        protected Timeout timeout;
+        protected Timeout timeout; // another comment
 
         public CompletionValue(String operationName,
                                Object ctx,
