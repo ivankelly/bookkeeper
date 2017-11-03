@@ -59,6 +59,7 @@ public class TestSimpleNameResolver {
                 Attributes.EMPTY))
             .collect(Collectors.toList());
 
+        @SuppressWarnings("unchecked") // for the mock
         SimpleNameResolver nameResolver = new SimpleNameResolver(
             "test-name-resolver",
             mock(Resource.class),

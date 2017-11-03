@@ -27,7 +27,6 @@ import io.grpc.Attributes;
 import io.grpc.EquivalentAddressGroup;
 import io.grpc.NameResolver;
 import io.grpc.NameResolver.Listener;
-import io.grpc.ResolvedServerInfoGroup;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import java.net.URI;
@@ -89,8 +88,10 @@ public class TestSimpleNameResolverFactory {
 
         CompletableFuture<List<EquivalentAddressGroup>> startFuture = FutureUtils.createFuture();
         resolver.start(new Listener() {
+            @SuppressWarnings("deprecation")
             @Override
-            public void onUpdate(List<ResolvedServerInfoGroup> servers, Attributes attributes) {
+            public void onUpdate(List<io.grpc.ResolvedServerInfoGroup> servers,
+                                 Attributes attributes) {
                 // no-op
             }
 
