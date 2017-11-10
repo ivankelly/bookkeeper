@@ -1670,7 +1670,7 @@ public class ClientConfiguration extends AbstractConfiguration {
      * @return a list of bookie addresses used for bootstrap.
      */
     public List<BookieSocketAddress> getClientBootstrapBookies() {
-        List bootstrapBookieNames = getList(BOOTSTRAP_BOOKIES, null);
+        List<Object> bootstrapBookieNames = getList(BOOTSTRAP_BOOKIES, null);
         if (null == bootstrapBookieNames) {
             return null;
         }
