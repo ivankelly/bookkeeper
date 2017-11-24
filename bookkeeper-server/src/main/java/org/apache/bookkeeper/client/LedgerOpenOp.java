@@ -220,7 +220,7 @@ class LedgerOpenOp implements GenericCallback<LedgerMetadata> {
 
         private boolean builderRecovery = false;
         private Long builderLedgerId;
-        private byte[] builderPassword = new byte[0];
+        private byte[] builderPassword = LedgerHandle.EMPTY_PASSWORD;
         private org.apache.bookkeeper.client.api.DigestType builderDigestType
                 = org.apache.bookkeeper.client.api.DigestType.CRC32;
         private final BookKeeper bk;

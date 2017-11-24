@@ -109,6 +109,7 @@ public class LedgerHandle implements WriteHandle {
      * should return an entry id but there is no valid entry available.
      */
     final static public long INVALID_ENTRY_ID = BookieProtocol.INVALID_ENTRY_ID;
+    final static byte[] EMPTY_PASSWORD = new byte[0];
 
     final AtomicInteger blockAddCompletions = new AtomicInteger(0);
     final AtomicInteger numEnsembleChanges = new AtomicInteger(0);

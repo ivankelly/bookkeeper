@@ -222,7 +222,7 @@ class LedgerCreateOp implements GenericCallback<Void> {
         private int builderEnsembleSize = 3;
         private int builderAckQuorumSize = 2;
         private int builderWriteQuorumSize = 2;
-        private byte[] builderPassword = new byte[0];
+        private byte[] builderPassword = LedgerHandle.EMPTY_PASSWORD;
         private org.apache.bookkeeper.client.api.DigestType builderDigestType
             = org.apache.bookkeeper.client.api.DigestType.CRC32;
         private Map<String, byte[]> builderCustomMetadata = Collections.emptyMap();
