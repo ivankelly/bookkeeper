@@ -180,6 +180,7 @@ public class IndexPersistenceMgr {
      * the FileInfo.
      */
     private void handleLedgerEviction(RemovalNotification<Long, FileInfo> notification) {
+        LOG.info("Evicting {}", notification);
         FileInfo fileInfo = notification.getValue();
         Long ledgerId = notification.getKey();
         if (null == fileInfo || null == notification.getKey()) {
@@ -195,6 +196,7 @@ public class IndexPersistenceMgr {
                     // We only close the fileInfo when we evict the FileInfo from both cache
                     if (!readFileInfoCache.asMap().containsKey(ledgerId)
                             && !writeFileInfoCache.asMap().containsKey(ledgerId)) {
+                        LOG.info("Closing fileinfo {} - {}", ledgerId, fileInfo);
                         fileInfo.close(true);
                     }
                 } catch (IOException e) {
@@ -220,6 +222,7 @@ public class IndexPersistenceMgr {
 
         @Override
         public FileInfo call() throws IOException {
+            LOG.info("LOADING {}", ledger);
             File lf = findIndexFile(ledger);
             if (null == lf) {
                 if (null == masterKey) {

@@ -264,4 +264,39 @@ public class IndexPersistenceMgrTest {
             }
         }
     }
+
+    @Test
+    public void testAnotherRace() throws Exception {
+        IndexPersistenceMgr indexPersistenceMgr = null;
+        Watcher<LastAddConfirmedUpdateNotification> watcher = notification -> notification.recycle();
+        try {
+            indexPersistenceMgr = createIndexPersistenceManager(1);
+
+            indexPersistenceMgr.getFileInfo(1L, masterKey);
+            indexPersistenceMgr.getFileInfo(2L, masterKey);
+            indexPersistenceMgr.getFileInfo(3L, masterKey);
+            indexPersistenceMgr.getFileInfo(4L, masterKey);
+
+            logger.info("Load 1 again");
+            FileInfo fi = indexPersistenceMgr.getFileInfo(1L, masterKey);
+
+            // trigger eviction
+            indexPersistenceMgr.getFileInfo(2L, masterKey);
+            indexPersistenceMgr.getFileInfo(3L, null);
+            indexPersistenceMgr.getFileInfo(4L, null);
+
+            Thread.sleep(5000);
+
+            logger.info("Fencing");
+            fi.setFenced();
+            fi.release();
+
+            logger.info("check fenced");
+            assertTrue(indexPersistenceMgr.isFenced(1));
+        } finally {
+            if (null != indexPersistenceMgr) {
+                indexPersistenceMgr.close();
+            }
+        }
+    }
 }
