@@ -18,6 +18,8 @@
 
 package org.apache.bookkeeper.common.component;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
  * Lifecycle state. Allows the following transitions:
  *
@@ -67,65 +69,53 @@ public class Lifecycle {
         CLOSED
     }
 
-    private volatile State state = State.INITIALIZED;
+    private AtomicReference<State> state = new AtomicReference<>(State.INITIALIZED);
 
     public State state() {
-        return this.state;
+        return this.state.get();
     }
 
     /**
      * Returns <tt>true</tt> if the state is initialized.
      */
     public boolean initialized() {
-        return state == State.INITIALIZED;
+        return state.get() == State.INITIALIZED;
     }
 
     /**
      * Returns <tt>true</tt> if the state is started.
      */
     public boolean started() {
-        return state == State.STARTED;
+        return state.get() == State.STARTED;
     }
 
     /**
      * Returns <tt>true</tt> if the state is stopped.
      */
     public boolean stopped() {
-        return state == State.STOPPED;
+        return state.get() == State.STOPPED;
     }
 
     /**
      * Returns <tt>true</tt> if the state is closed.
      */
     public boolean closed() {
-        return state == State.CLOSED;
+        return state.get() == State.CLOSED;
     }
 
     public boolean stoppedOrClosed() {
-        Lifecycle.State state = this.state;
+        Lifecycle.State state = this.state.get();
         return state == State.STOPPED || state == State.CLOSED;
     }
 
-    public boolean canMoveToStarted() throws IllegalStateException {
-        State localState = this.state;
-        if (localState == State.INITIALIZED || localState == State.STOPPED) {
-            return true;
-        }
-        if (localState == State.STARTED) {
-            return false;
-        }
-        if (localState == State.CLOSED) {
-            throw new IllegalStateException("Can't move to started state when closed");
-        }
-        throw new IllegalStateException("Can't move to started with unknown state");
-    }
-
-
     public boolean moveToStarted() throws IllegalStateException {
-        State localState = this.state;
-        if (localState == State.INITIALIZED || localState == State.STOPPED) {
-            state = State.STARTED;
-            return true;
+        State localState = this.state.get();
+        while (localState == State.INITIALIZED || localState == State.STOPPED) {
+            if (state.compareAndSet(localState, State.STARTED)) {
+                return true;
+            } else {
+                localState = this.state.get();
+            }
         }
         if (localState == State.STARTED) {
             return false;
@@ -134,58 +124,39 @@ public class Lifecycle {
             throw new IllegalStateException("Can't move to started state when closed");
         }
         throw new IllegalStateException("Can't move to started with unknown state");
-    }
-
-    public boolean canMoveToStopped() throws IllegalStateException {
-        State localState = state;
-        if (localState == State.STARTED) {
-            return true;
-        }
-        if (localState == State.INITIALIZED || localState == State.STOPPED) {
-            return false;
-        }
-        if (localState == State.CLOSED) {
-            throw new IllegalStateException("Can't move to stopped state when closed");
-        }
-        throw new IllegalStateException("Can't move to stopped with unknown state");
     }
 
     public boolean moveToStopped() throws IllegalStateException {
-        State localState = state;
-        if (localState == State.STARTED) {
-            state = State.STOPPED;
-            return true;
+        State localState = state.get();
+        while (localState == State.STARTED) {
+            if (state.compareAndSet(localState, State.STOPPED)) {
+                return true;
+            } else {
+                localState = state.get();
+            }
         }
-        if (localState == State.INITIALIZED || localState == State.STOPPED) {
+        if (localState == State.INITIALIZED
+            || localState == State.STOPPED
+            || localState == State.CLOSED) {
             return false;
-        }
-        if (localState == State.CLOSED) {
-            throw new IllegalStateException("Can't move to stopped state when closed");
         }
         throw new IllegalStateException("Can't move to stopped with unknown state");
     }
 
-    public boolean canMoveToClosed() throws IllegalStateException {
-        State localState = state;
-        if (localState == State.CLOSED) {
-            return false;
-        }
-        if (localState == State.STARTED) {
-            throw new IllegalStateException("Can't move to closed before moving to stopped mode");
-        }
-        return true;
-    }
-
     public boolean moveToClosed() throws IllegalStateException {
-        State localState = state;
-        if (localState == State.CLOSED) {
-            return false;
+        State localState = state.get();
+        while (true) {
+            if (localState == State.CLOSED) {
+                return false;
+            } else if (localState == State.STARTED) {
+                throw new IllegalStateException("Can't move to closed before moving to stopped mode");
+            }
+            if (state.compareAndSet(localState, State.CLOSED)) {
+                return true;
+            } else {
+                localState = state.get();
+            }
         }
-        if (localState == State.STARTED) {
-            throw new IllegalStateException("Can't move to closed before moving to stopped mode");
-        }
-        state = State.CLOSED;
-        return true;
     }
 
     @Override

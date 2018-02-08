@@ -64,12 +64,11 @@ public abstract class AbstractLifecycleComponent<ConfT extends ComponentConfigur
 
     @Override
     public void start() {
-        if (!lifecycle.canMoveToStarted()) {
+        if (!lifecycle.moveToStarted()) {
             return;
         }
         listeners.forEach(LifecycleListener::beforeStart);
         doStart();
-        lifecycle.moveToStarted();
         listeners.forEach(LifecycleListener::afterStart);
     }
 
@@ -77,11 +76,10 @@ public abstract class AbstractLifecycleComponent<ConfT extends ComponentConfigur
 
     @Override
     public void stop() {
-        if (!lifecycle.canMoveToStopped()) {
+        if (!lifecycle.moveToStopped()) {
             return;
         }
         listeners.forEach(LifecycleListener::beforeStop);
-        lifecycle.moveToStopped();
         doStop();
         listeners.forEach(LifecycleListener::afterStop);
     }
@@ -93,11 +91,10 @@ public abstract class AbstractLifecycleComponent<ConfT extends ComponentConfigur
         if (lifecycle.started()) {
             stop();
         }
-        if (!lifecycle.canMoveToClosed()) {
+        if (!lifecycle.moveToClosed()) {
             return;
         }
         listeners.forEach(LifecycleListener::beforeClose);
-        lifecycle.moveToClosed();
         try {
             doClose();
         } catch (IOException e) {
