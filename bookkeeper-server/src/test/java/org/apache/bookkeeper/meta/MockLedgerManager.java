@@ -24,8 +24,12 @@ import com.google.common.base.Optional;
 import java.util.HashMap;
 import java.util.Map;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.LedgerMetadata;
@@ -47,8 +51,27 @@ import org.slf4j.LoggerFactory;
 public class MockLedgerManager implements LedgerManager {
     static final Logger LOG = LoggerFactory.getLogger(MockLedgerManager.class);
 
-    final Map<Long, Pair<LongVersion, byte[]>> metadataMap = new HashMap<>();
-    final ExecutorService executor = Executors.newSingleThreadExecutor((r) -> new Thread(r, "MockLedgerManager"));
+    final AtomicReference<CompletableFuture<Void>> stallPromise
+        = new AtomicReference<>(CompletableFuture.completedFuture(null));
+    final Map<Long, Pair<LongVersion, byte[]>> metadataMap;
+    final ExecutorService executor;
+    final boolean ownsExecutor;
+
+    public MockLedgerManager() {
+        this(new HashMap<>(),
+             Executors.newSingleThreadExecutor((r) -> new Thread(r, "MockLedgerManager")), true);
+    }
+
+    private MockLedgerManager(Map<Long, Pair<LongVersion, byte[]>> metadataMap,
+                              ExecutorService executor, boolean ownsExecutor) {
+        this.metadataMap = metadataMap;
+        this.executor = executor;
+        this.ownsExecutor = ownsExecutor;
+    }
+
+    public MockLedgerManager newClient() {
+        return new MockLedgerManager(metadataMap, executor, false);
+    }
 
     private LedgerMetadata readMetadata(long ledgerId) throws Exception {
         Pair<LongVersion, byte[]> pair = metadataMap.get(ledgerId);
@@ -57,6 +80,19 @@ public class MockLedgerManager implements LedgerManager {
         } else {
             return LedgerMetadata.parseConfig(pair.getRight(), pair.getLeft(), Optional.absent());
         }
+    }
+
+    public CompletableFuture<Void> stallWrites() throws Exception {
+        CompletableFuture<Void> newPromise = new CompletableFuture<>();
+        CompletableFuture<Void> currentPromise = stallPromise.get();
+        while (currentPromise.isDone()) {
+            if (stallPromise.compareAndSet(currentPromise, newPromise)) {
+                return newPromise;
+            } else {
+                currentPromise = stallPromise.get();
+            }
+        }
+        return currentPromise;
     }
 
     public void executeCallback(Runnable r) {
@@ -104,6 +140,22 @@ public class MockLedgerManager implements LedgerManager {
 
     @Override
     public void writeLedgerMetadata(long ledgerId, LedgerMetadata metadata, GenericCallback<LedgerMetadata> cb) {
+        LOG.info("Writing {}", ledgerId);
+        CompletableFuture<Void> promise = stallPromise.get();
+        if (!promise.isDone()) {
+            LOG.info("[L{}, stallId={}] Stalling write of metadata", ledgerId, System.identityHashCode(promise));
+
+            promise.whenCompleteAsync((res, ex) -> {
+                    LOG.info("[L{}, stallid={}] Unstalled write, ex = {}",
+                             ledgerId, System.identityHashCode(promise), ex);
+                    if (ex != null) {
+                        executeCallback(() -> cb.operationComplete(BKException.Code.MetaStoreException, null));
+                    } else {
+                        writeLedgerMetadata(ledgerId, metadata, cb);
+                    }
+                }, executor);
+            return;
+        }
         executor.submit(() -> {
                 try {
                     LedgerMetadata oldMetadata = readMetadata(ledgerId);
@@ -147,7 +199,9 @@ public class MockLedgerManager implements LedgerManager {
 
     @Override
     public void close() {
-        executor.shutdownNow();
+        if (ownsExecutor) {
+            executor.shutdownNow();
+        }
     }
 
 }
