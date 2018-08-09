@@ -72,6 +72,7 @@ import org.apache.bookkeeper.meta.zk.ZKMetadataClientDriver;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.net.DNSToSwitchMapping;
 import org.apache.bookkeeper.proto.BookieClient;
+import org.apache.bookkeeper.proto.BookieClientImpl;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.DataFormats;
 import org.apache.bookkeeper.stats.NullStatsLogger;
@@ -455,8 +456,8 @@ public class BookKeeper implements org.apache.bookkeeper.client.api.BookKeeper {
                 dnsResolver, this.requestTimer, this.featureProvider, this.statsLogger);
 
         // initialize bookie client
-        this.bookieClient = new BookieClient(conf, this.eventLoopGroup, this.mainWorkerPool,
-                                             scheduler, rootStatsLogger);
+        this.bookieClient = new BookieClientImpl(conf, this.eventLoopGroup, this.mainWorkerPool,
+                                                 scheduler, rootStatsLogger);
         this.bookieWatcher = new BookieWatcher(
                 conf, this.placementPolicy, metadataDriver.getRegistrationClient(),
                 this.statsLogger.scope(WATCHER_SCOPE));
