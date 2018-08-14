@@ -132,6 +132,8 @@ fi
 cd "$BK_HOME"
 if [ ${COMMAND} == "bookie" ]; then
   exec ${JAVA} ${OPTS} ${JMX_ARGS} org.apache.bookkeeper.server.Main --conf ${BOOKIE_CONF} $@
+elif [ ${COMMAND} == "dumb-fast-client" ]; then
+  exec ${JAVA} ${OPTS} ${JMX_ARGS} org.apache.bookkeeper.proto.DumbFastClient $@
 elif [ ${COMMAND} == "autorecovery" ]; then
   exec ${JAVA} ${OPTS} ${JMX_ARGS} org.apache.bookkeeper.replication.AutoRecoveryMain --conf ${BOOKIE_CONF} $@
 elif [ ${COMMAND} == "localbookie" ]; then
