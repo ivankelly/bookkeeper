@@ -177,15 +177,6 @@ public class LedgerMetadata implements org.apache.bookkeeper.client.api.LedgerMe
     }
 
     /**
-     * Used for testing purpose only.
-     */
-    @VisibleForTesting
-    public LedgerMetadata(int ensembleSize, int writeQuorumSize, int ackQuorumSize,
-            BookKeeper.DigestType digestType, byte[] password) {
-        this(ensembleSize, writeQuorumSize, ackQuorumSize, digestType, password, null, false);
-    }
-
-    /**
      * Copy Constructor.
      */
     LedgerMetadata(LedgerMetadata other) {
@@ -207,11 +198,6 @@ public class LedgerMetadata implements org.apache.bookkeeper.client.api.LedgerMe
             this.addEnsemble(entry.getKey(), entry.getValue());
         }
         this.customMetadata = other.customMetadata;
-    }
-
-    private LedgerMetadata() {
-        this(0, 0, 0, BookKeeper.DigestType.MAC, new byte[] {});
-        this.hasPassword = false;
     }
 
     @Override

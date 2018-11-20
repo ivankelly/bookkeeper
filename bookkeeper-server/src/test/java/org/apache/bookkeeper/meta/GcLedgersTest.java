@@ -64,6 +64,7 @@ import org.apache.bookkeeper.bookie.StateManager;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerMetadata;
+import org.apache.bookkeeper.client.LedgerMetadataBuilder;
 import org.apache.bookkeeper.common.util.Watcher;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.LedgerManager.LedgerRange;
@@ -107,8 +108,9 @@ public class GcLedgersTest extends LedgerManagerTestCase {
                         return;
                     }
 
-                    getLedgerManager().createLedgerMetadata(ledgerId,
-                                                            new LedgerMetadata(1, 1, 1, DigestType.MAC, "".getBytes()))
+                    LedgerMetadata md = LedgerMetadataBuilder.create()
+                        .withEnsembleSize(1).withWriteQuorumSize(1).withAckQuorumSize(1).build();
+                    getLedgerManager().createLedgerMetadata(ledgerId, md)
                         .whenComplete((result, exception) -> {
                                 if (exception == null) {
                                     activeLedgers.put(ledgerId, true);
