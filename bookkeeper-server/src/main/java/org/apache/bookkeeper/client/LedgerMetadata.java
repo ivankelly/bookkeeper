@@ -77,14 +77,16 @@ public class LedgerMetadata implements org.apache.bookkeeper.client.api.LedgerMe
     private final int ensembleSize;
     private final int writeQuorumSize;
     private final int ackQuorumSize;
+
+    private LedgerMetadataFormat.State state;
     private long length;
     private long lastEntryId;
+
     final Optional<Long> ctime;
     final Optional<Long> legacyCtime;
 
-    private LedgerMetadataFormat.State state;
-    private TreeMap<Long, ImmutableList<BookieSocketAddress>> ensembles =  new TreeMap<>();
-    private List<BookieSocketAddress> currentEnsemble;
+    private final TreeMap<Long, ImmutableList<BookieSocketAddress>> ensembles;
+    private final ImmutableList<BookieSocketAddress> currentEnsemble;
 
     private final boolean hasPassword; // IKTODO other things should be optionals instead
     private final LedgerMetadataFormat.DigestType digestType;
@@ -118,10 +120,16 @@ public class LedgerMetadata implements org.apache.bookkeeper.client.api.LedgerMe
             this.lastEntryId = LedgerHandle.INVALID_ENTRY_ID;
         }
         length.ifPresent((l) -> this.length = l);
-        setEnsembles(ensembles);
+
+        this.ensembles = ensembles.entrySet().stream()
+            .collect(TreeMap::new,
+                     (m, e) -> m.put(e.getKey(), ImmutableList.copyOf(e.getValue())),
+                     TreeMap::putAll);
 
         if (state != LedgerMetadataFormat.State.CLOSED) {
             currentEnsemble = this.ensembles.lastEntry().getValue();
+        } else {
+            currentEnsemble = null;
         }
 
         this.digestType = digestType.equals(DigestType.MAC)
@@ -157,23 +165,17 @@ public class LedgerMetadata implements org.apache.bookkeeper.client.api.LedgerMe
         this.legacyCtime = other.legacyCtime;
         this.password = new byte[other.password.length];
         System.arraycopy(other.password, 0, this.password, 0, other.password.length);
-        // copy the ensembles
-        for (Entry<Long, ? extends List<BookieSocketAddress>> entry : other.ensembles.entrySet()) {
-            this.addEnsemble(entry.getKey(), entry.getValue());
-        }
+        this.ensembles = other.ensembles.entrySet().stream()
+            .collect(TreeMap::new,
+                     (m, e) -> m.put(e.getKey(), ImmutableList.copyOf(e.getValue())),
+                     TreeMap::putAll);
+        this.currentEnsemble = null;
         this.customMetadata = other.customMetadata;
     }
 
     @Override
     public NavigableMap<Long, ? extends List<BookieSocketAddress>> getAllEnsembles() {
         return ensembles;
-    }
-
-    void setEnsembles(Map<Long, ? extends List<BookieSocketAddress>> newEnsembles) {
-        this.ensembles = newEnsembles.entrySet().stream()
-            .collect(TreeMap::new,
-                     (m, e) -> m.put(e.getKey(), ImmutableList.copyOf(e.getValue())),
-                     TreeMap::putAll);
     }
 
     @Override
@@ -267,20 +269,8 @@ public class LedgerMetadata implements org.apache.bookkeeper.client.api.LedgerMe
         state = LedgerMetadataFormat.State.CLOSED;
     }
 
-    public void addEnsemble(long startEntryId, List<BookieSocketAddress> ensemble) {
-        checkArgument(ensembles.isEmpty() || startEntryId >= ensembles.lastKey());
-
-        ensembles.put(startEntryId, ImmutableList.copyOf(ensemble));
-        currentEnsemble = ensemble;
-    }
-
     List<BookieSocketAddress> getCurrentEnsemble() {
         return currentEnsemble;
-    }
-
-    public void updateEnsemble(long startEntryId, List<BookieSocketAddress> ensemble) {
-        checkArgument(ensembles.containsKey(startEntryId));
-        ensembles.put(startEntryId, ImmutableList.copyOf(ensemble));
     }
 
     List<BookieSocketAddress> getEnsemble(long entryId) {
@@ -600,26 +590,6 @@ public class LedgerMetadata implements org.apache.bookkeeper.client.api.LedgerMe
         StringBuilder sb = new StringBuilder();
         sb.append("(meta:").append(new String(serialize(withPassword), UTF_8)).append(")");
         return sb.toString();
-    }
-
-    void mergeEnsembles(SortedMap<Long, ? extends List<BookieSocketAddress>> newEnsembles) {
-        // allow new metadata to be one ensemble less than current metadata
-        // since ensemble change might kick in when recovery changed metadata
-        int diff = ensembles.size() - newEnsembles.size();
-        if (0 != diff && 1 != diff) {
-            return;
-        }
-        int i = 0;
-        for (Entry<Long, ? extends List<BookieSocketAddress>> entry : newEnsembles.entrySet()) {
-            ++i;
-            if (ensembles.size() != i) {
-                // we should use last ensemble from current metadata
-                // not the new metadata read from zookeeper
-                long key = entry.getKey();
-                List<BookieSocketAddress> ensemble = entry.getValue();
-                ensembles.put(key, ImmutableList.copyOf(ensemble));
-            }
-        }
     }
 
     Set<BookieSocketAddress> getBookiesInThisLedger() {

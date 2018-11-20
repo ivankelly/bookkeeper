@@ -59,7 +59,13 @@ class LedgerCreateOp {
     static final Logger LOG = LoggerFactory.getLogger(LedgerCreateOp.class);
 
     final CreateCallback cb;
-    final LedgerMetadata metadata;
+    LedgerMetadataBuilder metadataBuilder;
+    LedgerMetadata metadata;
+    final int ensembleSize;
+    final int writeQuorumSize;
+    final int ackQuorumSize;
+    final Map<String, byte[]> customMetadata;
+
     LedgerHandle lh;
     long ledgerId = -1L;
     final Object ctx;
@@ -102,13 +108,17 @@ class LedgerCreateOp {
             EnumSet<WriteFlag> writeFlags,
             BookKeeperClientStats clientStats) {
         this.bk = bk;
-        LedgerMetadataBuilder metadataBuilder = LedgerMetadataBuilder.create()
+        this.ensembleSize = ensembleSize;
+        this.writeQuorumSize = writeQuorumSize;
+        this.ackQuorumSize = ackQuorumSize;
+        this.customMetadata = customMetadata;
+        this.metadataBuilder = LedgerMetadataBuilder.create()
             .withEnsembleSize(ensembleSize).withWriteQuorumSize(writeQuorumSize).withAckQuorumSize(ackQuorumSize)
             .withDigestType(digestType.toApiDigestType()).withPassword(passwd).withCustomMetadata(customMetadata);
         if (bk.getConf().getStoreSystemtimeAsLedgerCreationTime()) {
             metadataBuilder.withCreationTime(System.currentTimeMillis());
         }
-        this.metadata = metadataBuilder.build();
+
         this.digestType = digestType;
         this.writeFlags = writeFlags;
         this.passwd = passwd;
@@ -123,29 +133,22 @@ class LedgerCreateOp {
      * Initiates the operation.
      */
     public void initiate() {
-        // allocate ensemble first
-
         /*
          * Adding bookies to ledger handle
          */
-
-        List<BookieSocketAddress> ensemble;
         try {
-            ensemble = bk.getBookieWatcher()
-                    .newEnsemble(metadata.getEnsembleSize(),
-                            metadata.getWriteQuorumSize(),
-                            metadata.getAckQuorumSize(),
-                            metadata.getCustomMetadata());
+            List<BookieSocketAddress> ensemble = bk.getBookieWatcher()
+                .newEnsemble(ensembleSize, writeQuorumSize, ackQuorumSize, customMetadata);
+            /*
+             * Add ensemble to the configuration
+             */
+            metadata = metadataBuilder.newEnsembleEntry(0L, ensemble).build();
         } catch (BKNotEnoughBookiesException e) {
             LOG.error("Not enough bookies to create ledger");
             createComplete(e.getCode(), null);
             return;
         }
 
-        /*
-         * Add ensemble to the configuration
-         */
-        metadata.addEnsemble(0L, ensemble);
         if (this.generateLedgerId) {
             generateLedgerIdAndCreateLedger();
         } else {
