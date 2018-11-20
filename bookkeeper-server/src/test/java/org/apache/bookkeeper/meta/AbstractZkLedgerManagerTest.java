@@ -51,6 +51,7 @@ import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.Code;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerMetadata;
+import org.apache.bookkeeper.client.LedgerMetadataBuilder;
 import org.apache.bookkeeper.common.testing.executors.MockExecutorController;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
@@ -111,12 +112,10 @@ public class AbstractZkLedgerManagerTest extends MockZooKeeperTestCase {
             withSettings()
                 .useConstructor(conf, mockZk)
                 .defaultAnswer(CALLS_REAL_METHODS));
-        this.metadata = new LedgerMetadata(
-            5, 3, 3,
-            DigestType.CRC32,
-            new byte[0],
-            Collections.emptyMap(),
-            false);
+        this.metadata = LedgerMetadataBuilder.create()
+            .withEnsembleSize(5).withWriteQuorumSize(3).withAckQuorumSize(3)
+            .withDigestType(DigestType.CRC32.toApiDigestType())
+            .withPassword(new byte[0]).build();
 
         doAnswer(invocationOnMock -> {
             long ledgerId = invocationOnMock.getArgument(0);
