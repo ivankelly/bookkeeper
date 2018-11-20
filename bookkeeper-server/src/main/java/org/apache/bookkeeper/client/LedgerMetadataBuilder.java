@@ -43,6 +43,7 @@ import org.apache.bookkeeper.proto.DataFormats.LedgerMetadataFormat;
 @Unstable
 @VisibleForTesting
 public class LedgerMetadataBuilder {
+    private int metadataFormatVersion = LedgerMetadata.CURRENT_METADATA_FORMAT_VERSION;
     private int ensembleSize = 3;
     private int writeQuorumSize = 3;
     private int ackQuorumSize = 2;
@@ -57,6 +58,7 @@ public class LedgerMetadataBuilder {
     private Optional<byte[]> password = Optional.empty();
 
     private Optional<Long> ctime = Optional.empty();
+    private Optional<Long> legacyCtime = Optional.empty();
     private Map<String, byte[]> customMetadata = Collections.emptyMap();
 
     public static LedgerMetadataBuilder create() {
@@ -65,6 +67,7 @@ public class LedgerMetadataBuilder {
 
     public static LedgerMetadataBuilder from(LedgerMetadata other) {
         LedgerMetadataBuilder builder = new LedgerMetadataBuilder();
+        builder.metadataFormatVersion = other.getMetadataFormatVersion();
         builder.ensembleSize = other.getEnsembleSize();
         builder.writeQuorumSize = other.getWriteQuorumSize();
         builder.ackQuorumSize = other.getAckQuorumSize();
@@ -87,14 +90,20 @@ public class LedgerMetadataBuilder {
             builder.password = Optional.of(other.getPassword());
         }
 
-        if (other.storeSystemtimeAsLedgerCreationTime) {
-            builder.ctime = Optional.of(other.getCtime());
-        }
+        builder.ctime = other.ctime;
+        builder.legacyCtime = other.legacyCtime;
+
         builder.customMetadata = ImmutableMap.copyOf(other.getCustomMetadata());
 
         return builder;
     }
 
+    public LedgerMetadataBuilder withMetadataFormatVersion(int version) {
+        this.metadataFormatVersion = version;
+        return this;
+    }
+
+    // IKTODO password and digest are tied together, so they should being same method
     public LedgerMetadataBuilder withPassword(byte[] password) {
         this.password = Optional.of(Arrays.copyOf(password, password.length));
         return this;
@@ -147,6 +156,7 @@ public class LedgerMetadataBuilder {
         return this;
     }
 
+    // IKTODO: rename this to make order of arguments clearer
     public LedgerMetadataBuilder closingAt(long lastEntryId, long length) {
         this.lastEntryId = Optional.of(lastEntryId);
         this.length = Optional.of(length);
@@ -154,10 +164,27 @@ public class LedgerMetadataBuilder {
         return this;
     }
 
+    public LedgerMetadataBuilder withCustomMetadata(Map<String, byte[]> customMetadata) {
+        this.customMetadata = ImmutableMap.copyOf(customMetadata);
+        return this;
+    }
+
+    public LedgerMetadataBuilder withCreationTime(long ctime) {
+        this.ctime = Optional.of(ctime);
+        return this;
+    }
+
+    public LedgerMetadataBuilder withLegacyCreationTime(long legacyCtime) {
+        this.legacyCtime = Optional.of(legacyCtime);
+        return this;
+    }
+
     public LedgerMetadata build() {
-        return new LedgerMetadata(ensembleSize, writeQuorumSize, ackQuorumSize,
+        return new LedgerMetadata(metadataFormatVersion,
+                                  ensembleSize, writeQuorumSize, ackQuorumSize,
                                   state, lastEntryId, length, ensembles,
-                                  digestType, password, ctime, customMetadata);
+                                  digestType, password, ctime, legacyCtime,
+                                  customMetadata);
     }
 
 }
