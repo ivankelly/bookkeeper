@@ -1,0 +1,6 @@
+#!/bin/bash
+
+echo test
+set -x
+pwd
+docker build --build-arg BK_VERSION=$DOCKER_TAG -t $IMAGE_NAME .
