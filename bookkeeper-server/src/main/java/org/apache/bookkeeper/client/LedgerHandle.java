@@ -357,7 +357,7 @@ public class LedgerHandle implements WriteHandle {
         return versionedMetadata.getValue();
     }
 
-    Versioned<LedgerMetadata> getVersionedLedgerMetadata() {
+    public Versioned<LedgerMetadata> getVersionedLedgerMetadata() {
         return versionedMetadata;
     }
 
@@ -416,7 +416,7 @@ public class LedgerHandle implements WriteHandle {
      *
      * @return DigestManager for the LedgerHandle
      */
-    DigestManager getDigestManager() {
+    public DigestManager getDigestManager() {
         return macManager;
     }
 
@@ -455,7 +455,7 @@ public class LedgerHandle implements WriteHandle {
      *
      * @return DistributionSchedule for the LedgerHandle
      */
-    DistributionSchedule getDistributionSchedule() {
+    public DistributionSchedule getDistributionSchedule() {
         return distributionSchedule;
     }
 

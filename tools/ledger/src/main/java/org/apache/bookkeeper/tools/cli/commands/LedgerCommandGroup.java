@@ -23,7 +23,11 @@ import static org.apache.bookkeeper.tools.common.BKCommandCategories.CATEGORY_LE
 import org.apache.bookkeeper.tools.cli.BKCtl;
 import org.apache.bookkeeper.tools.cli.commands.client.DeleteLedgerCommand;
 import org.apache.bookkeeper.tools.cli.commands.client.LedgerMetaDataCommand;
+import org.apache.bookkeeper.tools.cli.commands.client.RecopyLedgerCommand;
 import org.apache.bookkeeper.tools.cli.commands.client.SimpleTestCommand;
+import org.apache.bookkeeper.tools.cli.commands.client.GenerateChecksums;
+import org.apache.bookkeeper.tools.cli.commands.client.VerifyChecksums;
+import org.apache.bookkeeper.tools.cli.commands.client.ReferencedBookies;
 import org.apache.bookkeeper.tools.common.BKFlags;
 import org.apache.bookkeeper.tools.framework.CliCommandGroup;
 import org.apache.bookkeeper.tools.framework.CliSpec;
@@ -44,6 +48,10 @@ public class LedgerCommandGroup extends CliCommandGroup<BKFlags> {
         .addCommand(new SimpleTestCommand())
         .addCommand(new DeleteLedgerCommand())
         .addCommand(new LedgerMetaDataCommand())
+        .addCommand(new RecopyLedgerCommand())
+        .addCommand(new GenerateChecksums())
+        .addCommand(new VerifyChecksums())
+        .addCommand(new ReferencedBookies())
         .build();
 
     public LedgerCommandGroup() {

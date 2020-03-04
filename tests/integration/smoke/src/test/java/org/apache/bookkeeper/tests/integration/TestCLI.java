@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.api.DigestType;
+import org.apache.bookkeeper.client.api.ReadHandle;
 import org.apache.bookkeeper.client.api.WriteHandle;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.tests.integration.utils.BookKeeperClusterUtils;
@@ -72,83 +73,119 @@ public class TestCLI {
         assertTrue(BookKeeperClusterUtils.stopAllBookies(docker));
     }
 
-    @Test
-    public void test001_SimpleTest() throws Exception {
-        String bookie = BookKeeperClusterUtils.getAnyBookie();
-        assertTrue(DockerUtils.runCommand(docker, bookie,
-            bkctl,
-            "ledger",
-            "simpletest",
-            "--ensemble-size", "3",
-            "--write-quorum-size", "3",
-            "--ack-quorum-size", "2",
-            "--num-entries", "100"
-        ).contains("100 entries written to ledger"));
-    }
+    // @Test
+    // public void test001_SimpleTest() throws Exception {
+    //     String bookie = BookKeeperClusterUtils.getAnyBookie();
+    //     assertTrue(DockerUtils.runCommand(docker, bookie,
+    //         bkctl,
+    //         "ledger",
+    //         "simpletest",
+    //         "--ensemble-size", "3",
+    //         "--write-quorum-size", "3",
+    //         "--ack-quorum-size", "2",
+    //         "--num-entries", "100"
+    //     ).contains("100 entries written to ledger"));
+    // }
+
+    // @Test
+    // public void test002_ListROBookies() throws Exception {
+    //     String bookie = BookKeeperClusterUtils.getAnyBookie();
+    //     assertTrue(DockerUtils.runCommand(docker, bookie,
+    //         bkctl,
+    //         "bookies",
+    //         "list",
+    //         "-ro"
+    //     ).contains("No bookie exists!"));
+    // }
+
+    // @Test
+    // public void test003_ListRWBookies() throws Exception {
+    //     String bookie = BookKeeperClusterUtils.getAnyBookie();
+    //     assertTrue(DockerUtils.runCommand(docker, bookie,
+    //         bkctl,
+    //         "bookies",
+    //         "list",
+    //         "-rw"
+    //     ).contains("ReadWrite Bookies :"));
+    // }
+
+    // @Test
+    // public void test004_SearchReplaceBookieId() throws Exception {
+    //     String zookeeper = BookKeeperClusterUtils.zookeeperConnectString(docker);
+
+    //     String bookie = BookKeeperClusterUtils.getAnyBookie();
+    //     int numEntries = 100;
+    //     try (BookKeeper bk = new BookKeeper(zookeeper)) {
+    //         long ledgerId;
+    //         BookieSocketAddress toReplace;
+    //         BookieSocketAddress replaceWith = new BookieSocketAddress("192.0.2.1:3181");
+    //         try (WriteHandle writelh = bk.newCreateLedgerOp()
+    //                 .withDigestType(DigestType.CRC32C).withPassword(TestSmoke.PASSWD)
+    //                 .withEnsembleSize(1).withWriteQuorumSize(1).withAckQuorumSize(1).execute().get()) {
+    //             ledgerId = writelh.getId();
+    //             toReplace = writelh.getLedgerMetadata().getAllEnsembles().get(0L).get(0);
+    //             for (int i = 0; i < numEntries; i++) {
+    //                 writelh.append(("entry-" + i).getBytes());
+    //             }
+    //         }
+
+    //         TestSmoke.readEntries(bk, ledgerId, numEntries);
+
+    //         DockerUtils.runCommand(docker, bookie,
+    //                                bkctl,
+    //                                "bookieid", "searchreplace",
+    //                                "--from", toReplace.toString(),
+    //                                "--to", replaceWith.toString());
+
+    //         try {
+    //             TestSmoke.readEntries(bk, ledgerId, numEntries);
+    //             fail("Shouldn't be able to read, as bookie id is rubbish");
+    //         } catch (BKException.BKBookieHandleNotAvailableException e) {
+    //             // expected
+    //         }
+
+    //         DockerUtils.runCommand(docker, bookie,
+    //                                bkctl,
+    //                                "bookieid", "searchreplace",
+    //                                "--from", replaceWith.toString(),
+    //                                "--to", toReplace.toString());
+    //         TestSmoke.readEntries(bk, ledgerId, numEntries);
+    //     }
+    // }
 
     @Test
-    public void test002_ListROBookies() throws Exception {
-        String bookie = BookKeeperClusterUtils.getAnyBookie();
-        assertTrue(DockerUtils.runCommand(docker, bookie,
-            bkctl,
-            "bookies",
-            "list",
-            "-ro"
-        ).contains("No bookie exists!"));
-    }
-
-    @Test
-    public void test003_ListRWBookies() throws Exception {
-        String bookie = BookKeeperClusterUtils.getAnyBookie();
-        assertTrue(DockerUtils.runCommand(docker, bookie,
-            bkctl,
-            "bookies",
-            "list",
-            "-rw"
-        ).contains("ReadWrite Bookies :"));
-    }
-
-    @Test
-    public void test004_SearchReplaceBookieId() throws Exception {
+    public void test005_RecopyLedger() throws Exception {
         String zookeeper = BookKeeperClusterUtils.zookeeperConnectString(docker);
 
         String bookie = BookKeeperClusterUtils.getAnyBookie();
         int numEntries = 100;
+
         try (BookKeeper bk = new BookKeeper(zookeeper)) {
             long ledgerId;
-            BookieSocketAddress toReplace;
-            BookieSocketAddress replaceWith = new BookieSocketAddress("192.0.2.1:3181");
+            BookieSocketAddress toAvoid = null;
             try (WriteHandle writelh = bk.newCreateLedgerOp()
                     .withDigestType(DigestType.CRC32C).withPassword(TestSmoke.PASSWD)
                     .withEnsembleSize(1).withWriteQuorumSize(1).withAckQuorumSize(1).execute().get()) {
                 ledgerId = writelh.getId();
-                toReplace = writelh.getLedgerMetadata().getAllEnsembles().get(0L).get(0);
+                toAvoid = writelh.getLedgerMetadata().getAllEnsembles().get(0L).get(0);
                 for (int i = 0; i < numEntries; i++) {
                     writelh.append(("entry-" + i).getBytes());
                 }
             }
-
             TestSmoke.readEntries(bk, ledgerId, numEntries);
 
             DockerUtils.runCommand(docker, bookie,
                                    bkctl,
-                                   "bookieid", "searchreplace",
-                                   "--from", toReplace.toString(),
-                                   "--to", replaceWith.toString());
-
-            try {
-                TestSmoke.readEntries(bk, ledgerId, numEntries);
-                fail("Shouldn't be able to read, as bookie id is rubbish");
-            } catch (BKException.BKBookieHandleNotAvailableException e) {
-                // expected
+                                   "ledger", "recopy",
+                                   "--all",
+                                   "--avoid-bookies", toAvoid.toString());
+            TestSmoke.readEntries(bk, ledgerId, numEntries);
+            try (ReadHandle readLh = bk.newOpenLedgerOp()
+                    .withDigestType(DigestType.CRC32C).withPassword(TestSmoke.PASSWD)
+                    .withLedgerId(ledgerId).execute().get()) {
+                assertTrue(!readLh.getLedgerMetadata().getAllEnsembles().get(0L).contains(toAvoid));
             }
-
-            DockerUtils.runCommand(docker, bookie,
-                                   bkctl,
-                                   "bookieid", "searchreplace",
-                                   "--from", replaceWith.toString(),
-                                   "--to", toReplace.toString());
-            TestSmoke.readEntries(bk, ledgerId, numEntries);
         }
     }
+
 }

@@ -29,7 +29,7 @@ import org.apache.bookkeeper.feature.Feature;
 import org.apache.bookkeeper.feature.FeatureProvider;
 import org.apache.bookkeeper.feature.SettableFeatureProvider;
 
-class ClientInternalConf {
+public class ClientInternalConf {
     final Feature disableEnsembleChangeFeature;
     final boolean delayEnsembleChange;
 

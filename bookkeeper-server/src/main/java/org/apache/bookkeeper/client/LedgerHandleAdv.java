@@ -57,7 +57,7 @@ public class LedgerHandleAdv extends LedgerHandle implements WriteAdvHandle {
         }
     }
 
-    LedgerHandleAdv(ClientContext clientCtx,
+    public LedgerHandleAdv(ClientContext clientCtx,
                     long ledgerId, Versioned<LedgerMetadata> metadata,
                     BookKeeper.DigestType digestType, byte[] password, EnumSet<WriteFlag> writeFlags)
             throws GeneralSecurityException, NumberFormatException {

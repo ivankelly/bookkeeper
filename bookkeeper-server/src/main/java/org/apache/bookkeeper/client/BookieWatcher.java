@@ -24,7 +24,7 @@ import java.util.Set;
 import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 
-interface BookieWatcher {
+public interface BookieWatcher {
     Set<BookieSocketAddress> getBookies() throws BKException;
     Set<BookieSocketAddress> getAllBookies() throws BKException;
     Set<BookieSocketAddress> getReadOnlyBookies() throws BKException;

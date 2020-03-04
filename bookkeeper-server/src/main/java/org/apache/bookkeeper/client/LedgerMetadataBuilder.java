@@ -149,6 +149,16 @@ public class LedgerMetadataBuilder {
         return this;
     }
 
+    public LedgerMetadataBuilder clearEnsembles() {
+        ensembles.clear();
+        return this;
+    }
+
+    public LedgerMetadataBuilder withOpenState() {
+        this.state = State.OPEN;
+        return this;
+    }
+
     public LedgerMetadataBuilder withInRecoveryState() {
         this.state = State.IN_RECOVERY;
         return this;
